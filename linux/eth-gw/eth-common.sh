@@ -22,3 +22,4 @@ readonly NET_ERR=6
 
 # Global constants
 readonly integer_regex="^[0-9]+$"
+readonly payload_size_regex="^[0-9]+[K|k|M|m]?$"

@@ -19,6 +19,7 @@ layer_number=3
 duplex="full"
 stream_type="UDP"
 duration=30
+payload_size=0
 uart_dev="/dev/ttyUSB0"
 ip_eth0="10.0.1.1"
 ip_eth1="10.0.1.2"
@@ -295,7 +296,7 @@ check_input() {
             -s)
                 shift
                 payload_size=$1
-                if [[ ! ${payload_size} =~ ${integer_regex} ]]; then
+                if [[ ! ${payload_size} =~ ${payload_size_regex} ]]; then
                     echo "Invalid payload size type!"
                     usage
                     exit ${INVALID_USER_ARGUMENT_ERR}
@@ -326,7 +327,9 @@ check_input() {
     done
 
     # Assign iperf3 payload size default value if it remained unset.
-    [ "${stream_type}" == "UDP" ] && payload_size=1472 || payload_size="32k"
+    if [ "${payload_size}" -eq "0" ]; then
+        [ "${stream_type}" == "UDP" ] && payload_size=1472 || payload_size="32k"
+    fi
 }
 
 setup_host() {
