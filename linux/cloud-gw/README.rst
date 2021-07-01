@@ -11,11 +11,13 @@ Prerequisites
    SSO is also required to use the SiteWise Dashboard.
  - S32G board with the GoldVIP image deployed and an internet connection.
 
-   Note: The MQTT client used by Greengrass uses port 8883. However, as a
+   Note: Greengrass uses ports 8883 and 8443. As a
    security measure, restrictive environments might limit inbound and outbound
-   traffic to a small range of TCP ports, which does not include port 8883.
-   Steps on how to configure Greengrass to use other ports are in
-   chapter :ref:`configure-gg-to-use-443`.
+   traffic to a small range of TCP ports, which might not include these ports.
+   Therefore the provisioning script (described in chapter
+   :ref:`connecting-the-board-to-aws`) changes these ports to 443.
+   To use the default ports (8883 and 8443) use the arguments
+   --mqtt-port and --http-port from the provisioning script.
 
 AWS IAM Permissions
 -------------------
@@ -158,26 +160,6 @@ Deleting the Telemetry Application
 4. Remove all administrators and users from the portal.
 5. Go to Cloudformation: https://console.aws.amazon.com/cloudformation/
 6. Select your stack and delete it.
-
-.. _configure-gg-to-use-443:
-
-Configuring Greengrass to use port 443
---------------------------------------
-
-Note: This step requires doing the steps described in previous
-chapters up to and including :ref:`connecting-the-board-to-aws`.
-
-1. On your board, open ``/greengrass/config/config.json`` in a text editor.
-2. Add the following four lines in this configuration file, in the ``coreThing`` field::
-
-    "coreThing" : {
-       ...
-       "iotMqttPort": 443,
-       "iotHttpPort": 443,
-       "ggHttpPort": 443
-    }
-
-3. Run the following command to restart greengrass daemon: ``$ /greengrass/ggc/core/greengrassd restart``
 
 .. _config-greengrass-using-wifi:
 

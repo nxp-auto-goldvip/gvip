@@ -11,6 +11,7 @@ Copyright 2021 NXP
 
 import argparse
 import getpass
+import json
 import os
 import re
 import subprocess
@@ -282,6 +283,8 @@ class GreengrassCertsProvisioner:
     GREENGRASS_DIR = '/greengrass/'
     # Path to the Greengrass core daemon
     GREENGRASSD_PATH = os.path.join(GREENGRASS_DIR, 'ggc', 'core', 'greengrassd')
+    # Path to config.json file
+    CONFIG_PATH = os.path.join(GREENGRASS_DIR, 'config', 'config.json')
 
     def __init__(self, bucket_name=None):
         """
@@ -303,6 +306,22 @@ class GreengrassCertsProvisioner:
         print('Copying the Greengrass configuration files...')
         with tarfile.open(fileobj=gzip, mode='r:gz') as tar:
             tar.extractall(path=self.GREENGRASS_DIR)
+
+    def set_ports(self, mqtt_port, http_port):
+        """
+        Configure the Greengrass core to use port 443 for
+        MQTT and HTTPS communication (by default 8883 and 8443)
+        :param mqtt_port: mqtt port used by greengrass.
+        :param http_port: http port used by greengrass.
+        """
+        with open(self.CONFIG_PATH, 'r+') as config_file:
+            config = json.load(config_file)
+            config["coreThing"]["iotMqttPort"] = mqtt_port
+            config["coreThing"]["iotHttpPort"] = http_port
+            config["coreThing"]["ggHttpPort"] = http_port
+            config_file.seek(0, 0)
+            config_file.write(json.dumps(config, indent=4))
+
 
     def ensure_certificates_tarball(self):
         """
@@ -330,9 +349,11 @@ class GreengrassCertsProvisioner:
         Utils.execute_command('{0} {1}'.format(GreengrassCertsProvisioner.GREENGRASSD_PATH,
                                                command))
 
-    def execute(self):
+    def execute(self, mqtt_port, http_port):
         """
         Execute the steps required to deploy the Greengrass certificates.
+        :param mqtt_port: mqtt port used by greengrass.
+        :param http_port: http port used by greengrass.
         """
         self.ensure_certificates_tarball()
 
@@ -344,6 +365,7 @@ class GreengrassCertsProvisioner:
             pass
 
         self.deploy_certificates()
+        self.set_ports(mqtt_port, http_port)
         self.control_greengrass('restart')
 
 
@@ -394,9 +416,11 @@ class GreengrassSetup():
         self.__s3_bucket_name = self._get_cfn_output_value(cfn_stack_outputs, 'CertificateBucket')
         print("Found certificates S3 bucket: '{0}'.".format(self.__s3_bucket_name))
 
-    def execute(self):
+    def execute(self, mqtt_port, http_port):
         """
         Check the prerequisites and execute the steps required to setup Greengrass.
+        :param mqtt_port: mqtt port used by greengrass.
+        :param http_port: http port used by greengrass.
         """
         # Check if the AWS credentials were provided
         if boto3.session.Session().get_credentials() is None:
@@ -414,7 +438,7 @@ class GreengrassSetup():
         # ouput list of the CloudFormation stack.
         self.get_cfn_stack_outputs()
 
-        GreengrassCertsProvisioner(self.__s3_bucket_name).execute()
+        GreengrassCertsProvisioner(self.__s3_bucket_name).execute(mqtt_port, http_port)
         GreengrassGroupDeployment(self.__gg_group_id).execute()
 
 
@@ -444,6 +468,10 @@ def main():
                         help='The password of the wireless network to connect to. If ommited, ' \
                         'it will be read from standard input. If the SSID does not have ' \
                         'password authentication, provide empty input.')
+    parser.add_argument('--mqtt-port', dest='mqtt_port', type=int, default=443, choices=[8883, 443],
+                        help='MQTT port used by Greengrass.')
+    parser.add_argument('--http-port', dest='http_port', type=int, default=443, choices=[8443, 443],
+                        help='HTTP port used by Greengrass.')
     args = parser.parse_args()
 
     ssid_password = None
@@ -459,8 +487,8 @@ def main():
     if args.no_deploy:
         GreengrassCertsProvisioner.control_greengrass('restart')
     else:
-        GreengrassSetup(args.cfn_stack_name, args.aws_region_name).execute()
-
+        GreengrassSetup(args.cfn_stack_name,
+                        args.aws_region_name).execute(args.mqtt_port, args.http_port)
 
 
 # entry point
