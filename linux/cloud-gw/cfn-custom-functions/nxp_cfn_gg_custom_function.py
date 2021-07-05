@@ -320,12 +320,12 @@ class SitewiseHandler:
     ]
 
     TRANSFORMS = [
-        ('CPU Load', '%', '100 - cpuidle', 'cpuidle', MEASUREMENTS[0][0]),
-        ('CPU0 Load', '%', '100 - cpu0idle', 'cpu0idle', MEASUREMENTS[1][0]),
-        ('CPU1 Load', '%', '100 - cpu1idle', 'cpu1idle', MEASUREMENTS[2][0]),
-        ('CPU2 Load', '%', '100 - cpu2idle', 'cpu2idle', MEASUREMENTS[3][0]),
-        ('CPU3 Load', '%', '100 - cpu3idle', 'cpu3idle', MEASUREMENTS[4][0]),
-        ('Memory Load (MB)', 'MB', 'memload / 1024',
+        ('Dom0 vCPU Load', '%', '100 - cpuidle', 'cpuidle', MEASUREMENTS[0][0]),
+        ('Dom0 vCPU0 Load', '%', '100 - cpu0idle', 'cpu0idle', MEASUREMENTS[1][0]),
+        ('Dom0 vCPU1 Load', '%', '100 - cpu1idle', 'cpu1idle', MEASUREMENTS[2][0]),
+        ('Dom0 vCPU2 Load', '%', '100 - cpu2idle', 'cpu2idle', MEASUREMENTS[3][0]),
+        ('Dom0 vCPU3 Load', '%', '100 - cpu3idle', 'cpu3idle', MEASUREMENTS[4][0]),
+        ('Dom0 Memory Load (MB)', 'MB', 'memload / 1024',
          'memload', MEASUREMENTS[5][0]),
         ('PFE0 RX Mbps', 'Mbps', 'pfe0rx / 1024',
          'pfe0rx', MEASUREMENTS[6][0]),
@@ -508,24 +508,24 @@ class SitewiseHandler:
         response_data['projectId'] = project['projectId']
 
         widgets_params = [
-            (0, 0, 3, 6, "CPU Load (%)",
-             [("Total CPU Load", property_ids['CPU Load'])]),
-            (0, 3, 3, 3, "CPU0 Load (%)", [
-                ("CPU0 Load", property_ids['CPU0 Load'])]),
-            (3, 3, 3, 3, "CPU1 Load (%)", [
-                ("CPU1 Load", property_ids['CPU1 Load'])]),
-            (0, 6, 3, 3, "CPU2 Load (%)", [
-                ("CPU2 Load", property_ids['CPU2 Load'])]),
-            (3, 6, 3, 3, "CPU3 Load (%)", [
-                ("CPU3 Load", property_ids['CPU3 Load'])]),
+            (0, 0, 3, 6, "Dom0 vCPU Load (%)",
+             [("Dom0 vCPU Load", property_ids['Dom0 vCPU Load'])]),
+            (0, 3, 3, 3, "Dom0 vCPU0 Load (%)", [
+                ("Dom0 vCPU0 Load", property_ids['Dom0 vCPU0 Load'])]),
+            (3, 3, 3, 3, "Dom0 vCPU1 Load (%)", [
+                ("Dom0 vCPU1 Load", property_ids['Dom0 vCPU1 Load'])]),
+            (0, 6, 3, 3, "Dom0 vCPU2 Load (%)", [
+                ("Dom0 vCPU2 Load", property_ids['Dom0 vCPU2 Load'])]),
+            (3, 6, 3, 3, "Dom0 vCPU3 Load (%)", [
+                ("Dom0 vCPU3 Load", property_ids['Dom0 vCPU3 Load'])]),
             (0, 9, 3, 3, "PFE0 Received (Mbps)", [
                 ("PFE0 Rx", property_ids['PFE0 RX Mbps']),
                 ("PFE0 Tx", property_ids['PFE0 TX Mbps'])]),
             (3, 9, 3, 3, "PFE2 Received (Mbps)", [
                 ("PFE2 Rx", property_ids['PFE2 RX Mbps']),
                 ("PFE2 Tx", property_ids['PFE2 TX Mbps'])]),
-            (0, 12, 3, 6, "Memory Load (MB)",
-             [("Memory Load (MB)", property_ids['Memory Load (MB)'])]),
+            (0, 12, 3, 6, "Dom0 Memory Load (MB)",
+             [("Dom0 Memory Load (MB)", property_ids['Dom0 Memory Load (MB)'])]),
             (0, 15, 3, 6, "M7 Core Load", [
                 ("M7 Core0 Load", property_ids["m7_0"]),
                 ("M7 Core1 Load", property_ids["m7_1"]),

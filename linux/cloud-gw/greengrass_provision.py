@@ -431,11 +431,8 @@ class GreengrassSetup():
         if self.aws_region_name:
             boto3.setup_default_session(region_name=self.aws_region_name)
 
-        # Ensure that the clock is syncronized with the ntp servers
-        Utils.sync_system_datetime()
-
         # Get the certificate S3 bucket and the Greengrass group ID from the
-        # ouput list of the CloudFormation stack.
+        # output list of the CloudFormation stack.
         self.get_cfn_stack_outputs()
 
         GreengrassCertsProvisioner(self.__s3_bucket_name).execute(mqtt_port, http_port)
@@ -455,7 +452,7 @@ def main():
                         help='The name of the deployed CloudFormation stack.')
     parser.add_argument('--region-name', dest='aws_region_name', type=str, default='us-west-2',
                         help='The AWS region where the CloudFormation stack was deployed.')
-    parser.add_argument('--netif', dest='netif', type=str, default='xenbr0',
+    parser.add_argument('--netif', dest='netif', type=str, default='eth0',
                         help='The network interface used to connect to open internet.')
     parser.add_argument('--netip', dest='netip', type=str, default=None,
                         help='The static IP set on the given network interface. If ommited, then' \
@@ -483,6 +480,9 @@ def main():
 
     # Setup the network.
     Utils.setup_network_interface(args.netif, args.netip, args.wlan_ssid, ssid_password)
+
+    # Ensure that the clock is synchronized with the ntp servers
+    Utils.sync_system_datetime()
 
     if args.no_deploy:
         GreengrassCertsProvisioner.control_greengrass('restart')

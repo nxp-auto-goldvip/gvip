@@ -25,7 +25,7 @@ Metadata:
     ReadmeUrl: ../README.rst
     Labels: ['nxp', 'goldvip', 's32g']
     HomePageUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
-    SemanticVersion: 0.4.0
+    SemanticVersion: 0.4.1
     SourceCodeUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
 
 Resources:
@@ -189,7 +189,7 @@ Resources:
       Runtime: python3.8
       Role: !GetAtt 'LambdaRole.Arn'
       Handler: telemetry_lambda.function_handler
-      CodeUri: ../aws-lambda-functions/telemetry-function/
+      CodeUri: ../aws-lambda-functions/telemetry-function/domU/
       Description: Invoke a function during stack creation.
   TelemetryVersion:
     Type: AWS::Lambda::Version

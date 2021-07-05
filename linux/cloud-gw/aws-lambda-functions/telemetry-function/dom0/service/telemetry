@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+### BEGIN INIT INFO
+# Provides:          telemetry
+# Required-Start:    networking
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:      0 6
+# Short-Description: Open telemetry socket service
+# Description:       Wrapper for starting / stopping GoldVIP telemetry service
+#                    Runs when domain 0 boots / shuts down on systems using init.
+### END INIT INFO
+
+SERVER_PATH=/home/root/cloud-gw/telemetry-collector/remote_server.py
+
+case "$1" in
+start)
+        echo "Starting telemetry service"
+        python3 ${SERVER_PATH} > /dev/null &
+        ;;
+stop)
+        echo "Stopping telemetry service"
+        kill -9 $(ps aux | grep '[r]emote_server.py' | awk '{print $2}')
+        ;;
+*)
+        echo "Usage: /etc/init.d/telemetry {start|stop}"
+        exit 1
+        ;;
+esac
+
+exit 0
