@@ -29,7 +29,7 @@ readonly times_to_run=20
 
 # Default values
 # Maximum IDPS target speed measured in packets/seconds.
-speed=35000
+speed=25000
 pcap_file="$(dirname "${BASH_SOURCE[0]}")/someip_packets.pcapng"
 
 _check_eth_port() {
@@ -143,6 +143,8 @@ _run_tcpreplay() {
     # Kill linux_some_idps process on target when timeout whether it done or not.
     echo "pkill -9 linux_someip_id" > "${uart_dev}"
     echo "pkill -2 sar" > "${uart_dev}"
+    # Wait 1 second for killing sar process
+    sleep 1
 }
 
 _get_log_target() {
