@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright 2020-2021 NXP
+#
+# This script contains base functions and variables for all scenarios that
+# will run on the target machine. 
+
+# shellcheck source=linux/eth-gw/eth-common.sh
+source "${BASH_SOURCE[0]%/*}/eth-common.sh"
+
+# Global constants
+readonly network_bridge_name="br0"
+
+# Default values
+layer_number=3
+host_mac_pfe0="00:00:00:00:00:00"
+host_mac_pfe2="00:00:00:00:00:00"
+vlan_id=1
+
+_set_ip() {
+    intf=$1
+    ip=$2
+    ip addr flush dev "${intf}"
+    ip addr add "${ip}"/24 dev "${intf}"
+}
+
+_bring_up_interface() {
+    ip link set pfe0 up
+    ip link set pfe2 up
+}
+
+flush_ip() {
+    _set_ip "pfe0" "0.0.0.0"
+    _set_ip "pfe2" "0.0.0.0"
+}
+
+set_trap() {
+    trap 'echo "An error occurred in file $0, at line ${BASH_LINENO[0]}" ; exit ${GENERAL_ERR}' ERR
+}
+
+# Create a standalone bridge if it doesn't exist in the first place.
+create_bridge() {
+    if [ ! -e /sys/class/net/"${network_bridge_name}" ]; then
+        ip link add "${network_bridge_name}" type bridge
+        ip link set dev "${network_bridge_name}" up
+    fi
+}
+
+setup_bridge() {
+    _bring_up_interface
+
+    # Set the IP for the network bridge.
+    _set_ip "${network_bridge_name}" "10.0.1.100"
+
+    # Set both PFE interfaces in bridge configuration.
+    ip link set dev pfe0 master "${network_bridge_name}"
+    ip link set dev pfe2 master "${network_bridge_name}"
+}
+
+delete_bridge() {
+    if [ -e /sys/class/net/"${network_bridge_name}" ]; then
+        ip link set dev "${network_bridge_name}" down
+        ip link delete "${network_bridge_name}"
+    fi
+}
+
+delete_pfe_fast_path() {
+    libfci_cli --reset
+    libfci_cli --reset6
+    libfci_cli --phyif_update --i emac0 --mode DEFAULT --enable on --promisc off
+    libfci_cli --phyif_update --i emac2 --mode DEFAULT --enable on --promisc off
+}
+
+check_input() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -h)
+                usage
+                exit
+                ;;
+            -L)
+                shift
+                layer_number=$1
+                if [ "${layer_number}" -ne 2 ] && [ "${layer_number}" -ne 3 ]; then
+                    echo "Invalid forwarding level!"
+                    usage
+                    exit "${INVALID_USER_ARGUMENT_ERR}"
+                fi
+                ;;
+            -m0)
+                shift
+                host_mac_pfe0=$1
+                if [ "${host_mac_pfe0}" = "00:00:00:00:00:00" ]; then
+                    echo "Invalid MAC address!"
+                    usage
+                    exit "${INVALID_USER_ARGUMENT_ERR}"
+                fi
+                ;;
+            -m1)
+                shift
+                host_mac_pfe2=$1
+                if [ "${host_mac_pfe2}" = "00:00:00:00:00:00" ]; then
+                    echo "Invalid MAC address!"
+                    usage
+                    exit "${INVALID_USER_ARGUMENT_ERR}"
+                fi
+                ;;
+            -V)
+                shift
+                vlan_id=$1
+                if [ "${vlan_id}" -ne 1 ]; then
+                    echo "Using non default VLAN ID!"
+                fi
+                ;;
+            *)
+                echo "Invalid option!"
+                usage
+                exit "${INVALID_USER_ARGUMENT_ERR}"
+                ;;
+        esac; shift;
+    done
+}
+
+delete_log() {
+    rm -rf /tmp/sar_data*
+}

@@ -1,0 +1,460 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2021 NXP
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: A stack that deploys a greengrass group, a lambda function working with the group, subscriptions, and a rule to route message to sitewise.
+
+Parameters:
+  TelemetryTopic:
+    Default: s32g/telemetry/template
+    Type: String
+    Description: Topic for the MQTT messages.
+  ContactEmail:
+    Default: example@mail.com
+    Type: String
+    Description: Contact email for Sitewise project
+
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: nxp-goldvip-telemetry
+    Description: Telemetry use-case for GoldVIP
+    Author: NXP
+    SpdxLicenseId: BSD-3-Clause
+    LicenseUrl: LICENSE
+    ReadmeUrl: ../README.rst
+    Labels: ['nxp', 'goldvip', 's32g']
+    HomePageUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
+    SemanticVersion: 0.4.0
+    SourceCodeUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
+
+Resources:
+  CertificatePolicy:
+    Type: AWS::IoT::Policy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - iot:*
+          - greengrass:*
+          Resource:
+          - '*'
+      PolicyName: !Join
+       - "_"
+       - - !Ref 'AWS::StackName'
+         - Cert
+         - Policy
+
+  CertStorage:
+    Type: AWS::S3::Bucket
+
+# Roles
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+  LambdaBasicExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: CustomLambdaDescribePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - iot:*
+                  - s3:*
+                  - iotsitewise:*
+                  - events:*
+                  - lambda:*
+                  - greengrass:*
+                  - iam:*
+                  - sso:*
+                Resource: '*'
+
+  SitewiseRuleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - iot.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: TelemetrySitewiseRuleRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+            - Effect: Allow
+              Resource: '*'
+              Action: 'iotsitewise:BatchPutAssetPropertyValue'
+
+  SitewisePortalRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - monitor.iotsitewise.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: TelemetrySitewiseRuleRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'iotsitewise:*'
+                - 'sso-directory:DescribeUsers'
+                - 'iotevents:DescribeAlarmModel'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'iotevents:BatchAcknowledgeAlarm'
+                - 'iotevents:BatchSnoozeAlarm'
+              Resource: '*'
+              Condition:
+                'Null':
+                  'iotevents:keyValue': 'false'
+
+  GreengrassServiceRole:
+    Type: 'AWS::IAM::Role'
+    DeletionPolicy: Retain
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: greengrass.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: !Join 
+           - "_"
+           - - !Ref 'AWS::StackName'
+             - GreengrassServiceRole
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'iot:*'
+                  - 'greengrass:*'
+                  - 'lambda:GetFunction'
+                  - 'lambda:GetFunctionConfiguration'
+                  - 's3:GetObject'
+                  - 's3:GetBucketLocation'
+                  - 'sagemaker:DescribeTrainingJob'
+                  - 'secretsmanager:GetSecretValue'
+                Resource: '*'
+
+# Lambda Functions
+  Telemetry:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.8
+      Role: !GetAtt 'LambdaRole.Arn'
+      Handler: telemetry_lambda.function_handler
+      CodeUri: ../aws-lambda-functions/telemetry-function/
+      Description: Invoke a function during stack creation.
+  TelemetryVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref Telemetry
+  TelemetryVersionAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref Telemetry
+      FunctionVersion: !GetAtt TelemetryVersion.Version
+      Name: Prod
+
+  GreengrassCustomFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: nxp_cfn_gg_custom_function.lambda_handler
+      Description: "Creates: a thing, a thing policy, a greengrass group, an asset model, an asset, a sitewise portal, project and dashboard"
+      Timeout: 700
+      Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
+      Runtime: python3.8
+      CodeUri: ../cfn-custom-functions/
+    DependsOn: SitewisePortalRole
+
+  CertificateCustomFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: nxp_cfn_cert_custom_function.lambda_handler
+      Description: "Creates a certificate for greengrass and stores it in a S3 bucket."
+      Timeout: 30
+      Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
+      Runtime: python3.8
+      CodeUri: ../cfn-custom-functions/
+
+# Greengrass Group Definition
+  GoldVIPCore:
+    Type: 'AWS::IoT::Thing'
+    Properties:
+      ThingName: !Join
+       - "_"
+       - - !Ref 'AWS::StackName'
+         - CoreThing
+
+  GreengrassCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt 'GreengrassCustomFunction.Arn'
+      ThingArn:  !Join 
+        - ':'
+        - - 'arn:aws:iot'
+          - !Ref 'AWS::Region'
+          - !Ref 'AWS::AccountId'
+          - !Join
+            - "/"
+            - - thing
+              - !Ref GoldVIPCore
+      Region: !Ref 'AWS::Region'
+      StackName: !Ref 'AWS::StackName'
+      AccountId: !Ref 'AWS::AccountId'
+      TelemetryTopic: !Ref TelemetryTopic
+      CertificateArn:  !GetAtt CertificateCustomResource.certificateArn
+      TelemetryLambdaArn: !Ref TelemetryVersionAlias
+      ContactEmail: !Ref ContactEmail
+      PortalRoleArn: !GetAtt SitewisePortalRole.Arn
+      ServiceRoleArn: !GetAtt GreengrassServiceRole.Arn
+      ServiceRoleName: !Ref GreengrassServiceRole
+      ServiceRolePolicyName:  !Join 
+           - "_"
+           - - !Ref 'AWS::StackName'
+             - GreengrassServiceRole
+
+# Custom Resources
+  CertificateCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt 'CertificateCustomFunction.Arn'
+      BucketName: !Ref CertStorage
+      ThingArn:  !Join 
+        - ':'
+        - - 'arn:aws:iot'
+          - !Ref 'AWS::Region'
+          - !Ref 'AWS::AccountId'
+          - !Join
+            - "/"
+            - - thing
+              - !Ref GoldVIPCore
+      Region: !Ref 'AWS::Region'
+      ThingName: !Join
+       - "_"
+       - - !Ref 'AWS::StackName'
+         - CoreThing
+      PolicyName: !Join
+       - "_"
+       - - !Ref 'AWS::StackName'
+         - Cert
+         - Policy
+    DependsOn: CertificatePolicy
+
+  SitewiseTopicRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      TopicRulePayload:
+        RuleDisabled: false
+        Sql: !Join
+         - "'"
+         - - SELECT * FROM 
+           - !Ref TelemetryTopic
+           - " "
+        Actions:
+        - IotSiteWise:
+            RoleArn: 
+              Fn::GetAtt:
+              - SitewiseRuleRole
+              - Arn
+            PutAssetPropertyValueEntries:
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${cpu_idle}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /cpu_idle
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${cpu0_idle}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /cpu0_idle
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${cpu1_idle}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /cpu1_idle
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${cpu2_idle}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /cpu2_idle
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${cpu3_idle}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /cpu3_idle
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${mem_Load}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /memory_load
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${pfe0_Receive_bps}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /pfe0_rx_bps
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${pfe0_Transmit_bps}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /pfe0_tx_bps
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${pfe2_Receive_bps}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /pfe2_rx_bps
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${pfe2_Transmit_bps}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /pfe2_tx_bps
+        - IotSiteWise:
+            RoleArn: 
+              Fn::GetAtt:
+              - SitewiseRuleRole
+              - Arn
+            PutAssetPropertyValueEntries:
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${m7_0}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /m7_0
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${m7_1}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /m7_1
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${m7_2}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /m7_2
+
+Outputs:
+  GreengrassGroupId:
+    Value: !GetAtt GreengrassCustomResource.GroupId
+  CertificateBucket:
+    Value: !Ref CertStorage
+  SitewisePortalId:
+    Value: !GetAtt GreengrassCustomResource.portalId
+  SitewisePortalUrl:
+    Value: !GetAtt GreengrassCustomResource.portalUrl
+  SitewiseDashboardId:
+    Value: !GetAtt GreengrassCustomResource.dashboardId
+  SitewiseProjectId:
+    Value: !GetAtt GreengrassCustomResource.projectId
+  SitewiseAssetId:
+    Value: !GetAtt GreengrassCustomResource.assetId
+  SitewiseAssetModelId:
+    Value: !GetAtt GreengrassCustomResource.assetModelId
