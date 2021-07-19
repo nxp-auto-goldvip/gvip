@@ -1,6 +1,32 @@
 Cloud Edge Gateway
 ==================
 
+Introduction
+------------
+The Cloud Edge Gateway use case demonstrates telemetry to cloud using AWS Greengrass. 
+Telemetry statistics are fetched from the device, calculated and sent to the 
+cloud counterpart of the application. Statistics received in the cloud are then 
+displayed into user-friendly graphs. The statistics include but may not be limited to: 
+Networking accelerator usage statistics, Realtime cores load, Domain-0 VCPU load and 
+Domain-0 Memory utilization statistics.
+
+The following architecture was employed: 
+
+.. image:: cloud-gw-architecture.png
+
+The virtual machines (Domain-0 and V2Xdomu) described in :ref:`xen_hypervisor` chapter have 
+certain limitations which need to be taken into account: Domain-0 has access to all the hardware 
+resources in the system, whereas V2Xdomu has access to limited resources which are virtualized by XEN. 
+Telemetry data needs to be collected from Domain-0 and passed to V2Xdomu through the 
+TCP client-server communication. The Domain-0 v2xbr is a virtual switch with no outbound 
+physical interface attached to it. This connection is used to pass telemetry data from 
+Domain-0 to V2Xdomu and vice-versa, without outside interference or snooping possibility.
+Any change in the configuration (update of the telemetry interval from the cloud) is 
+communicated from cloud to the Dom0 TCP Server, via the TCP client available on V2Xdomu. 
+This ensures that the system resources are protected from outside interference. 
+Data is prepared for fetching in the Domain-0 at any given time via a telemetry service 
+(see ``/etc/init.d/telemetry``) which is started at boot time.
+
 Prerequisites
 -------------
 
@@ -99,13 +125,15 @@ This CloudFormation stack creates on your account:
 Connecting the board to AWS
 ---------------------------
 
-1. Obtain programmatic access to your account on your board.
+1. Log into the V2X Virtual Machine using the command: ``xl console V2Xdomu``
+
+2. Obtain programmatic access to your account on your board.
    From the AWS SSO console select your account and retrieve the environment variables
    by clicking on ``Command line or programmatic access``. From section ``macOS and Linux``
    copy the variables and paste them on your board. Use Option 1: set the AWS
    credentials as environment variables. Note: these are temporary
    and are erased at reboot.
-2. Run the greengrass provisioning script on your board:
+3. Run the greengrass provisioning script on your board:
    
    ``$ python3 ~/cloud-gw/greengrass_provision.py --stack-name <stack-name> --region-name <region-name>``
 
@@ -118,9 +146,7 @@ Connecting the board to AWS
    the telemetry application.
 
    Note: the provisioning script will try to setup the internet connection using the
-   ``xenbr0`` network interface by default. To connect Greengrass with the Cloud Services
-   using a WiFi network, or to use another network interface, please check
-   :ref:`config-greengrass-using-wifi` section for further information.
+   ``eth0`` network interface by default. 
 
    To get more details about the script parameters use:
 
@@ -130,7 +156,7 @@ The board is now connected to your AWS account and it will begin to send
 telemetry data.
 
 Note: The deployment of the Greengrass group has to be done only once. The network configuration
-is not persistent between reboots. Please check :ref:`config-telemetry-after-reboot`
+and time are not persistent between reboots. Please check :ref:`config-telemetry-after-reboot`
 for further information.
 
 Accessing the SiteWise dashboard
@@ -150,6 +176,7 @@ Accessing the SiteWise dashboard
 
 You will now see the live telemetry data from your board.
 
+
 Deleting the Telemetry Application
 ----------------------------------
 
@@ -160,31 +187,6 @@ Deleting the Telemetry Application
 4. Remove all administrators and users from the portal.
 5. Go to Cloudformation: https://console.aws.amazon.com/cloudformation/
 6. Select your stack and delete it.
-
-.. _config-greengrass-using-wifi:
-
-Connecting Greengrass with Cloud Services using WiFi
-----------------------------------------------------
-
-Greengrass can connect to the Cloud Services using a WiFi connection established via
-a compatible USB WiFi Adapter (any adapter based on a Realtek chipset). Connecting the WiFi
-dongle to the USB port using an On The Go (OTG) adapter should result in a new network interface
-available for usage. The provisioning script can be used to set up the network interface and
-the Greengrass service to use it:
-
-  ``$ python3 ~/cloud-gw/greengrass_provision.py --no-deploy --netif <wlan-dev> --ssid <ssid> --psk <passphrase>``
-
-  Where ``<wlan-dev>`` is the name of the network interface created by the USB WiFi Adapter. To
-  connect to a specific WPA/WPA2 protected network, use ``<ssid>`` and ``<passphrase>`` to specify
-  the name of the wireless network (SSID), and the password used to connect to the specified
-  network respectively. The authentification details to a wireless network will be saved for
-  further use. If ``--no-deploy`` option is omitted the Greengrass group will be also deployed
-  beside the network setup.
-
-Now the board will use the wireless network to send telemetry data.
-
-Note: The network configuration is not persistent between reboots. Please check
-:ref:`config-telemetry-after-reboot` section for further information.
 
 .. _config-telemetry-after-reboot:
 
@@ -202,17 +204,14 @@ connection. Some of the options to reconfigure the network are:
 
   ``$ python3 ~/cloud-gw/greengrass_provision.py --no-deploy --netif <net-dev>``
 
-  Where ``<net-dev>`` is the network interface that will be configured. If ``<net-dev>`` is a
-  wireless device, the network configuration saved in previous provisionings will be used to
-  establish an internet connection.
-
+  Where ``<net-dev>`` is the network interface that shall be configured. 
+  
 - Use other command line commands:
 
-  To connect to the internet using a wireless network interface, ``wpa_supplicant`` service must
-  be started first:
-
-    ``$ wpa_supplicant -i<wlan-dev> -Dnl80211,wext -c/etc/wpa_supplicant.conf -B``
-
-  To acquire an IP address, run DHCP client:
+  Acquire an IP address, by running the DHCP client:
 
     ``$ udhcpc -i <net-dev>``
+
+  Synchronise date and time (restart ntpd):
+
+    ``$ killall ntpd && ntpd -gq``
