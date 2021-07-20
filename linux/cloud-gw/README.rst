@@ -14,10 +14,14 @@ The following architecture was employed:
 
 .. image:: cloud-gw-architecture.png
 
-The virtual machines (Domain-0 and V2Xdomu) described in :ref:`xen_hypervisor` chapter have 
-certain limitations which need to be taken into account: Domain-0 has access to all the hardware 
-resources in the system, whereas V2Xdomu has access to limited resources which are virtualized by XEN. 
-Telemetry data needs to be collected from Domain-0 and passed to V2Xdomu through the 
+The following access policies to hardware resources are applicable for the virtual machines
+(Domain-0 and V2Xdomu) described in :ref:`xen_hypervisor` chapter:
+
+    -Domain-0 has access to all the hardware resources in the system
+
+    -V2Xdomu has access to limited resources which are virtualized by XEN. 
+
+Telemetry data is collected from Domain-0 and passed to V2Xdomu through a 
 TCP client-server communication. The Domain-0 v2xbr is a virtual switch with no outbound 
 physical interface attached to it. This connection is used to pass telemetry data from 
 Domain-0 to V2Xdomu and vice-versa, without outside interference or snooping possibility.
