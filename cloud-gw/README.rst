@@ -112,8 +112,28 @@ Deployment of the Telemetry Stack in AWS
 This CloudFormation stack creates on your account:
 
 - A Greengrass Group (Classic V1); this manages the connection between the board and the AWS cloud.
-- A SiteWise Portal with a Dashboard; after the board is connected to AWS, a live visual representation
-  of the telemetry data received via Greengrass is displayed.
+- A SiteWise Portal with multiple Dashboards; after the board is connected to AWS, a live visual representation
+  of the telemetry data received via Greengrass is displayed in these.
+
+SJA1110 Telemetry Setup
+-----------------------
+
+Steps needed to enable SJA1110 telemetry:
+1. Connect the SJA1110 application to the internet using the P4 ethernet port
+   on the board (See Appendix A). The SJA1110 application and v2xdomu will need
+   to be connected to the same local network.
+2. Set SW12 to ON-ON position.
+3. Run the provisioning script (described in chapter :ref:`connecting-the-board-to-aws`)
+   with the ``--setup-sja`` option.
+
+Notes:
+You can connect the GMAC0 port either to P2A or P2B to access the internet through
+the SJA1110 switch, or directly into the router or switch the P4 port is connected to.
+
+Setting SW12 to ON-OFF will prevent the SJA1110 application to be loaded, and the
+default SJA1110 firmware will run instead.
+
+Chapter :ref:`sja1110-telemetry-application` contains more details about the SJA1110 application.
 
 .. _connecting-the-board-to-aws:
 
@@ -144,12 +164,13 @@ Connecting the board to AWS
 
 3. Run the Greengrass provisioning script on your board:
 
-   ``$ python3 ~/cloud-gw/greengrass_provision.py --stack-name <stack-name> --region-name <region-name>``
+   ``$ python3 ~/cloud-gw/greengrass_provision.py --stack-name <stack-name> --region-name <region-name> --setup-sja``
 
    Where ``<stack-name>`` is the name of the deployed stack. If you did not
    change the application name you do not need to specify this parameter.
    In ``<region-name>`` put the region you have selected from the supported ones:
    ``us-west-2`` or ``eu-west-1``.
+   ``--setup-sja`` starts the sja provisioning script.
 
    This will setup the network interface and deploy the Greengrass group created by
    the telemetry application.
@@ -173,6 +194,9 @@ Note: The deployment of the Greengrass group has to be done only once. The netwo
 and time are not persistent between reboots. Please check :ref:`config-telemetry-after-reboot`
 for further information.
 
+Note: Rerunning the Greengrass provisioning script after having already setup the SJA1110
+will break the SJA1110 telemetry, you will need to reboot the board and set it up again.
+
 Accessing the SiteWise dashboard
 --------------------------------
 
@@ -186,7 +210,7 @@ Accessing the SiteWise dashboard
 6. Click ``Assign administrators``.
 7. Click on the Portal's Url (or Link).
 8. Close the ``Getting started`` pop up window.
-9. Click on ``Dashboard``.
+9. Click on one of the dashboards to visualize the telemetry.
 
 You will now see the live telemetry data from your board.
 

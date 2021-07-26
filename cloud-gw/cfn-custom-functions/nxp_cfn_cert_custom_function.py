@@ -34,6 +34,8 @@ class CertificateHandler:
     CA_CERT_URL = "https://www.amazontrust.com/repository/AmazonRootCA1.pem"
 
     GOLDVIP_SETUP_ARCHIVE = "GoldVIP_setup.tar.gz"
+    SJA_CERTIFICATE = "Sja_Certificate.tar.gz"
+
     CA_CERT = "root.ca.pem"
     CERT_PEM = "certificate.pem"
     CERT_PRIVATE_KEY = "certificate.private.key"
@@ -46,8 +48,8 @@ class CertificateHandler:
     def _write_to_archive(file_content, archive, filename, path='certs'):
         """
         :param file_content: Content of the file to be added to the archive
-        :param archive: The archive
-        :param filename: name of the file to be added to the archive
+        :param archive: The archive.
+        :param filename: Name of the file to be added to the archive.
         """
         with tempfile.NamedTemporaryFile() as file:
             file.write(str.encode(file_content))
@@ -55,20 +57,23 @@ class CertificateHandler:
             archive.add(file.name, arcname='{1}/{0}'.format(filename, path))
 
     @staticmethod
-    def create(event):
+    def create(event, response_data, archive_name, thing, prefix=""):
         """
         Creates the certificate and associates it to a Greengrass Group.
         :param event: The MQTT message in json format.
+        :param response_data: Dictionary of resource ids to be returned.
+        :param archive_name: Name of the archive in which the certificates will be stored.
+        :param thing: Name of the thing for which the certificate is created.
+        :param prefix: Prefix to distinguish response data keys.
         """
-        region = event['ResourceProperties']['Region']
+        LOGGER.info("Creating certificate for thing %s", thing)
 
         response = CertificateHandler.IOT_CLIENT.create_keys_and_certificate(setAsActive=True)
 
-        response_data = {
-            'certificateArn': response.get('certificateArn'),
-            'certificateId': response.get('certificateId')
-        }
+        response_data[prefix + 'certificateArn'] = response.get('certificateArn')
+        response_data[prefix + 'certificateId'] = response.get('certificateId')
 
+        # pylint: disable=consider-using-with
         certificates = {
             CertificateHandler.CERT_PEM: response.get('certificatePem'),
             CertificateHandler.CERT_PUBLIC_KEY: response.get('keyPair').get('PublicKey'),
@@ -79,24 +84,24 @@ class CertificateHandler:
 
         # Attach thing
         CertificateHandler.IOT_CLIENT.attach_thing_principal(
-            thingName=event['ResourceProperties']['ThingName'],
-            principal=response_data['certificateArn']
+            thingName=thing,
+            principal=response.get('certificateArn')
         )
 
         # Attach policy
         CertificateHandler.IOT_CLIENT.attach_principal_policy(
             policyName=event['ResourceProperties']['PolicyName'],
-            principal=response_data['certificateArn']
+            principal=response.get('certificateArn')
         )
 
         with tarfile.open(
-            '/tmp/{0}'.format(CertificateHandler.GOLDVIP_SETUP_ARCHIVE), 'w:gz') as archive:
+                '/tmp/{0}'.format(archive_name), 'w:gz') as archive:
 
             for key, value in certificates.items():
                 CertificateHandler._write_to_archive(
                     value, archive, key)
 
-            with open("./config-template.json", 'r') as template_file:
+            with open("./config-template.json", 'r', encoding="utf-8") as template_file:
                 config = template_file.read()
 
                 replacements = [
@@ -105,7 +110,7 @@ class CertificateHandler:
                     ('THING_ARN', event['ResourceProperties']['ThingArn']),
                     ('IOT_HOST', CertificateHandler.IOT_CLIENT.describe_endpoint(
                         endpointType='iot:Data-ATS')['endpointAddress']),
-                    ('REGION', region),
+                    ('REGION', event['ResourceProperties']['Region']),
                     ('CA_CERT', CertificateHandler.CA_CERT)
                 ]
 
@@ -117,9 +122,11 @@ class CertificateHandler:
 
         CertificateHandler.S3_CLIENT = boto3.client('s3')
         CertificateHandler.S3_CLIENT.upload_file(
-            '/tmp/{0}'.format(CertificateHandler.GOLDVIP_SETUP_ARCHIVE),
+            '/tmp/{0}'.format(archive_name),
             event['ResourceProperties']['BucketName'],
-            CertificateHandler.GOLDVIP_SETUP_ARCHIVE)
+            archive_name)
+
+        LOGGER.info("Certificate Created.")
 
         return response_data
 
@@ -132,21 +139,21 @@ class CertificateHandler:
         :param event: The MQTT message in json format.
         """
         bucket_name = event['ResourceProperties']['BucketName']
-        thing_name = event['ResourceProperties']['ThingName']
+        core_thing_name = event['ResourceProperties']['GGCoreName']
+        sja_thing_name = event['ResourceProperties']['SjaThingName']
         policy_name = event['ResourceProperties']['PolicyName']
 
         LOGGER.info("Initiated certificate deletion")
 
-        certificate_arn = event['PhysicalResourceId']
-        certificate_id = certificate_arn.split('/')[1]
+        certificates = event['PhysicalResourceId'].split('|')
 
         CertificateHandler.S3_CLIENT.delete_objects(
             Bucket=bucket_name,
             Delete={
                 'Objects': [
-                    {
-                        'Key': CertificateHandler.GOLDVIP_SETUP_ARCHIVE
-                    }
+                    {'Key': cert} for cert in [
+                        CertificateHandler.GOLDVIP_SETUP_ARCHIVE,
+                        CertificateHandler.SJA_CERTIFICATE]
                 ]
             }
         )
@@ -154,20 +161,23 @@ class CertificateHandler:
         CertificateHandler.S3_CLIENT.delete_bucket(Bucket=bucket_name)
 
         # detatch core and policy from certificate
-        CertificateHandler.IOT_CLIENT = boto3.client('iot')
+        things = [core_thing_name, sja_thing_name]
 
-        CertificateHandler.IOT_CLIENT.detach_principal_policy(
-            policyName=policy_name,
-            principal=certificate_arn
-        )
-        CertificateHandler.IOT_CLIENT.detach_thing_principal(
-            thingName=thing_name,
-            principal=certificate_arn
-        )
+        for i, gg_certificate_arn in enumerate(certificates):
+            gg_certificate_id = gg_certificate_arn.split('/')[1]
 
-        CertificateHandler.IOT_CLIENT.update_certificate(
-            certificateId=certificate_id, newStatus='INACTIVE')
-        CertificateHandler.IOT_CLIENT.delete_certificate(certificateId=certificate_id)
+            CertificateHandler.IOT_CLIENT.detach_principal_policy(
+                policyName=policy_name,
+                principal=gg_certificate_arn
+            )
+            CertificateHandler.IOT_CLIENT.detach_thing_principal(
+                thingName=things[i],
+                principal=gg_certificate_arn
+            )
+
+            CertificateHandler.IOT_CLIENT.update_certificate(
+                certificateId=gg_certificate_id, newStatus='INACTIVE')
+            CertificateHandler.IOT_CLIENT.delete_certificate(certificateId=gg_certificate_id)
 
 
 def lambda_handler(event, context):
@@ -179,13 +189,25 @@ def lambda_handler(event, context):
     LOGGER.info('Handler got event %s', json.dumps(event))
 
     try:
-        response_data = dict()
+        response_data = {}
 
         if event['RequestType'] == 'Create':
-            response_data = CertificateHandler.create(event)
+            CertificateHandler.create(
+                event,
+                response_data,
+                CertificateHandler.GOLDVIP_SETUP_ARCHIVE,
+                event['ResourceProperties']['GGCoreName'],
+                "gg_")
+            CertificateHandler.create(
+                event,
+                response_data,
+                CertificateHandler.SJA_CERTIFICATE,
+                event['ResourceProperties']['SjaThingName'],
+                "sja_")
             cfnresponse.send(
                 event, context, cfnresponse.SUCCESS, response_data,
-                physical_resource_id=response_data['certificateArn'])
+                physical_resource_id=response_data['gg_certificateArn']\
+                    + "|" + response_data['sja_certificateArn'])
         elif event['RequestType'] == 'Update':
             cfnresponse.send(
                 event, context, cfnresponse.SUCCESS, response_data)

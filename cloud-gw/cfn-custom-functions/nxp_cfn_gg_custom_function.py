@@ -34,7 +34,6 @@ class Utils:
         """
         Packs dictionary ids into a id string
         :param ids_dict: Dictionary of resource ids
-        :type ids_dict: dict
         """
         ids_str = ""
 
@@ -49,7 +48,6 @@ class Utils:
         Unpacks ids_str into a dictionary of resource ids
 
         :param ids_str: Id of the custom resource created by this function.
-        :type ids_str: string
         """
         key_values = ids_str.split("|")
         ids_dict = {}
@@ -107,15 +105,12 @@ class GreengrassGroupHandler:
         """
         Create Core Thing, Greengrass Group and its definitions.
         :param event: The MQTT message in json dictionary format.
-        :param ids: dictionary of resource ids.
+        :param ids: Dictionary of resource ids.
         """
-        resource_property = event['ResourceProperties']
-
-        certificate_arn = resource_property['CertificateArn']
-        stack_name = resource_property['StackName']
-        telemetry_topic = resource_property['TelemetryTopic']
-        thing_arn = resource_property['ThingArn']
-        function_arn = resource_property['TelemetryLambdaArn']
+        certificate_arn = event['ResourceProperties']['CertificateArn']
+        stack_name = event['ResourceProperties']['StackName']
+        telemetry_topic = event['ResourceProperties']['TelemetryTopic']
+        function_arn = event['ResourceProperties']['TelemetryLambdaArn']
 
         core = GreengrassGroupHandler.CLIENT.create_core_definition(
             InitialVersion={
@@ -124,7 +119,7 @@ class GreengrassGroupHandler:
                         'CertificateArn': certificate_arn,
                         'Id': stack_name + "_CoreThing",
                         'SyncShadow': False,
-                        'ThingArn': thing_arn
+                        'ThingArn': event['ResourceProperties']['ThingArn']
                     },
                 ]
             },
@@ -183,6 +178,12 @@ class GreengrassGroupHandler:
                         'Source': 'cloud',
                         'Subject': telemetry_topic + "/config",
                         'Target': function_arn
+                    },
+                    {
+                        'Id': 'sja2cloud',
+                        'Source': event['ResourceProperties']['SjaThingArn'],
+                        'Subject': 's32g/sja/switch/' + stack_name,
+                        'Target': 'cloud'
                     }
                 ]
             },
@@ -213,16 +214,47 @@ class GreengrassGroupHandler:
         )
         ids["logger_id"] = logger['Id']
 
+        device = GreengrassGroupHandler.CLIENT.create_device_definition(
+            InitialVersion={
+                'Devices': [
+                    {
+                        'CertificateArn': event['ResourceProperties']['SjaThingCertArn'],
+                        'Id': stack_name + '_SjaThing',
+                        'SyncShadow': True,
+                        'ThingArn': event['ResourceProperties']['SjaThingArn']
+                    }
+                ]
+            },
+            Name=stack_name + '_SjaThing'
+        )
+        ids["device_id"] = device['Id']
+
         group = GreengrassGroupHandler.CLIENT.create_group(
             InitialVersion={
                 'CoreDefinitionVersionArn': core['LatestVersionArn'],
                 'FunctionDefinitionVersionArn': function['LatestVersionArn'],
                 'LoggerDefinitionVersionArn': logger['LatestVersionArn'],
-                'SubscriptionDefinitionVersionArn': subscription['LatestVersionArn']
+                'SubscriptionDefinitionVersionArn': subscription['LatestVersionArn'],
+                'DeviceDefinitionVersionArn': device['LatestVersionArn']
             },
             Name=stack_name + "_Group"
         )
         ids["group_id"] = group['Id']
+
+        # Set Core thing Connector; required for sja1110 application to connect with greengrass.
+        # Address not used, only needs to be set.
+        # Sja1110 will use address sent by sja provisioning client.
+        GreengrassGroupHandler.CLIENT.update_connectivity_info(
+            ConnectivityInfo=[
+                {
+                    'HostAddress': '8.8.8.8',
+                    'Id': stack_name + '_connector_id',
+                    'Metadata': 'Dummy connectivity',
+                    'PortNumber': 8883
+                }
+            ],
+            ThingName=stack_name + '_CoreThing'
+        )
 
         # Save the id of the group to be outputted by the cfn stack.
         response_data["GroupId"] = group['Id']
@@ -231,13 +263,14 @@ class GreengrassGroupHandler:
     def delete(ids):
         """
         Deletes Core Thing, Greengrass Group definitions and then the group.
-        :param ids: dictionary of resource ids.
+        :param ids: Dictionary of resource ids.
         """
         core_id = ids["core_id"]
         function_id = ids["function_id"]
         subscription_id = ids["subscription_id"]
         logger_id = ids["logger_id"]
         group_id = ids["group_id"]
+        device_id = ids["device_id"]
 
         LOGGER.info("Initiated Greengrass Group deletion.")
 
@@ -260,6 +293,10 @@ class GreengrassGroupHandler:
         # pylint: disable=broad-except
         except Exception as exception:
             LOGGER.error("Group deployment reset failed with exception: %s", exception)
+
+        GreengrassGroupHandler.CLIENT.delete_device_definition(
+            DeviceDefinitionId=device_id
+        )
 
         GreengrassGroupHandler.CLIENT.delete_core_definition(
             CoreDefinitionId=core_id
@@ -314,6 +351,17 @@ class SitewiseHandler:
         ('Immediate Temperature 2', 'C'),
     ]
 
+    SJA_NB_PORTS = 11
+
+    # Add measurements for each of the 11 ports.
+    for i in range(0, SJA_NB_PORTS):
+        MEASUREMENTS.append(('Drop Delta s0 p{}'.format(i), 'Packets'))
+        MEASUREMENTS.append(('Ingress Delta s0 p{}'.format(i), 'Packets'))
+        MEASUREMENTS.append(('Egress Delta s0 p{}'.format(i), 'Packets'))
+        MEASUREMENTS.append(('Drop Counter s0 p{}'.format(i), 'Packets'))
+        MEASUREMENTS.append(('Ingress Counter s0 p{}'.format(i), 'Packets'))
+        MEASUREMENTS.append(('Egress Counter s0 p{}'.format(i), 'Packets'))
+
     TRANSFORMS = [
         ('Dom0 vCPU Load', '%', '100 - cpuidle', 'cpuidle', MEASUREMENTS[0][0]),
         ('Dom0 vCPU0 Load', '%', '100 - cpu0idle', 'cpu0idle', MEASUREMENTS[1][0]),
@@ -334,7 +382,7 @@ class SitewiseHandler:
     CLIENT = boto3.client('iotsitewise')
 
     @staticmethod
-    def _add_sitewise_header(request, **kwargs):  # pylint: disable=unused-argument
+    def __add_sitewise_header(request, **kwargs):  # pylint: disable=unused-argument
         """
         :param request:
         :param kwargs: placeholder param
@@ -342,11 +390,11 @@ class SitewiseHandler:
         request.headers.add_header('Content-type', 'application/json')
 
     @staticmethod
-    def create_sitewise(event, ids, response_data):  # pylint: disable=too-many-locals
+    def __create_sitewise(event, ids, response_data):  # pylint: disable=too-many-locals
         """
         Create a Model and an Asset.
         :param event: The MQTT message in json format.
-        :param ids: dictionary of resource ids.
+        :param ids: Dictionary of resource ids.
         """
         stack_name = event['ResourceProperties']['StackName']
         property_list = []
@@ -453,22 +501,191 @@ class SitewiseHandler:
         return cfnresponse.SUCCESS, property_ids
 
     @staticmethod
-    def create_monitor(event, ids, property_ids, response_data):
+    def __create_dashboard(
+            dashboard_name,
+            widgets_params,
+            asset_id,
+            project_id):
         """
-        Creates a SiteWise Portal, then a project and a dashboard.
+        Created a SiteWise dashboard.
+        :param dashboard_name: A name for the SiteWise dashboard.
+        :param widgets_params: List of widget parameter touples.
+        :param asset_id: Id of the SiteWise asset.
+        :param project_id: Id of the SiteWise project.
+        """
+        widgets = []
+
+        for widget_param in widgets_params:
+            metrics = []
+
+            for label, property_id in widget_param[5]:
+                metrics.append(
+                    {
+                        "label": label,
+                        "type": "iotsitewise",
+                        "assetId": "{}".format(asset_id),
+                        "propertyId": "{}".format(property_id)
+                    }
+                )
+
+            widgets.append(
+                {
+                    "type": widget_param[6],
+                    "title": widget_param[4],
+                    "x": widget_param[0],
+                    "y": widget_param[1],
+                    "height": widget_param[2],
+                    "width": widget_param[3],
+                    "metrics": metrics
+                }
+            )
+
+        LOGGER.info('Project created. Creating Dashboard...')
+
+        dashboard = SitewiseHandler.CLIENT.create_dashboard(
+            projectId=project_id,
+            dashboardName=dashboard_name,
+            dashboardDefinition=json.dumps({"widgets": widgets})
+        )
+
+        return dashboard['dashboardId']
+
+    @staticmethod
+    def __configure_main_dashboard(ids, property_ids, response_data, asset_id, project_id):
+        """
+        Create a dashboard with A53 telemetry data: cpu load, memory and pfe traffic.
+
+        :param ids: Dictionary of resource ids.
+        :param property_ids: List of the asset's property ids.
+        :param response_data: Dictionary of resource ids to be returned.
+        :param asset_id: Id of the SiteWise asset.
+        :param project_id: Id of the SiteWise project.
+        """
+
+        # Declare the widgets properties from which the dashboard will be created.
+        widgets_params = [
+            (0, 0, 3, 6, "Dom0 vCPU Load (%)",
+             [("Dom0 vCPU Load", property_ids['Dom0 vCPU Load'])],
+             "monitor-line-chart"),
+            (0, 3, 3, 3, "Dom0 vCPU0 Load (%)", [
+                ("Dom0 vCPU0 Load", property_ids['Dom0 vCPU0 Load'])],
+             "monitor-line-chart"),
+            (3, 3, 3, 3, "Dom0 vCPU1 Load (%)", [
+                ("Dom0 vCPU1 Load", property_ids['Dom0 vCPU1 Load'])],
+             "monitor-line-chart"),
+            (0, 6, 3, 3, "Dom0 vCPU2 Load (%)", [
+                ("Dom0 vCPU2 Load", property_ids['Dom0 vCPU2 Load'])],
+             "monitor-line-chart"),
+            (3, 6, 3, 3, "Dom0 vCPU3 Load (%)", [
+                ("Dom0 vCPU3 Load", property_ids['Dom0 vCPU3 Load'])],
+             "monitor-line-chart"),
+            (0, 9, 3, 3, "PFE0 Received (Mbps)", [
+                ("PFE0 Rx", property_ids['PFE0 RX Mbps']),
+                ("PFE0 Tx", property_ids['PFE0 TX Mbps'])],
+             "monitor-line-chart"),
+            (3, 9, 3, 3, "PFE2 Received (Mbps)", [
+                ("PFE2 Rx", property_ids['PFE2 RX Mbps']),
+                ("PFE2 Tx", property_ids['PFE2 TX Mbps'])],
+             "monitor-line-chart"),
+            (0, 12, 3, 6, "Dom0 Memory Load (MB)",
+             [("Dom0 Memory Load (MB)", property_ids['Dom0 Memory Load (MB)'])],
+             "monitor-line-chart"),
+            (0, 15, 3, 6, "M7 Core Load", [
+                ("M7 Core0 Load", property_ids["m7_0"]),
+                ("M7 Core1 Load", property_ids["m7_1"]),
+                ("M7 Core2 Load", property_ids["m7_2"])],
+             "monitor-line-chart"),
+            (0, 18, 3, 6, "Immediate Temperature", [
+                ("Immediate temperature in site 0", property_ids["Immediate Temperature 0"]),
+                ("Immediate temperature in site 1", property_ids["Immediate Temperature 1"]),
+                ("Immediate temperature in site 2", property_ids["Immediate Temperature 2"])],
+             "monitor-line-chart"),
+        ]
+
+        dashboard_id = SitewiseHandler.__create_dashboard(
+            "Dashboard",
+            widgets_params,
+            asset_id,
+            project_id)
+
+        ids["dashboard1_id"] = dashboard_id
+        response_data['dashboard1Id'] = dashboard_id
+
+    @staticmethod
+    def __configure_sja_dashboards(ids, property_ids, response_data, asset_id, project_id):
+        """
+        Create dashboards with SJA telemetry: drop, ingress and egress packets
+        for each switch and port.
+        Multiple dashboards need to be created because each one is limited
+        to a maximum of 10 widgets.
+        :param ids: Dictionary of resource ids.
+        :param property_ids: List of the asset's property ids.
+        :param response_data: Dictionary of resource ids to be returned.
+        :param asset_id: Id of the SiteWise asset.
+        :param project_id: Id of the SiteWise project.
+        """
+
+        widget_y = None
+
+        # Create multiple dashboards to contain all of the SJA switch ports.
+        for sja_dashboard_id in [1, 2, 3]:
+            # Create empty widget list.
+            widgets_params = []
+            for i in range(0, 5):
+                # Position on the Y axis of the widget.
+                widget_y = i * 3 + i
+
+                # Number of SJA switch port.
+                port = i + 5 * (sja_dashboard_id - 1)
+
+                # Stop at the last port
+                if port >= SitewiseHandler.SJA_NB_PORTS:
+                    break
+
+                # Create line charts to display throughput in packets.
+                widgets_params.append(
+                    (0, widget_y, 3, 6, "Switch0 Port{} Traffic (Pckts)".format(port),
+                     [("Drop", property_ids["Drop Delta s0 p{}".format(port)]),
+                      ("Ingress", property_ids["Ingress Delta s0 p{}".format(port)]),
+                      ("Egress", property_ids["Egress Delta s0 p{}".format(port)])],
+                     "monitor-line-chart"))
+
+                # Create PKI to display total count.
+                widgets_params.append(
+                    (0, widget_y + 3, 1, 6, "Switch0 Port{} Counter (Pckts)".format(port),
+                     [("Drop", property_ids["Drop Counter s0 p{}".format(port)]),
+                      ("Ingress", property_ids["Ingress Counter s0 p{}".format(port)]),
+                      ("Egress", property_ids["Egress Counter s0 p{}".format(port)])],
+                     "monitor-kpi"))
+
+            dashboard_id = SitewiseHandler.__create_dashboard(
+                'SJA1110 Dashboard %d' % sja_dashboard_id,
+                widgets_params,
+                asset_id,
+                project_id)
+
+            # Set the ids of the dashboards as number 2, 3 and 4.
+            ids['dashboard%d_id' % (sja_dashboard_id + 1)] = dashboard_id
+            response_data['dashboard%dId' % (sja_dashboard_id + 1)] = dashboard_id
+
+    @staticmethod
+    def __create_monitor(event, ids, property_ids, response_data):
+        """
+        Creates a SiteWise Portal, a project and multiple dashboards.
         :param event: The MQTT message in json format.
-        :param ids: dictionary of resource ids.
-        :param property_id_list: list of asset property ids
+        :param ids: Dictionary of resource ids.
+        :param property_id_list: List of asset property ids.
+        :param response_data: Dictionary of resource ids to be returned.
         """
         try:
             asset_id = ids["asset_id"]
         except KeyError:
-            LOGGER.info("Asset ID not found (create_monitor)")
+            LOGGER.info("Asset ID not found (__create_monitor)")
             return cfnresponse.FAILED
 
         SitewiseHandler.CLIENT.meta.events.register_first(
             'before-sign.iotsitewise.*',
-            SitewiseHandler._add_sitewise_header
+            SitewiseHandler.__add_sitewise_header
         )
 
         LOGGER.info('Creating Portal...')
@@ -502,88 +719,25 @@ class SitewiseHandler:
         ids["project_id"] = project['projectId']
         response_data['projectId'] = project['projectId']
 
-        widgets_params = [
-            (0, 0, 3, 6, "Dom0 vCPU Load (%)",
-             [("Dom0 vCPU Load", property_ids['Dom0 vCPU Load'])],
-             "monitor-line-chart"),
-            (0, 3, 3, 3, "Dom0 vCPU0 Load (%)", [
-                ("Dom0 vCPU0 Load", property_ids['Dom0 vCPU0 Load'])],
-                "monitor-line-chart"),
-            (3, 3, 3, 3, "Dom0 vCPU1 Load (%)", [
-                ("Dom0 vCPU1 Load", property_ids['Dom0 vCPU1 Load'])],
-                "monitor-line-chart"),
-            (0, 6, 3, 3, "Dom0 vCPU2 Load (%)", [
-                ("Dom0 vCPU2 Load", property_ids['Dom0 vCPU2 Load'])],
-                "monitor-line-chart"),
-            (3, 6, 3, 3, "Dom0 vCPU3 Load (%)", [
-                ("Dom0 vCPU3 Load", property_ids['Dom0 vCPU3 Load'])],
-                "monitor-line-chart"),
-            (0, 9, 3, 3, "PFE0 Received (Mbps)", [
-                ("PFE0 Rx", property_ids['PFE0 RX Mbps']),
-                ("PFE0 Tx", property_ids['PFE0 TX Mbps'])],
-                "monitor-line-chart"),
-            (3, 9, 3, 3, "PFE2 Received (Mbps)", [
-                ("PFE2 Rx", property_ids['PFE2 RX Mbps']),
-                ("PFE2 Tx", property_ids['PFE2 TX Mbps'])],
-                "monitor-line-chart"),
-            (0, 12, 3, 6, "Dom0 Memory Load (MB)",
-             [("Dom0 Memory Load (MB)", property_ids['Dom0 Memory Load (MB)'])],
-             "monitor-line-chart"),
-            (0, 15, 3, 6, "M7 Core Load", [
-                ("M7 Core0 Load", property_ids["m7_0"]),
-                ("M7 Core1 Load", property_ids["m7_1"]),
-                ("M7 Core2 Load", property_ids["m7_2"])],
-                "monitor-line-chart"),
-            (0, 18, 3, 6, "Immediate Temperature", [
-                ("Immediate temperature in site 0", property_ids["Immediate Temperature 0"]),
-                ("Immediate temperature in site 1", property_ids["Immediate Temperature 1"]),
-                ("Immediate temperature in site 2", property_ids["Immediate Temperature 2"])],
-                "monitor-line-chart"),
-        ]
+        # Creating Main Dashboard
+        SitewiseHandler.__configure_main_dashboard(
+            ids, property_ids,
+            response_data,
+            asset_id, project['projectId'])
 
-        widgets = []
+        # Creating Second Dashboard
+        SitewiseHandler.__configure_sja_dashboards(
+            ids, property_ids,
+            response_data,
+            asset_id, project['projectId'])
 
-        for widget_param in widgets_params:
-            metrics = []
-
-            for label, property_id in widget_param[5]:
-                metrics.append(
-                    {
-                        "label": label,
-                        "type": "iotsitewise",
-                        "assetId": "{}".format(asset_id),
-                        "propertyId": "{}".format(property_id)
-                    }
-                )
-
-            widgets.append(
-                {
-                    "type": widget_param[6],
-                    "title": widget_param[4],
-                    "x": widget_param[0],
-                    "y": widget_param[1],
-                    "height": widget_param[2],
-                    "width": widget_param[3],
-                    "metrics": metrics
-                }
-            )
-
-        LOGGER.info('Project created. Creating Dashboard...')
-
-        dashboard = SitewiseHandler.CLIENT.create_dashboard(
-            projectId=project['projectId'],
-            dashboardName="Dashboard",
-            dashboardDefinition=json.dumps({"widgets": widgets})
-        )
-        ids["dashboard_id"] = dashboard['dashboardId']
-        response_data['dashboardId'] = dashboard['dashboardId']
-
+        # Associate asset to project
         SitewiseHandler.CLIENT.batch_associate_project_assets(
             projectId=project['projectId'],
             assetIds=[asset_id]
         )
 
-        LOGGER.info('Dashboard Created.')
+        LOGGER.info('Dashboards Created.')
 
         return cfnresponse.SUCCESS
 
@@ -591,7 +745,7 @@ class SitewiseHandler:
     def delete_sitewise(ids):
         """
         Deletes the asset then the model.
-        :param ids: dictionary of resource ids.
+        :param ids: Dictionary of resource ids.
         """
         model_id = None
         asset_id = None
@@ -627,20 +781,20 @@ class SitewiseHandler:
     def delete_monitor(ids):
         """
         Deletes the dashboard, the project and the portal.
-        :param ids: dictionary of resource ids.
+        :param ids: Dictionary of resource ids.
         """
         asset_id = None
         portal_id = None
         project_id = None
-        dashboard_id = None
+        dashboard_ids = []
 
         try:
             asset_id = ids["asset_id"]
             portal_id = ids["portal_id"]
             project_id = ids["project_id"]
-            dashboard_id = ids["dashboard_id"]
+            dashboard_ids.extend([val for key, val in ids.items() if key.startswith('dashboard')])
         except KeyError as exception:
-            LOGGER.error("Sitewise resources not found in delete_monitor: %s", exception)
+            LOGGER.error("Sitewise resource id not found in delete_monitor: %s", exception)
 
         if project_id and asset_id:
             SitewiseHandler.CLIENT.batch_disassociate_project_assets(
@@ -650,10 +804,11 @@ class SitewiseHandler:
                 ]
             )
 
-        if dashboard_id:
+        for dashboard_id in dashboard_ids:
             SitewiseHandler.CLIENT.delete_dashboard(
                 dashboardId=dashboard_id
             )
+        time.sleep(2)
 
         if project_id:
             SitewiseHandler.CLIENT.delete_project(
@@ -661,6 +816,16 @@ class SitewiseHandler:
             )
 
         if portal_id:
+            # List and remove access policies before deleting the portal
+            access_policies = SitewiseHandler.CLIENT.list_access_policies(
+                resourceType='PORTAL',
+                resourceId=portal_id
+            )
+            for access_policy in access_policies['accessPolicySummaries']:
+                SitewiseHandler.CLIENT.delete_access_policy(
+                    accessPolicyId=access_policy['id']
+                )
+
             SitewiseHandler.CLIENT.delete_portal(
                 portalId=portal_id
             )
@@ -669,14 +834,15 @@ class SitewiseHandler:
     def create(event, ids, response_data):
         """
         :param event: The MQTT message in json dictionary format.
-        :param ids: dictionary of resource ids.
+        :param ids: Dictionary of resource ids.
+        :param response_data: Dictionary of resource ids to be returned.
         """
-        status, property_ids = SitewiseHandler.create_sitewise(event, ids, response_data)
+        status, property_ids = SitewiseHandler.__create_sitewise(event, ids, response_data)
 
         if status == cfnresponse.FAILED:
             return status
 
-        status = SitewiseHandler.create_monitor(event, ids, property_ids, response_data)
+        status = SitewiseHandler.__create_monitor(event, ids, property_ids, response_data)
 
         return status
 
