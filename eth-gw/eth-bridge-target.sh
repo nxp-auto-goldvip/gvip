@@ -6,7 +6,7 @@
 # This script is used to create a remote bridge on the target machine to tranfser the
 # CPU load logs.
 
-# shellcheck source=linux/eth-gw/eth-common-target.sh
+# shellcheck source=eth-gw/eth-common-target.sh
 source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
 set_trap

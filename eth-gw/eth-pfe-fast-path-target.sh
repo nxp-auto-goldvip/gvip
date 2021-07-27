@@ -15,7 +15,7 @@
 # The target script takes care of setting up the L2 or L3 functionality for the PFE peripheral via	
 # the "libfci" utility.
 
-# shellcheck source=linux/eth-gw/eth-common-target.sh
+# shellcheck source=eth-gw/eth-common-target.sh
 source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
 # Set layer two switch between the local interfaces.

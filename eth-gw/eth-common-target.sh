@@ -6,7 +6,7 @@
 # This script contains base functions and variables for all scenarios that
 # will run on the target machine. 
 
-# shellcheck source=linux/eth-gw/eth-common.sh
+# shellcheck source=eth-gw/eth-common.sh
 source "${BASH_SOURCE[0]%/*}/eth-common.sh"
 
 # Global constants

@@ -10,7 +10,7 @@
 # taking into account the user config (if provided) and the message count as parameter.
 # The traffic is expected to arrive on the PFE2 interface.
 
-# shellcheck source=linux/eth-gw/eth-common-target.sh
+# shellcheck source=eth-gw/eth-common-target.sh
 source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
 # Global constants

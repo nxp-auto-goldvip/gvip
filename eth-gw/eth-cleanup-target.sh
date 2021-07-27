@@ -6,7 +6,7 @@
 # This script is used to clean up the target remotely when
 # the host cleans up as well.
 
-# shellcheck source=linux/eth-gw/eth-common-target.sh
+# shellcheck source=eth-gw/eth-common-target.sh
 source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
 set_trap

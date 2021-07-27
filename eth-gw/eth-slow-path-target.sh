@@ -11,7 +11,7 @@
 # The target script takes care of setting up the L2 or L3 functionality via standard Linux commands.
 # In case L3 forwarding is used, the PFE interfaces are configured to match the host network.
 
-# shellcheck source=linux/eth-gw/eth-common-target.sh
+# shellcheck source=eth-gw/eth-common-target.sh
 source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
 _setup_l2_switch() {
