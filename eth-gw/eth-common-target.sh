@@ -66,10 +66,9 @@ delete_bridge() {
 }
 
 delete_pfe_fast_path() {
-    libfci_cli --reset
-    libfci_cli --reset6
-    libfci_cli --phyif_update --i emac0 --mode DEFAULT --enable on --promisc off
-    libfci_cli --phyif_update --i emac2 --mode DEFAULT --enable on --promisc off
+    libfci_cli route-and-cntk-reset --all
+    libfci_cli phyif-update --i emac0 --mode DEFAULT --enable --promisc OFF
+    libfci_cli phyif-update --i emac2 --mode DEFAULT --enable --promisc OFF
 }
 
 check_input() {
