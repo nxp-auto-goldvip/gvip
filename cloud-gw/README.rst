@@ -90,23 +90,15 @@ Supported Regions
 
 Select in the AWS Console the region you desired from the list of supported regions.
 
-Currently the telemetry application is private. To obtain access to it contact
-the GoldVIP team. Please provide your AWS account id in the request.
-Contact information can be found in the ``Support`` chapter: :ref:`support`.
-
 Deployment of the Telemetry Stack in AWS
 ----------------------------------------
 
 1. Go to the AWS SAR console: https://console.aws.amazon.com/serverlessrepo/
-2. Go to ``Available applications`` tab; then to ``Private applications``.
-   Currently the Application is private. When it will be public anyone
-   will be able to search for it in the ``Public applications`` tab by name
-   and/or tags.
+2. Go to ``Available applications`` tab; then to ``Public applications`` and
+   search for ``goldvip``.
 3. Check ``Show apps that create custom IAM roles or resource policies``
    to see the application.
 4. Click on ``nxp-goldvip-telemetry``. You can modify the application parameters.
-   Note: if you change ``TelemetryTopic`` you will also need to update it in
-   the Telemetry lambda code configuration file.
 5. Check ``I acknowledge that this app creates custom IAM roles.``
 6. Click ``Deploy``. The deployment will take a few minutes. You will be
    redirected to another page. The name of the stack is on the top of the page,
