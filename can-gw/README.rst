@@ -51,19 +51,19 @@ Running the measurements
    a) Parameter description:
 
     - | ``-t`` CAN transmit interface -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
-    - | ``-r`` CAN receive interface -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters 
-    - | ``-i`` id of transmit CAN frame -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters 
-    - | ``-o`` id of receive CAN frame -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters 
+    - | ``-r`` CAN receive interface -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
+    - | ``-i`` id of transmit CAN frame -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
+    - | ``-o`` id of receive CAN frame -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
     - | ``-s`` CAN frame data size in bytes
-    - | ``-g`` frame gap in milliseconds between two consecutive generated CAN frames, use any integer > 1
+    - | ``-g`` frame gap in milliseconds between two consecutive generated CAN frames, use any integer >= 0
     - | ``-l`` the length of the CAN frames generation session in seconds, use any integer > 1
 
    b) For slow path:
-   
+
     - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
 
       | -t can0 -r can1 -i 0 -o 4
-      | -t can1 -r can0 -i 3 -o 2
+      | -t can1 -r can0 -i 2 -o 3
 
     ex: ``./canperf.sh -t can0 -r can1 -i 0 -o 4 -s 8 -g 10 -l 10``
 
