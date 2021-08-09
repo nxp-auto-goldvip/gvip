@@ -231,7 +231,7 @@ run_perf() {
         id_filter=FFFFFFFF
 
         # Clean up any previous logs
-        rm -f /tmp/can*.log
+        rm -f "${tx_log}" "${rx_log}"
 
         # Run candump on can_rx_interface interface expecting CAN id rx_id. Swap byte
         # order argument (-S) is used to facilitate incremental payload checking
