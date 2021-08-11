@@ -12,7 +12,7 @@
     "cgroup" : {
       "useSystemd" : "no"
     },
-    "allowFunctionsToRunAsRoot" : "yes"
+    "allowFunctionsToRunAsRoot" : "no"
   },
   "managedRespawn" : false,
   "crypto" : {

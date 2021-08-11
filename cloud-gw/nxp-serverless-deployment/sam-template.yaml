@@ -37,10 +37,28 @@ Resources:
         Statement:
         - Effect: Allow
           Action:
-          - iot:*
-          - greengrass:*
-          Resource:
-          - '*'
+          - iot:Connect
+          - iot:Publish
+          - iot:Receive
+          - iot:Subscribe
+          - greengrass:Discover
+          - greengrass:AssumeRoleForGroup
+          - greengrass:CreateCertificate
+          - greengrass:GetDeployment
+          - greengrass:GetConnectivityInfo
+          - greengrass:UpdateConnectivityInfo
+          Resource: !Join 
+            - ':'
+            - - 'arn:aws:iot'
+              - !Ref 'AWS::Region'
+              - !Ref 'AWS::AccountId'
+              - !Join
+                - "/"
+                - - thing
+                  - !Join
+                   - "_"
+                   - - !Ref 'AWS::StackName'
+                     - CoreThing
       PolicyName: !Join
        - "_"
        - - !Ref 'AWS::StackName'
@@ -49,6 +67,12 @@ Resources:
 
   CertStorage:
     Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: false
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
 
 # Roles
   LambdaRole:
