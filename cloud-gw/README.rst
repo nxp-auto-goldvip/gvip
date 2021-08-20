@@ -109,12 +109,12 @@ Deployment of the Telemetry Stack in AWS
    ``Create in progress`` to ``Create complete``.
    Note: you may need to refresh the page to see the status change.
 
-This CloudFormation stack creates on your account:
- - A Greengrass Group; this manages the connection between the board
-   and the AWS cloud.
- - A SiteWise Portal with a Dashboard; after the board is connected to AWS,
-   a live visual representation of the telemetry data received via
-   Greengrass is displayed.
+  This CloudFormation stack creates on your account:
+    - A Greengrass Group (Classic V1); this manages the connection between the board
+      and the AWS cloud.
+    - A SiteWise Portal with a Dashboard; after the board is connected to AWS,
+      a live visual representation of the telemetry data received via
+      Greengrass is displayed.
 
 .. _connecting-the-board-to-aws:
 
@@ -122,14 +122,28 @@ Connecting the board to AWS
 ---------------------------
 
 1. Log into the V2X Virtual Machine using the command: ``xl console V2Xdomu``
+   
+2. Configure environment variables for Greengrass provisioning script:
 
-2. Obtain programmatic access to your account on your board.
+  From the V2Xdomu console, set the AWS credentials as environment variables::
+   
+     $ export AWS_ACCESS_KEY_ID=<access key id>
+     $ export AWS_SECRET_ACCESS_KEY=<secret access key>
+
+  One way of obtaining your AWS credentials is the following:
+
    From the AWS SSO console select your account and retrieve the environment variables
    by clicking on ``Command line or programmatic access``. From section ``macOS and Linux``
    copy the variables and paste them on your board. Use Option 1: set the AWS
-   credentials as environment variables. Note: these are temporary
-   and are erased at reboot.
-3. Run the greengrass provisioning script on your board:
+   credentials as environment variables.
+
+  Please check the AWS documentation for additional information: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
+
+  Note: 
+    - IAM credentials should never be used on a device in production scenario.
+    - These variables are temporary and are erased at reboot.
+
+3. Run the Greengrass provisioning script on your board:
    
    ``$ python3 ~/cloud-gw/greengrass_provision.py --stack-name <stack-name> --region-name <region-name>``
 
