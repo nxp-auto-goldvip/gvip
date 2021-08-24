@@ -31,7 +31,7 @@ two Flex-CAN ports, e.g.::
 
 Prerequisites
 -------------
- - S32G-VNP-RDB2 board running GoldVIP images
+- S32G-VNP-RDB2 board running GoldVIP images
 
 Running the measurements
 ------------------------

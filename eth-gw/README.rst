@@ -7,7 +7,7 @@ The Ethernet gateway currently supports the following use-cases:
  - Layer 2 (bridge/switch) ETH forwarding
  - Layer 3 (router) IP forwarding
 
-Both use-cases can be run either in slow-path mode with Cortex-A53 cores 
+Both use-cases can be run either in slow-path mode with Cortex-A53 cores
 handling the forwarding or in fast path mode on SJA1110A switch without any
 load on A53 cores.
 
@@ -20,9 +20,9 @@ SJA1110 companion switch from the board.
 Prerequisites
 -------------
 
- - S32G-VNP-RDB2 board running GoldVIP images
+ - S32G-VNP-RDB2 board running GoldVIP images.
  - PC with 2 Ethernet ports, running Ubuntu 18.04 (with iperf3, minicom,
-   iproute2) or a built GoldVIP Docker image that already contains all the necessary tools
+   iproute2) or a built GoldVIP Docker image that already contains all the necessary tools.
 
 Running the slow-path use-cases
 -------------------------------
@@ -30,7 +30,7 @@ Running the slow-path use-cases
 1. Connect one host PC ETH port to the board's SJA1110A switch Port 2.
 
 2. Connect another PC ETH port to the board's PFE-MAC2 ETH port.
-   An USB-to-ETH adaptor can be used as the second PC ETH card but make sure it 
+   An USB-to-ETH adaptor can be used as the second PC ETH card but make sure it
    supports Gigabit ETH and is plugged into an USB3.0 port.
 
 3. Start GoldVIP Docker container on PC (see :ref:`building_goldvip_docker_image` chapter)
@@ -38,7 +38,7 @@ Running the slow-path use-cases
 4. Run on host PC eth-slow-path-host.sh script to measure performance for L2/L3
    forwarding between pfe0 and pfe2, with UDP or TCP traffic, with various
    payload sizes, e.g.::
-   
+
     sudo ./eth-slow-path-host.sh -L 3 -d full -t UDP <eth0> <eth1>
 
    The above command is measuring throughput between PC eth0 and eth1 that are
@@ -60,11 +60,11 @@ Running the PFE fast-path use-cases
 
 2. Run on host PC eth-pfe-fast-path-host.sh script to measure the same performance
    scenarios as above but this time offloaded in PFE without involving A53 core::
-     
+
     sudo ./eth-pfe-fast-path-host.sh -L 3 -d full -t UDP <eth0> <eth1>
 
    Same notes apply as in previous section.
-   
+
 Running the SJA1110A fast-path use-cases
 ----------------------------------------
 
@@ -72,7 +72,7 @@ Running the SJA1110A fast-path use-cases
 
 2. Run on host PC eth-sja-fast-path-host.sh script to measure the same performance
    scenarios but this time going through SJA1110A switch Port 2 and Port 3::
-     
+
     sudo ./eth-sja-fast-path-host.sh -L 3 -d full -t UDP <eth0> <eth1>
 
    Same notes apply as in previous sections.
