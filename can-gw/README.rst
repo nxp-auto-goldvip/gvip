@@ -81,7 +81,7 @@ Running the measurements
 Patching the EB AutoCore OS
 ---------------------------
 
-The distributed CAN-GW binary is compiled from an EB Tresos AutoCore Platform that uses some patches for the OS plugin.
+The distributed CAN-GW binary is compiled from an EB Tresos AutoCore Platform that requires some patches for the OS plugin.
 Before building the CAN-GW application, one has to patch the EB AutoCore OS to get the same functionality present in the distributed image.
 These patches can be found under `<GoldVIP_install_path>/configuration/can-gw/patches` and they shall be applied on the OS plugin that can be found under `<EB_Tresos_install_path>/plugins/Os_TS_T40D33M6I0R0`.
 
