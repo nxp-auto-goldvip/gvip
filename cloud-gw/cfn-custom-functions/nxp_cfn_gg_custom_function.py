@@ -136,11 +136,7 @@ class GreengrassGroupHandler:
             InitialVersion={
                 'DefaultConfig': {
                     'Execution': {
-                        'IsolationMode': 'NoContainer',
-                        'RunAs': {
-                            'Gid': 0,
-                            'Uid': 0
-                        }
+                        'IsolationMode': 'NoContainer'
                     }
                 },
                 'Functions': [
@@ -150,11 +146,7 @@ class GreengrassGroupHandler:
                             'EncodingType': 'json',
                             'Environment': {
                                 'Execution': {
-                                    'IsolationMode': 'NoContainer',
-                                    'RunAs': {
-                                        'Gid': 0,
-                                        'Uid': 0
-                                    }
+                                    'IsolationMode': 'NoContainer'
                                 },
                                 'Variables': {
                                     'telemetryTopic': telemetry_topic
@@ -403,7 +395,7 @@ class SitewiseHandler:
         # pylint: disable=broad-except
         except Exception as exception:
             LOGGER.error(exception)
-            return cfnresponse.FAILED, dict()
+            return cfnresponse.FAILED, {}
 
         LOGGER.info('Model Created; Creating Asset...')
 
@@ -422,7 +414,7 @@ class SitewiseHandler:
         # pylint: disable=broad-except
         except Exception as exception:
             LOGGER.error(exception)
-            return cfnresponse.FAILED, dict()
+            return cfnresponse.FAILED, {}
 
         LOGGER.info('Asset created; Updating Asset Properties...')
 
@@ -430,7 +422,7 @@ class SitewiseHandler:
             assetModelId=model['assetModelId']
         )['assetModelProperties']
 
-        property_ids = dict()
+        property_ids = {}
 
         for asset_property in property_list:
             property_ids[asset_property['name']] = asset_property['id']
@@ -689,10 +681,10 @@ def lambda_handler(event, context):
     LOGGER.info('got event %s', json.dumps(event))
 
     try:
-        response_data = dict()
+        response_data = {}
 
         if event['RequestType'] == 'Create':
-            ids = dict()
+            ids = {}
 
             GreengrassGroupHandler.attach_service_role(event)
 

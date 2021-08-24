@@ -36,17 +36,21 @@ Resources:
         Version: '2012-10-17'
         Statement:
         - Effect: Allow
+          Action: iot:Connect
+          Resource: !Join [ ":", [ "arn:aws:iot", !Ref "AWS::Region", !Ref "AWS::AccountId", "client/*" ] ]
+        - Effect: Allow
           Action:
-          - iot:Connect
-          - iot:Publish
-          - iot:Receive
-          - iot:Subscribe
-          - greengrass:Discover
-          - greengrass:AssumeRoleForGroup
-          - greengrass:CreateCertificate
-          - greengrass:GetDeployment
-          - greengrass:GetConnectivityInfo
-          - greengrass:UpdateConnectivityInfo
+            - iot:Publish
+            - iot:Subscribe
+            - iot:Receive
+          Resource:
+            - !Join [ ":", [ "arn:aws:iot", !Ref "AWS::Region", !Ref "AWS::AccountId", "topicfilter/*" ] ]
+            - !Join [ ":", [ "arn:aws:iot", !Ref "AWS::Region", !Ref "AWS::AccountId", "topic/*" ] ]
+        - Effect: Allow
+          Action:
+            - iot:GetThingShadow
+            - iot:UpdateThingShadow
+            - iot:DeleteThingShadow
           Resource: !Join 
             - ':'
             - - 'arn:aws:iot'
@@ -56,9 +60,53 @@ Resources:
                 - "/"
                 - - thing
                   - !Join
-                   - "_"
+                   - ""
                    - - !Ref 'AWS::StackName'
-                     - CoreThing
+                     - "*"
+        - Effect: Allow
+          Action:
+            - greengrass:AssumeRoleForGroup
+            - greengrass:CreateCertificate
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - greengrass:GetDeployment
+            - greengrass:GetDeploymentArtifacts
+            - greengrass:UpdateCoreDeploymentStatus
+          Resource: !Join 
+            - ':'
+            - - 'arn:aws:greengrass'
+              - !Ref 'AWS::Region'
+              - !Ref 'AWS::AccountId'
+              - "/greengrass/groups/*/deployments/*"
+        - Effect: Allow
+          Action:
+            - greengrass:GetConnectivityInfo
+            - greengrass:UpdateConnectivityInfo
+          Resource: !Join 
+            - ':'
+            - - 'arn:aws:greengrass'
+              - !Ref 'AWS::Region'
+              - !Ref 'AWS::AccountId'
+              - !Join
+                - "/"
+                - - thing
+                  - !Join
+                   - ""
+                   - - !Ref 'AWS::StackName'
+                     - "*"
+        - Effect: Allow
+          Action:
+            - greengrass:Discover
+          Resource: !Join 
+            - ':'
+            - - 'arn:aws:iot'
+              - !Ref 'AWS::Region'
+              - !Ref 'AWS::AccountId'
+              - !Join
+                - "/"
+                - - thing
+                  - "*"
       PolicyName: !Join
        - "_"
        - - !Ref 'AWS::StackName'
