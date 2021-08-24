@@ -81,12 +81,12 @@ Running the measurements
 Patching the EB AutoCore OS
 ---------------------------
 
-The distributed CAN-GW binary is compiled from an EB Tresos AutoCore Platform 8.8.1 that uses some patches for the OS plugin.
+The distributed CAN-GW binary is compiled from an EB Tresos AutoCore Platform that uses some patches for the OS plugin.
 Before building the CAN-GW application, one has to patch the EB AutoCore OS to get the same functionality present in the distributed image.
-These patches can be found under `<GoldVIP_binaries_path>/configuration/can-gw/patches` and they shall be applied on the OS plugin that can be found under `<EB_Tresos_install_path>/plugins/Os_TS_T40D33M6I0R0`.
+These patches can be found under `<GoldVIP_install_path>/configuration/can-gw/patches` and they shall be applied on the OS plugin that can be found under `<EB_Tresos_install_path>/plugins/Os_TS_T40D33M6I0R0`.
 
-There are various ways of applying these patches, such as using the UNIX `patch` tool (i.e., ``patch -p0 < <file.patch>``) or a git-specific command like `git-apply` (i.e., ``git apply -p0 <file.patch>``).
+There are various ways of applying these patches, such as using the UNIX `patch` tool (i.e., ``patch -p0 < <file.patch>``) or a git-specific command like `git apply` (i.e., ``git apply -p0 <file.patch>``).
 For example, one can use the following commands to apply all the existing patches::
 
   cd <EB_Tresos_install_path>/plugins/Os_TS_T40D33M6I0R0
-  git apply -p0 <GoldVIP_binaries_path>/configuration/can-gw/patches/*.patch
+  git apply -p0 <GoldVIP_install_path>/configuration/can-gw/patches/*.patch
