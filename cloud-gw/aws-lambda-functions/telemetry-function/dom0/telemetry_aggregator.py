@@ -18,6 +18,7 @@ from dev_mem_uid import get_uid
 from mem_stats import MemStats
 from net_stats import NetStats
 from m7_stats import M7CoreMovingAverage
+from temperature_stats import TemperatureStats
 
 # Telemetry parameters
 # time interval between MQTT packets
@@ -37,13 +38,14 @@ LOCK = threading.Lock()
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
+# pylint: disable=too-many-instance-attributes
 class TelemetryAggregator:
     """
     Collects telemetry data from the system and puts data into a json format
     """
     def __init__(self):
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               "config.json")) as config_file:
+                               "config.json"), encoding='utf-8') as config_file:
             self.__config = json.load(config_file)
 
         # Retrieve platform information
@@ -55,6 +57,7 @@ class TelemetryAggregator:
             max_window_size=self.__config[TELEMETRY_INTERVAL] / self.__config[M7_STAT_QUERY_TIME],
             m7_status_query_time_interval=self.__config[M7_STAT_QUERY_TIME])
         self.__mem_stats = MemStats()
+        self.__temperature_stats = TemperatureStats()
         self.__m7_core_load.start()
         self.__stats = None
 
@@ -70,6 +73,7 @@ class TelemetryAggregator:
         mem_stats = self.__mem_stats.get_telemetry(verbose=False)
         net_stats = self.__net_stats.get_load()
         m7_stats = self.__m7_core_load.get_load()
+        temperature_stats = self.__temperature_stats.get_temperature()
 
         platform_name = {
             "Device" : self.__current_platform,
@@ -82,7 +86,8 @@ class TelemetryAggregator:
             **net_stats,
             **cpu_stats,
             **mem_stats,
-            **m7_stats
+            **m7_stats,
+            **temperature_stats
         }
 
         # Prepare stats as a string

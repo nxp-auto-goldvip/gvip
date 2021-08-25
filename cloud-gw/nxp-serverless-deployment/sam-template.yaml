@@ -25,7 +25,7 @@ Metadata:
     ReadmeUrl: ../README.rst
     Labels: ['nxp', 'goldvip', 's32g']
     HomePageUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
-    SemanticVersion: 0.4.1
+    SemanticVersion: 0.5.0
     SourceCodeUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
 
 Resources:
@@ -51,7 +51,7 @@ Resources:
             - iot:GetThingShadow
             - iot:UpdateThingShadow
             - iot:DeleteThingShadow
-          Resource: !Join 
+          Resource: !Join
             - ':'
             - - 'arn:aws:iot'
               - !Ref 'AWS::Region'
@@ -73,7 +73,7 @@ Resources:
             - greengrass:GetDeployment
             - greengrass:GetDeploymentArtifacts
             - greengrass:UpdateCoreDeploymentStatus
-          Resource: !Join 
+          Resource: !Join
             - ':'
             - - 'arn:aws:greengrass'
               - !Ref 'AWS::Region'
@@ -83,7 +83,7 @@ Resources:
           Action:
             - greengrass:GetConnectivityInfo
             - greengrass:UpdateConnectivityInfo
-          Resource: !Join 
+          Resource: !Join
             - ':'
             - - 'arn:aws:greengrass'
               - !Ref 'AWS::Region'
@@ -98,7 +98,7 @@ Resources:
         - Effect: Allow
           Action:
             - greengrass:Discover
-          Resource: !Join 
+          Resource: !Join
             - ':'
             - - 'arn:aws:iot'
               - !Ref 'AWS::Region'
@@ -235,7 +235,7 @@ Resources:
             Action:
               - sts:AssumeRole
       Policies:
-        - PolicyName: !Join 
+        - PolicyName: !Join
            - "_"
            - - !Ref 'AWS::StackName'
              - GreengrassServiceRole
@@ -308,7 +308,7 @@ Resources:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken: !GetAtt 'GreengrassCustomFunction.Arn'
-      ThingArn:  !Join 
+      ThingArn:  !Join
         - ':'
         - - 'arn:aws:iot'
           - !Ref 'AWS::Region'
@@ -327,7 +327,7 @@ Resources:
       PortalRoleArn: !GetAtt SitewisePortalRole.Arn
       ServiceRoleArn: !GetAtt GreengrassServiceRole.Arn
       ServiceRoleName: !Ref GreengrassServiceRole
-      ServiceRolePolicyName:  !Join 
+      ServiceRolePolicyName:  !Join
            - "_"
            - - !Ref 'AWS::StackName'
              - GreengrassServiceRole
@@ -338,7 +338,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt 'CertificateCustomFunction.Arn'
       BucketName: !Ref CertStorage
-      ThingArn:  !Join 
+      ThingArn:  !Join
         - ':'
         - - 'arn:aws:iot'
           - !Ref 'AWS::Region'
@@ -366,12 +366,12 @@ Resources:
         RuleDisabled: false
         Sql: !Join
          - "'"
-         - - SELECT * FROM 
+         - - SELECT * FROM
            - !Ref TelemetryTopic
            - " "
         Actions:
         - IotSiteWise:
-            RoleArn: 
+            RoleArn:
               Fn::GetAtt:
               - SitewiseRuleRole
               - Arn
@@ -477,7 +477,7 @@ Resources:
                   - !Ref 'AWS::StackName'
                   - /pfe2_tx_bps
         - IotSiteWise:
-            RoleArn: 
+            RoleArn:
               Fn::GetAtt:
               - SitewiseRuleRole
               - Arn
@@ -512,6 +512,66 @@ Resources:
                 - - /telemetry/
                   - !Ref 'AWS::StackName'
                   - /m7_2
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${immediate_temperature_0}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /immediate_temperature_0
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${immediate_temperature_1}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /immediate_temperature_1
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${immediate_temperature_2}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /immediate_temperature_2
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${average_temperature_0}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /average_temperature_0
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${average_temperature_1}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /average_temperature_1
+            - PropertyValues:
+              - Timestamp:
+                  TimeInSeconds: ${floor(timestamp() / 1E3)}
+                Value:
+                  DoubleValue: ${average_temperature_2}
+              PropertyAlias: !Join
+                - ""
+                - - /telemetry/
+                  - !Ref 'AWS::StackName'
+                  - /average_temperature_2
 
 Outputs:
   GreengrassGroupId:

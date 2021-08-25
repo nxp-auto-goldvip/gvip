@@ -1,0 +1,64 @@
+#!/usr/bin/env python3.8
+# SPDX-License-Identifier: BSD-3-Clause
+# -*- coding: utf-8 -*-
+
+"""
+Copyright 2021 NXP
+"""
+import re
+import os
+
+# pylint: disable=too-few-public-methods
+class TemperatureStats:
+    """
+    Reads and processes temperature stats
+    from /sys/devices/platform/400a8000.tmu/hwmon/hwmon1/
+    """
+
+    # Contains temperature monitoring data, each temperature data item of a site
+    # is presented by a pair of files for example:
+    #   temp1_label: contains label of the item, ex: Immediate temperature for site 0
+    #   temp1_input: contains temperature value of the item, ex: 70000
+    DIR_HWMON_OUTPUT = "/sys/devices/platform/400a8000.tmu/hwmon/hwmon1"
+
+    @staticmethod
+    def get_temperature():
+        """
+        Reads and parses measured temperature data to a dictionary
+        :returns: a dictionary of stats.
+        :rtype: dict
+        """
+        temperature_data = {}
+
+        # Get all files that contains temperature value
+        # e.g. temp1_input, temp2_input,... temp6_input
+        input_files = [f for f in os.listdir(
+            TemperatureStats.DIR_HWMON_OUTPUT) if re.match(r'temp[\d]_input', f)]
+
+        for input_file in input_files:
+            # Replace _input by _label to get name of the file that
+            # contains label of the temperature data item
+            label_file = input_file.replace("_input", "_label")
+            # Path of the file that contains value of the temperature data item
+            input_path = os.path.join(TemperatureStats.DIR_HWMON_OUTPUT, input_file)
+            # Path of the file that contains label of the temperature data item
+            label_path = os.path.join(TemperatureStats.DIR_HWMON_OUTPUT, label_file)
+
+            # Read pair of label files to extract temperature data into key=>value
+            with open(label_path, 'r', encoding='utf-8') as label_fh, \
+                 open(input_path, 'r', encoding='utf-8') as input_fh:
+                # Sample content of label files:
+                #   Average temperature for site 0
+                # or:
+                #   Immediate temperature for site 0
+                # Sample content of input files:
+                #   70000
+                label_values = label_fh.readline().strip().split(' ')
+                temperature_value = input_fh.readline().strip()
+
+                temperature_key = "{0}_temperature_{1}".format(
+                    label_values[0].lower(), label_values[-1])
+                temperature_value = str(int(temperature_value)/1000)
+                temperature_data[temperature_key] = temperature_value
+
+        return temperature_data

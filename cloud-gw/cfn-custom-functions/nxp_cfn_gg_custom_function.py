@@ -308,7 +308,10 @@ class SitewiseHandler:
         ('PFE2 TX bps', 'bps'),
         ('m7_0', '%'),
         ('m7_1', '%'),
-        ('m7_2', '%')
+        ('m7_2', '%'),
+        ('Immediate Temperature 0', 'C'),
+        ('Immediate Temperature 1', 'C'),
+        ('Immediate Temperature 2', 'C'),
     ]
 
     TRANSFORMS = [
@@ -501,27 +504,41 @@ class SitewiseHandler:
 
         widgets_params = [
             (0, 0, 3, 6, "Dom0 vCPU Load (%)",
-             [("Dom0 vCPU Load", property_ids['Dom0 vCPU Load'])]),
+             [("Dom0 vCPU Load", property_ids['Dom0 vCPU Load'])],
+             "monitor-line-chart"),
             (0, 3, 3, 3, "Dom0 vCPU0 Load (%)", [
-                ("Dom0 vCPU0 Load", property_ids['Dom0 vCPU0 Load'])]),
+                ("Dom0 vCPU0 Load", property_ids['Dom0 vCPU0 Load'])],
+                "monitor-line-chart"),
             (3, 3, 3, 3, "Dom0 vCPU1 Load (%)", [
-                ("Dom0 vCPU1 Load", property_ids['Dom0 vCPU1 Load'])]),
+                ("Dom0 vCPU1 Load", property_ids['Dom0 vCPU1 Load'])],
+                "monitor-line-chart"),
             (0, 6, 3, 3, "Dom0 vCPU2 Load (%)", [
-                ("Dom0 vCPU2 Load", property_ids['Dom0 vCPU2 Load'])]),
+                ("Dom0 vCPU2 Load", property_ids['Dom0 vCPU2 Load'])],
+                "monitor-line-chart"),
             (3, 6, 3, 3, "Dom0 vCPU3 Load (%)", [
-                ("Dom0 vCPU3 Load", property_ids['Dom0 vCPU3 Load'])]),
+                ("Dom0 vCPU3 Load", property_ids['Dom0 vCPU3 Load'])],
+                "monitor-line-chart"),
             (0, 9, 3, 3, "PFE0 Received (Mbps)", [
                 ("PFE0 Rx", property_ids['PFE0 RX Mbps']),
-                ("PFE0 Tx", property_ids['PFE0 TX Mbps'])]),
+                ("PFE0 Tx", property_ids['PFE0 TX Mbps'])],
+                "monitor-line-chart"),
             (3, 9, 3, 3, "PFE2 Received (Mbps)", [
                 ("PFE2 Rx", property_ids['PFE2 RX Mbps']),
-                ("PFE2 Tx", property_ids['PFE2 TX Mbps'])]),
+                ("PFE2 Tx", property_ids['PFE2 TX Mbps'])],
+                "monitor-line-chart"),
             (0, 12, 3, 6, "Dom0 Memory Load (MB)",
-             [("Dom0 Memory Load (MB)", property_ids['Dom0 Memory Load (MB)'])]),
+             [("Dom0 Memory Load (MB)", property_ids['Dom0 Memory Load (MB)'])],
+             "monitor-line-chart"),
             (0, 15, 3, 6, "M7 Core Load", [
                 ("M7 Core0 Load", property_ids["m7_0"]),
                 ("M7 Core1 Load", property_ids["m7_1"]),
-                ("M7 Core2 Load", property_ids["m7_2"])]),
+                ("M7 Core2 Load", property_ids["m7_2"])],
+                "monitor-line-chart"),
+            (0, 18, 3, 6, "Immediate Temperature", [
+                ("Immediate temperature in site 0", property_ids["Immediate Temperature 0"]),
+                ("Immediate temperature in site 1", property_ids["Immediate Temperature 1"]),
+                ("Immediate temperature in site 2", property_ids["Immediate Temperature 2"])],
+                "monitor-line-chart"),
         ]
 
         widgets = []
@@ -541,7 +558,7 @@ class SitewiseHandler:
 
             widgets.append(
                 {
-                    "type": "monitor-line-chart",
+                    "type": widget_param[6],
                     "title": widget_param[4],
                     "x": widget_param[0],
                     "y": widget_param[1],
