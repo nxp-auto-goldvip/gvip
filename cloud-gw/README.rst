@@ -120,12 +120,12 @@ This CloudFormation stack creates on your account:
 Connecting the board to AWS
 ---------------------------
 
-1. Log into the V2X Virtual Machine using the command: ``xl console v2xdomu``
+1. Log into the v2xdomu virtual machine using the command: ``xl console v2xdomu``
 
 2. Configure environment variables for Greengrass provisioning script:
 
-  From the V2Xdomu console, set the AWS credentials as environment variables::
-   
+  From the v2xdomu console, set the AWS credentials as environment variables::
+
      $ export AWS_ACCESS_KEY_ID=<access key id>
      $ export AWS_SECRET_ACCESS_KEY=<secret access key>
 
@@ -138,7 +138,7 @@ Connecting the board to AWS
 
   Please check the AWS documentation for additional information: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 
-  Note: 
+  Note:
     - IAM credentials should never be used on a device in production scenario.
     - These variables are temporary and are erased at reboot.
 
@@ -193,7 +193,7 @@ You will now see the live telemetry data from your board.
 Testing the Telemetry Application
 ---------------------------------
 
-1. Log into the Domain-0 virtual machine as described in chapter (:ref:`xen_hypervisor`).
+1. Log into the Domain-0 virtual machine as described in :ref:`xen_hypervisor` chapter.
 
 2. Simulate core load:
 
@@ -230,7 +230,7 @@ successfully deployed on the board.
 The network configuration is not persistent between reboots, so it must be recreated for internet
 connection.
 
-- Log into the V2X domU as described in chapter (:ref:`xen_hypervisor`).
+- Log into the v2xdomu virtual machine as described in :ref:`xen_hypervisor` chapter.
 
 - The provision script can be used again to configure the network interface that will be used by
   Greengrass:
