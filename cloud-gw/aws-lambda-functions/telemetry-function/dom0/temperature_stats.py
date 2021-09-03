@@ -8,18 +8,25 @@ Copyright 2021 NXP
 import re
 import os
 
+
 # pylint: disable=too-few-public-methods
 class TemperatureStats:
     """
     Reads and processes temperature stats
-    from /sys/devices/platform/400a8000.tmu/hwmon/hwmon1/
+    from /sys/devices/platform/400a8000.tmu/hwmon/hwmon*/
     """
+    DIR_HWMON = "/sys/devices/platform/400a8000.tmu/hwmon/"
 
-    # Contains temperature monitoring data, each temperature data item of a site
+    # Select the existing directory, it may be either hwmon0 or hwmon1.
+    # It contains temperature monitoring data, each temperature data item of a site
     # is presented by a pair of files for example:
     #   temp1_label: contains label of the item, ex: Immediate temperature for site 0
     #   temp1_input: contains temperature value of the item, ex: 70000
-    DIR_HWMON_OUTPUT = "/sys/devices/platform/400a8000.tmu/hwmon/hwmon1"
+    DIR_HWMON_OUTPUT = os.path.join(DIR_HWMON, os.listdir(DIR_HWMON)[0])
+
+    # Get all files that contains temperature value
+    # e.g. temp1_input, temp2_input,... temp6_input
+    INPUT_FILES = [f for f in os.listdir(DIR_HWMON_OUTPUT) if re.match(r'temp[\d]_input', f)]
 
     @staticmethod
     def get_temperature():
@@ -30,12 +37,7 @@ class TemperatureStats:
         """
         temperature_data = {}
 
-        # Get all files that contains temperature value
-        # e.g. temp1_input, temp2_input,... temp6_input
-        input_files = [f for f in os.listdir(
-            TemperatureStats.DIR_HWMON_OUTPUT) if re.match(r'temp[\d]_input', f)]
-
-        for input_file in input_files:
+        for input_file in TemperatureStats.INPUT_FILES:
             # Replace _input by _label to get name of the file that
             # contains label of the temperature data item
             label_file = input_file.replace("_input", "_label")
