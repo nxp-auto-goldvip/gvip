@@ -119,6 +119,7 @@ SJA1110 Telemetry Setup
 -----------------------
 
 Steps needed to enable SJA1110 telemetry:
+
 1. Connect the SJA1110 application to the internet using the P4 ethernet port
    on the board (See Appendix A). The SJA1110 application and v2xdomu will need
    to be connected to the same local network.
