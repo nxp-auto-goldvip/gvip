@@ -1273,62 +1273,62 @@ Resources:
               - Timestamp:
                   TimeInSeconds: ${floor(timestamp() / 1E3)}
                 Value:
-                  DoubleValue: ${immediate_temperature_0}
+                  DoubleValue: ${ddr_sram_temperature}
               PropertyAlias: !Join
                 - ""
                 - - /telemetry/
                   - !Ref 'AWS::StackName'
-                  - /immediate_temperature_0
+                  - /ddr_sram_temperature
             - PropertyValues:
               - Timestamp:
                   TimeInSeconds: ${floor(timestamp() / 1E3)}
                 Value:
-                  DoubleValue: ${immediate_temperature_1}
+                  DoubleValue: ${a53_cluster_temperature}
               PropertyAlias: !Join
                 - ""
                 - - /telemetry/
                   - !Ref 'AWS::StackName'
-                  - /immediate_temperature_1
+                  - /a53_cluster_temperature
             - PropertyValues:
               - Timestamp:
                   TimeInSeconds: ${floor(timestamp() / 1E3)}
                 Value:
-                  DoubleValue: ${immediate_temperature_2}
+                  DoubleValue: ${hse_llce_temperature}
               PropertyAlias: !Join
                 - ""
                 - - /telemetry/
                   - !Ref 'AWS::StackName'
-                  - /immediate_temperature_2
+                  - /hse_llce_temperature
             - PropertyValues:
               - Timestamp:
                   TimeInSeconds: ${floor(timestamp() / 1E3)}
                 Value:
-                  DoubleValue: ${average_temperature_0}
+                  DoubleValue: ${ddr_sram_average_temperature}
               PropertyAlias: !Join
                 - ""
                 - - /telemetry/
                   - !Ref 'AWS::StackName'
-                  - /average_temperature_0
+                  - /ddr_sram_average_temperature
             - PropertyValues:
               - Timestamp:
                   TimeInSeconds: ${floor(timestamp() / 1E3)}
                 Value:
-                  DoubleValue: ${average_temperature_1}
+                  DoubleValue: ${a53_cluster_average_temperature}
               PropertyAlias: !Join
                 - ""
                 - - /telemetry/
                   - !Ref 'AWS::StackName'
-                  - /average_temperature_1
+                  - /a53_cluster_average_temperature
             - PropertyValues:
               - Timestamp:
                   TimeInSeconds: ${floor(timestamp() / 1E3)}
                 Value:
-                  DoubleValue: ${average_temperature_2}
+                  DoubleValue: ${hse_llce_average_temperature}
               PropertyAlias: !Join
                 - ""
                 - - /telemetry/
                   - !Ref 'AWS::StackName'
-                  - /average_temperature_2
+                  - /hse_llce_average_temperature
 
 ### Outputs ###
 Outputs:

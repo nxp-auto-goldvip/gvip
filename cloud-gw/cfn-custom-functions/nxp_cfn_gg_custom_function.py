@@ -346,21 +346,21 @@ class SitewiseHandler:
         ('m7_0', '%'),
         ('m7_1', '%'),
         ('m7_2', '%'),
-        ('Immediate Temperature 0', 'C'),
-        ('Immediate Temperature 1', 'C'),
-        ('Immediate Temperature 2', 'C'),
+        ('DDR SRAM Temperature', 'C'),
+        ('A53 cluster Temperature', 'C'),
+        ('HSE LLCE Temperature', 'C'),
     ]
 
     SJA_NB_PORTS = 11
 
     # Add measurements for each of the 11 ports.
     for i in range(0, SJA_NB_PORTS):
-        MEASUREMENTS.append(('Drop Delta s0 p{}'.format(i), 'Packets'))
-        MEASUREMENTS.append(('Ingress Delta s0 p{}'.format(i), 'Packets'))
-        MEASUREMENTS.append(('Egress Delta s0 p{}'.format(i), 'Packets'))
-        MEASUREMENTS.append(('Drop Counter s0 p{}'.format(i), 'Packets'))
-        MEASUREMENTS.append(('Ingress Counter s0 p{}'.format(i), 'Packets'))
-        MEASUREMENTS.append(('Egress Counter s0 p{}'.format(i), 'Packets'))
+        MEASUREMENTS.append((f'Drop Delta s0 p{i}', 'Packets'))
+        MEASUREMENTS.append((f'Ingress Delta s0 p{i}', 'Packets'))
+        MEASUREMENTS.append((f'Egress Delta s0 p{i}', 'Packets'))
+        MEASUREMENTS.append((f'Drop Counter s0 p{i}', 'Packets'))
+        MEASUREMENTS.append((f'Ingress Counter s0 p{i}', 'Packets'))
+        MEASUREMENTS.append((f'Egress Counter s0 p{i}', 'Packets'))
 
     TRANSFORMS = [
         ('Dom0 vCPU Load', '%', '100 - cpuidle', 'cpuidle', MEASUREMENTS[0][0]),
@@ -523,8 +523,8 @@ class SitewiseHandler:
                     {
                         "label": label,
                         "type": "iotsitewise",
-                        "assetId": "{}".format(asset_id),
-                        "propertyId": "{}".format(property_id)
+                        "assetId": f"{asset_id}",
+                        "propertyId": f"{property_id}"
                     }
                 )
 
@@ -596,9 +596,9 @@ class SitewiseHandler:
                 ("M7 Core2 Load", property_ids["m7_2"])],
              "monitor-line-chart"),
             (0, 18, 3, 6, "Immediate Temperature", [
-                ("Immediate temperature in site 0", property_ids["Immediate Temperature 0"]),
-                ("Immediate temperature in site 1", property_ids["Immediate Temperature 1"]),
-                ("Immediate temperature in site 2", property_ids["Immediate Temperature 2"])],
+                ("DDR SRAM Temperature", property_ids["DDR SRAM Temperature"]),
+                ("A53 cluster Temperature", property_ids["A53 cluster Temperature"]),
+                ("HSE LLCE Temperature", property_ids["HSE LLCE Temperature"])],
              "monitor-line-chart"),
         ]
 
@@ -644,29 +644,29 @@ class SitewiseHandler:
 
                 # Create line charts to display throughput in packets.
                 widgets_params.append(
-                    (0, widget_y, 3, 6, "Switch0 Port{} Traffic (Pckts)".format(port),
-                     [("Drop", property_ids["Drop Delta s0 p{}".format(port)]),
-                      ("Ingress", property_ids["Ingress Delta s0 p{}".format(port)]),
-                      ("Egress", property_ids["Egress Delta s0 p{}".format(port)])],
+                    (0, widget_y, 3, 6, f"Switch0 Port{port} Traffic (Pckts)",
+                     [("Drop", property_ids[f"Drop Delta s0 p{port}"]),
+                      ("Ingress", property_ids[f"Ingress Delta s0 p{port}"]),
+                      ("Egress", property_ids[f"Egress Delta s0 p{port}"])],
                      "monitor-line-chart"))
 
                 # Create PKI to display total count.
                 widgets_params.append(
-                    (0, widget_y + 3, 1, 6, "Switch0 Port{} Counter (Pckts)".format(port),
-                     [("Drop", property_ids["Drop Counter s0 p{}".format(port)]),
-                      ("Ingress", property_ids["Ingress Counter s0 p{}".format(port)]),
-                      ("Egress", property_ids["Egress Counter s0 p{}".format(port)])],
+                    (0, widget_y + 3, 1, 6, f"Switch0 Port{port} Counter (Pckts)",
+                     [("Drop", property_ids[f"Drop Counter s0 p{port}"]),
+                      ("Ingress", property_ids[f"Ingress Counter s0 p{port}"]),
+                      ("Egress", property_ids[f"Egress Counter s0 p{port}"])],
                      "monitor-kpi"))
 
             dashboard_id = SitewiseHandler.__create_dashboard(
-                'SJA1110 Dashboard %d' % sja_dashboard_id,
+                f'SJA1110 Dashboard {sja_dashboard_id}',
                 widgets_params,
                 asset_id,
                 project_id)
 
             # Set the ids of the dashboards as number 2, 3 and 4.
-            ids['dashboard%d_id' % (sja_dashboard_id + 1)] = dashboard_id
-            response_data['dashboard%dId' % (sja_dashboard_id + 1)] = dashboard_id
+            ids[f'dashboard{(sja_dashboard_id + 1)}_id'] = dashboard_id
+            response_data[f'dashboard{(sja_dashboard_id + 1)}Id'] = dashboard_id
 
     @staticmethod
     def __create_monitor(event, ids, property_ids, response_data):

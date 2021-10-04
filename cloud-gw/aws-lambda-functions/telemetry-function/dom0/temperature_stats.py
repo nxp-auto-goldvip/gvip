@@ -28,6 +28,16 @@ class TemperatureStats:
     # e.g. temp1_input, temp2_input,... temp6_input
     INPUT_FILES = [f for f in os.listdir(DIR_HWMON_OUTPUT) if re.match(r'temp[\d]_input', f)]
 
+    # Tags which denote the placement of each temperature sensor.
+    TAGS = {
+        "immediate_temperature_0" : "ddr_sram_temperature",
+        "immediate_temperature_1" : "a53_cluster_temperature",
+        "immediate_temperature_2" : "hse_llce_temperature",
+        "average_temperature_0" : "ddr_sram_average_temperature",
+        "average_temperature_1" : "a53_cluster_average_temperature",
+        "average_temperature_2" : "hse_llce_average_temperature"
+    }
+
     @staticmethod
     def get_temperature():
         """
@@ -58,9 +68,9 @@ class TemperatureStats:
                 label_values = label_fh.readline().strip().split(' ')
                 temperature_value = input_fh.readline().strip()
 
-                temperature_key = "{0}_temperature_{1}".format(
-                    label_values[0].lower(), label_values[-1])
+                temperature_key = f"{label_values[0].lower()}_temperature_{label_values[-1]}"
+                temperature_tag = TemperatureStats.TAGS[temperature_key]
                 temperature_value = str(int(temperature_value)/1000)
-                temperature_data[temperature_key] = temperature_value
+                temperature_data[temperature_tag] = temperature_value
 
         return temperature_data
