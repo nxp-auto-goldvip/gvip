@@ -30,6 +30,9 @@ tx_log=/tmp/cangen.log
 # Log used for received CAN frames
 rx_log=/tmp/candump.log
 
+# Log used for received CAN frames over ETH
+can_to_eth_log=/tmp/can2eth.log
+
 # CAN frame data size in bytes
 can_frame_data_size=notset
 
@@ -211,6 +214,10 @@ setup_can() {
         ip link set "${can_rx_interface}" down
         ip link set "${can_tx_interface}" up type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on
         ip link set "${can_rx_interface}" up type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on
+
+        if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
+            service avtp_listener restart ${can_to_eth_log}
+        fi
         sleep 1
 }
 
@@ -222,6 +229,10 @@ stop_cangen() {
         sleep 1
         disown ${pid_candump}
         kill ${pid_candump} 2>/dev/null
+        
+        if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
+            service avtp_listener stop
+        fi
 }
 
 # Run performance measurements by running the candump listener on the RX interface and
@@ -283,16 +294,20 @@ display_report() {
         fi
 
         echo "#############################################################"
-        echo "Tx frames:           ${tx_frames_count}"
-        echo "Rx frames:           ${rx_frames_count}"
-        echo "Tx data transfer:    ${tx_bytes} bytes"
-        echo "Rx data transfer:    ${rx_bytes} bytes"
-        echo "Tx frames/s:         $((tx_frames_count * 1000 / time_gen))"
-        echo "Rx frames/s:         $((rx_frames_count * 1000 / time_gen))"
-        echo "Tx throughput:       $((tx_bytes * 8 / time_gen)) Kbit/s"
-        echo "Rx throughput:       $((rx_bytes * 8 / time_gen)) Kbit/s"
-        echo "Lost frames:         $((tx_frames_count - rx_frames_count))"
-        echo "M7 core load:        ${M7_LOAD}%"
+        echo "Tx frames:                ${tx_frames_count}"
+        echo "Rx frames:                ${rx_frames_count}"
+        echo "Tx data transfer:         ${tx_bytes} bytes"
+        echo "Rx data transfer:         ${rx_bytes} bytes"
+        echo "Tx frames/s:              $((tx_frames_count * 1000 / time_gen))"
+        echo "Rx frames/s:              $((rx_frames_count * 1000 / time_gen))"
+        echo "Tx throughput:            $((tx_bytes * 8 / time_gen)) Kbit/s"
+        echo "Rx throughput:            $((rx_bytes * 8 / time_gen)) Kbit/s"
+        echo "Lost frames:              $((tx_frames_count - rx_frames_count))"
+        echo "M7 core load:             ${M7_LOAD}%"
+        if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
+            can_to_eth_bytes=$(tail ${can_to_eth_log} | grep "Received data size" | tail -1 | grep -o -E '[0-9]+')
+            echo "CAN to ETH data transfer: ${can_to_eth_bytes} Bytes" 
+        fi
         echo "#############################################################"
 }
 
