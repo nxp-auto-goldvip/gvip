@@ -2,32 +2,33 @@
 CAN Gateway
 ===========
 
-The CAN gateway currently supports the following use-case:
- - CAN to CAN 1:1 frame routing on Cortex-M7 core (slow-path)
- - CAN to CAN 1:1 frame routing on LLCE (fast-path)
+The CAN gateway is based on EB Tresos AutoCore Platform for S32G27X.
+It is distributed in binary and source code format.
+It is loaded from the QSPI Flash, then booted to Cortex-M7 core 0 of S32G27X platform, by the bootloader.
 
-The CAN gateway is based on EB Tresos AutoCore Platforms 8.8.1 for S32G27X.
-It is distributed in binary format.
-It is loaded from an SD card FAT partition, then booted to Cortex-M7 core 0 of S32G27X platform, by the bootloader
-
-The default LLCE CAN routing configuration included in GoldVIP package is:
-
-VIP provides the canperf tool to generate CAN traffic from Linux/A53 on Flex-CAN
+GoldVIP provides the canperf script to generate CAN traffic from Linux/A53 on Flex-CAN
 and measure CAN forwarding performance between two LLCE-CAN ports connected to
-two Flex-CAN ports, e.g.::
+two Flex-CAN ports.
 
-       +---------------------+                   +---------------------+
-       |  canperf/Linux/A53  |                   |    CAN-GW/M7        |
-       |               +-----+-----+      +------+-----+               |
-       | CAN-GEN  ---> | Flex-CAN0 |<====>| LLCE-CAN0  |<---+          |
-       |               +-----+-----+      +--/\--+-----+    |          |
-       |                     |         FAST  ||  |          |SLOW      |
-       |                     |         ROUTE ||  |          |ROUTE     |
-       |               +-----+-----+      +--\/--+-----+    |          |
-       | CAN-DUMP <--- | Flex-CAN1 |<====>| LLCE-CAN1  |<---+          |
-       |               +-----+-----+      +-----+------+               |
-       |                     |                   |                     |
-       +---------------------+                   +---------------------+
+The following architecture was employed:
+
+.. image:: can-gw-architecture.png
+
+The CAN gateway currently supports the following use cases:
+ - CAN to CAN 1:1 frame routing on Cortex-M7 core (Slow route).
+   The CAN packets are sent from Linux and received on the M7 through the LLCE filters, then passed
+   through the PDU router instance running on the M7 core.
+ - CAN to CAN 1:1 frame routing on LLCE (Fast Route)
+   The CAN packets are sent from Linux and received on the LLCE. As opposed to the previous use case, 
+   the packets are routed directly by the LLCE, without any M7 core intervention. 
+ - CAN to ETH and CAN 1:1 frame routing on LLCE (Can to Ethernet Route).
+   The CAN packets are sent from Linux and received on the LLCE. The packet will then be routed by the LLCE  
+   firmware to the output LLCE CAN instance. The packet will then be formatted into AVTP format and sent to the PFE. 
+   The packets sent to the PFE firmware are then captured on the AUX0 interface as inbound traffic. 
+   When the canperf script detects that injected packets shall also be received by the PFE firmware, 
+   a network listener service will start and will capture all the incoming AVTP traffic and log it to a file. 
+   In this case, the canperf script will also report how much data was captured by the ethernet filter.
+
 
 Prerequisites
 -------------
@@ -58,7 +59,7 @@ Running the measurements
     - | ``-g`` frame gap in milliseconds between two consecutive generated CAN frames, use any integer >= 0
     - | ``-l`` the length of the CAN frames generation session in seconds, use any integer > 1
 
-   b) For slow path:
+   b) For slow route:
 
     - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
 
@@ -67,14 +68,23 @@ Running the measurements
 
     ex: ``./canperf.sh -t can0 -r can1 -i 0 -o 4 -s 8 -g 10 -l 10``
 
-  c) For fast path:
+  c) For fast route:
 
      - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
 
       | -t can0 -r can1 -i 245 -o 245
       | -t can1 -r can0 -i 246 -o 246
 
-   ex: ``./canperf.sh -s 8 -g 10 -i 245 -o 245 -t can0 -r can1 -l 10``
+   ex: ``./canperf.sh -s 64 -g 10 -i 245 -o 245 -t can0 -r can1 -l 10``
+  
+  d) For can to ethernet route:
+
+     - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
+
+      | -t can0 -r can1 -i 228 -o 228
+      | -t can1 -r can0 -i 229 -o 229
+
+   ex: ``./canperf.sh -s 64 -g 10 -i 228 -o 228 -t can0 -r can1 -l 10``
 
   Note: Please run ``./canperf.sh -h`` to see all the available options.
 
