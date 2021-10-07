@@ -47,12 +47,6 @@ applications on Cortex-M7 cores.
 To write boot-loader in NOR flash, first boot from SD-card using the above
 SD-card image, stop in u-boot console when prompted, and run the following commands:
 
-Reset the environment to default::
-
-    env default -a
-    setenv bootargs_setup setenv bootargs dom0_mem=${dom0_mem} bootscrub=0
-    saveenv
-
 Load QSPI driver::
 
     sf probe 6:0
