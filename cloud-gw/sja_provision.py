@@ -73,8 +73,7 @@ class SjaProvisioningClient():
             endpointType='iot:Data-ATS'
         )['endpointAddress']
 
-        print("Retrieved endpoint: %s" % self.aws_endpoint)
-
+        print(f"Retrieved endpoint: '{self.aws_endpoint}'")
         # Set the sja thing name
         self.thing_name = self.cfn_stack_name + "_SjaThing"
 
@@ -155,7 +154,7 @@ class SjaProvisioningClient():
         ip_and_mask = out.partition('inet')[2].strip().split()[0]
         self.greengrass_ip, _, self.greengrass_mask = ip_and_mask.partition('/')
 
-        print("Local network ip found: %s" % self.greengrass_ip)
+        print(f"Local network ip found: '{self.greengrass_ip}'")
 
     def __find_sja_ip(self):
         """
@@ -164,7 +163,7 @@ class SjaProvisioningClient():
         arp_request = ARP(pdst=f"{self.greengrass_ip}/{self.greengrass_mask}")
         brodcast = Ether(dst="ff:ff:ff:ff:ff:ff")
         arp = brodcast / arp_request
-        answered = srp(arp, timeout=20, verbose=False)[0]
+        answered = srp(arp, iface=self.netif, timeout=20, verbose=False)[0]
 
         for element in answered:
             if self.sja_hwaddr in element[1].hwsrc:
