@@ -66,7 +66,7 @@ OPTIONS:
         -t | --can-tx <can i/f name>     CAN transmit interface, e.g., can0 or can1
         -r | --can-rx <can i/f name>     CAN receive interface, e.g., can0 or can1
         -i | --tx-id <hexvalue>          Transimited CAN message ID.
-        -o | --rx-id <hexvalue>          Received CAN message ID.    
+        -o | --rx-id <hexvalue>          Received CAN message ID.
         -g | --gap <ms>                  Frame gap in milliseconds between two consecutive generated CAN frames
         -s | --size <bytes>              CAN frame data size in bytes. For CAN frames with variable size, use 'i'
         -l | --length <seconds>          The length of the CAN traffic generation session
@@ -229,7 +229,7 @@ stop_cangen() {
         sleep 1
         disown ${pid_candump}
         kill ${pid_candump} 2>/dev/null
-        
+
         if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
             service avtp_listener stop
         fi
@@ -306,7 +306,7 @@ display_report() {
         echo "M7 core load:             ${M7_LOAD}%"
         if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
             can_to_eth_bytes=$(tail ${can_to_eth_log} | grep "Received data size" | tail -1 | grep -o -E '[0-9]+')
-            echo "CAN to ETH data transfer: ${can_to_eth_bytes} Bytes" 
+            echo "CAN to ETH data transfer: ${can_to_eth_bytes} Bytes"
         fi
         echo "#############################################################"
 }

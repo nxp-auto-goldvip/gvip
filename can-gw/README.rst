@@ -19,15 +19,15 @@ The CAN gateway currently supports the following use cases:
    The CAN packets are sent from Linux and received on the M7 through the LLCE filters, then passed
    through the PDU router instance running on the M7 core.
  - CAN to CAN 1:1 frame routing on LLCE (Fast Route)
-   The CAN packets are sent from Linux and received on the LLCE. As opposed to the previous use case, 
-   the packets are routed directly by the LLCE, without any M7 core intervention. 
+   The CAN packets are sent from Linux and received on the LLCE. As opposed to the previous use case,
+   the packets are routed directly by the LLCE, without any M7 core intervention.
  - CAN to ETH and CAN 1:1 frame routing on LLCE (Can to Ethernet Route).
-   The CAN packets are sent from Linux and received on the LLCE. The packet will then be routed by the LLCE  
-   firmware to the output LLCE CAN instance. The packet will then be formatted into AVTP format and sent to the PFE. 
-   The packets sent to the PFE firmware are then captured on the AUX0 interface as inbound traffic. 
-   When the canperf script detects that injected packets shall also be received by the PFE firmware, 
-   a network listener service will start and will capture all the incoming AVTP traffic and log it to a file. 
-   In this case, the canperf script will also report how much data was captured by the ethernet filter.
+   The CAN packets are sent from Linux and received on the LLCE. The packet will then be routed by the LLCE
+   firmware to the output LLCE CAN instance. The packet will then be formatted into AVTP format and sent to the PFE.
+   The packets sent to the PFE firmware are then captured on the AUX0 interface as inbound traffic.
+   When the canperf script detects that the injected packets will also be sent to the AUX0 interface, a network service
+   listener, namely "avtp_listener", will start to capture AVTP packets and log them to a file. In this case, the canperf
+   script will also report how much data was captured by the ethernet service listener.
 
 
 Prerequisites
@@ -51,42 +51,54 @@ Running the measurements
 
    a) Parameter description:
 
-    - | ``-t`` CAN transmit interface -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
-    - | ``-r`` CAN receive interface -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
-    - | ``-i`` id of transmit CAN frame -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
-    - | ``-o`` id of receive CAN frame -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
-    - | ``-s`` CAN frame data size in bytes
-    - | ``-g`` frame gap in milliseconds between two consecutive generated CAN frames, use any integer >= 0
-    - | ``-l`` the length of the CAN frames generation session in seconds, use any integer > 1
+      - | ``-t`` CAN transmit interface -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
+      - | ``-r`` CAN receive interface -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
+      - | ``-i`` id of transmit CAN frame -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
+      - | ``-o`` id of receive CAN frame -use the values as per CAN-GW configuration. For the default CAN-GW configuration provided in GoldVIP, use the values as indicated for each flow(e.g. slow path, fast path, ...) in below sub-chapters
+      - | ``-s`` CAN frame data size in bytes
+      - | ``-g`` frame gap in milliseconds between two consecutive generated CAN frames, use any integer >= 0
+      - | ``-l`` the length of the CAN frames generation session in seconds, use any integer > 1
 
    b) For slow route:
 
-    - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
+      - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
 
-      | -t can0 -r can1 -i 0 -o 4
-      | -t can1 -r can0 -i 2 -o 3
+       | -t can0 -r can1 -i 0 -o 4
+       | -t can1 -r can0 -i 2 -o 3
 
-    ex: ``./canperf.sh -t can0 -r can1 -i 0 -o 4 -s 8 -g 10 -l 10``
+       ex: ``./canperf.sh -t can0 -r can1 -i 0 -o 4 -s 8 -g 10 -l 10``
 
-  c) For fast route:
+      - Optionally, one can use the default script provided in the can-gw directory: can-slow-path.sh
 
-     - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
+        ex: ``./can-slow-path.sh``
 
-      | -t can0 -r can1 -i 245 -o 245
-      | -t can1 -r can0 -i 246 -o 246
+   c) For fast route:
 
-   ex: ``./canperf.sh -s 64 -g 10 -i 245 -o 245 -t can0 -r can1 -l 10``
-  
-  d) For can to ethernet route:
+      - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
 
-     - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
+       | -t can0 -r can1 -i 245 -o 245
+       | -t can1 -r can0 -i 246 -o 246
 
-      | -t can0 -r can1 -i 228 -o 228
-      | -t can1 -r can0 -i 229 -o 229
+       ex: ``./canperf.sh -s 64 -g 10 -i 245 -o 245 -t can0 -r can1 -l 10``
 
-   ex: ``./canperf.sh -s 64 -g 10 -i 228 -o 228 -t can0 -r can1 -l 10``
+      - Optionally, one can use the default script provided in the can-gw directory: can-fast-path.sh
 
-  Note: Please run ``./canperf.sh -h`` to see all the available options.
+        ex: ``./can-fast-path.sh``
+
+   d) For can to ethernet route:
+
+      - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
+
+       | -t can0 -r can1 -i 228 -o 228
+       | -t can1 -r can0 -i 229 -o 229
+
+       ex: ``./canperf.sh -s 64 -g 10 -i 228 -o 228 -t can0 -r can1 -l 10``
+
+      - Optionally, one can use the default script provided in the can-gw directory: can-to-eth.sh
+
+        ex: ``./can-to-eth.sh``
+
+   Note: Please run ``./canperf.sh -h`` to see all the available options.
 
 Patching the EB AutoCore OS
 ---------------------------
