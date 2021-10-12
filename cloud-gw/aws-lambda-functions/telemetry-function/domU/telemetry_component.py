@@ -16,7 +16,10 @@ import threading
 import time
 
 from remote_client import RemoteClient
-from greengrasssdk import client
+
+import awsiot.greengrasscoreipc
+import awsiot.greengrasscoreipc.client as client
+import awsiot.greengrasscoreipc.model as model
 
 # Telemetry parameters
 # time interval between MQTT packets
@@ -40,12 +43,12 @@ TELEMETRY_SEND_INTERVAL = 1
 LOCK = threading.Lock()
 SOCKET_COM_LOCK = threading.Lock()
 
-# Setup logging to stdout.
+# Setup logging to stdout
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-# Creating a Greengrass core sdk client.
-GGC_CLIENT = client("iot-data")
+# Creating a interprocess comunication client
+IPC_CLIENT = awsiot.greengrasscoreipc.connect()
 
 def __extract_parameter(event, parameter_name, parameter_type, min_value, default):
     """
@@ -93,12 +96,16 @@ def telemetry_run():
 
         try:
             stats.update(json.loads(system_telemetry))
+            op = IPC_CLIENT.new_publish_to_iot_core()
+
+            op.activate(model.PublishToIoTCoreRequest(
+                topic_name=os.environ.get('telemetryTopic'),
+                qos=model.QOS.AT_LEAST_ONCE,
+                payload=json.dumps(stats).encode(),
+            ))
+
             try:
-                GGC_CLIENT.publish(
-                    topic=os.environ.get('telemetryTopic'),
-                    queueFullPolicy="AllOrException",
-                    payload=json.dumps(stats),
-                )
+                result = op.get_response().result(timeout=1.0)
             except Exception as exception:  # pylint: disable=broad-except
                 LOGGER.error("Failed to publish message: %s", repr(exception))
 
@@ -110,9 +117,9 @@ def telemetry_run():
     with LOCK:
         telemetry_interval = TELEMETRY_SEND_INTERVAL
 
-
     # Asynchronously schedule this function to be run again.
     threading.Timer(telemetry_interval, telemetry_run).start()
+
 
 def function_handler(event, _):
     """
@@ -141,6 +148,5 @@ def function_handler(event, _):
 
 # Start executing the function above.
 # It will be executed every telemetry_interval seconds indefinitely.
-#
 SOCKET = RemoteClient()
 telemetry_run()

@@ -26,6 +26,7 @@ class NetStats:
         else:
             self._desired_ifaces = desired_ifaces
 
+    # pylint: disable=too-many-locals
     def _read_stats(self, desired_ifaces):
         """
         Reads network statistics from /proc/net/dev file
@@ -43,16 +44,23 @@ class NetStats:
         self.previous_timestamp = self.current_timestamp
         self.current_timestamp = time()
 
-        with open(DEV, "r") as file:
+        with open(DEV, "r", encoding="utf-8") as file:
             # Read the first line.
             row_1 = file.readline().split("|")
 
             # Read the Second line, save the stat names.
-            col = []
+            cols = []
             row_2 = file.readline().split("|")
             for i in range(1, len(row_2)):
                 for stat_name in row_2[i].split():
-                    col.append("{}_{}".format(row_1[i].strip(), stat_name))
+                    # Change Receive to rx and Transmit to tx.
+                    dirrection = row_1[i].strip()
+                    if row_1[i].strip() == "Transmit":
+                        dirrection = "tx"
+                    elif row_1[i].strip() == "Receive":
+                        dirrection = "rx"
+
+                    cols.append(f"{dirrection}_{stat_name}")
 
             # Read the remaining lines, these contain the counters for each iface.
             for row in file:
@@ -60,24 +68,15 @@ class NetStats:
                 iface = iface.strip()
 
                 # If desired ifaces are specified we only save their stats.
-                if len(desired_ifaces) > 0:
-                    if iface not in desired_ifaces:
-                        continue
+                if len(desired_ifaces) > 0 and iface not in desired_ifaces:
+                    continue
 
-                    values = values.split()
+                values = values.split()
 
-                    for i, _ in enumerate(col):
-                        stat = iface + "_" + col[i]
-                        val = int(values[i])
-                        stat_dict[stat] = val
-                else:
-                    values = values.split()
-
-                    for i, _ in enumerate(col):
-                        # Add the iface name to the stat.
-                        stat = iface + "_" + col[i]
-                        val = int(values[i])
-                        stat_dict[stat] = val
+                for i, col in enumerate(cols):
+                    stat = iface + "_" + col
+                    val = int(values[i])
+                    stat_dict[stat] = val
 
         return stat_dict
 
@@ -89,12 +88,11 @@ class NetStats:
         delta_time = self.current_timestamp - self.previous_timestamp
         new_dict = {}
 
-        for stat in self._net_load:
+        for stat, raw_value in self._net_load.items():
             if stat.endswith("bytes"):
                 stat_bps = stat[:-len("bytes")] + "bps"
 
-                value = self._net_load[stat]
-                value *= 8.
+                value = raw_value * 8.
                 value /= delta_time
 
                 new_dict[stat_bps] = value
@@ -102,7 +100,7 @@ class NetStats:
             if stat.endswith("packets"):
                 stat_pps = stat[:-len("packets")] + "pps"
 
-                value = self._net_load[stat]
+                value = raw_value
                 value /= delta_time
 
                 new_dict[stat_pps] = value
@@ -120,10 +118,10 @@ class NetStats:
         if self._prev_net_stats is None:
             self._prev_net_stats = stat_dict
         else:
-            for stat in stat_dict:
-                load = stat_dict[stat] - self._prev_net_stats[stat]
+            for stat, value in stat_dict.items():
+                load = value - self._prev_net_stats[stat]
                 self._net_load[stat] = load
-                self._prev_net_stats[stat] = stat_dict[stat]
+                self._prev_net_stats[stat] = value
 
             self.compute_bits_per_second()
 

@@ -12,11 +12,9 @@ Copyright 2021 NXP
 import argparse
 import getpass
 import json
-import os
-import tarfile
+import tempfile
 import time
-
-from io import BytesIO
+import subprocess
 
 import boto3
 
@@ -24,200 +22,177 @@ from utils import Utils
 from sja_provision import SjaProvisioningClient
 
 
-class GreengrassGroupDeployment():
-    """ Class containing the Greengrass group deployment steps. """
+class Greengrassv2Deployment():
+    """Class containing the Greengrass v2 deployment steps."""
 
-    def __init__(self, group_id=None, status_retries=50):
+    def __init__(self, region, stack_name, deployment_name, ports):
         """
-        :param group_name: the name of the Greengrass group
-        :param status_retries: the number of retries used to wait for deployment finish
+        :param region: The AWS region where the stack was deployed.
+        :param stack_name: The name of the deployed CloudFormation stack.
+        :param deployment_name: A Name for the Greengrass v2 deployment.
+        :param mqtt_port: Mqtt port used by greengrass.
         """
-        self.group_id = group_id
-        self.status_retries = status_retries
+        self.thing_name = None
+        self.thing_arn = None
+        self.stack_name = stack_name
+        self.region = region
+        self.deployment_name = deployment_name
+        self.mqtt_port = ports[0]
+        self.https_port = ports[1]
 
-        self.__deployment_id = None
-        self.__gg_client = boto3.client('greengrass')
-
-    def prepare_deployment(self):
+    def get_thing_arn(self):
         """
-        Initiate a new deployment for the Greengrass group.
+        Retrieves the Core Thing Arn.
         """
-        group_version_id = self.__gg_client.get_group(GroupId=self.group_id)['LatestVersion']
+        iot_client = boto3.client("iot")
+        cfn_client = boto3.client('cloudformation')
 
-        print("Creating deployment for group ID: '{0}'.".format(self.group_id))
-        response = self.__gg_client.create_deployment(
-            DeploymentType='NewDeployment',
-            GroupId=self.group_id,
-            GroupVersionId=group_version_id,
+        cfn_stack_outputs = Utils.pull_stack_outputs(
+            cfn_client,
+            self.stack_name)
+
+        self.thing_name = Utils.get_cfn_output_value(cfn_stack_outputs, 'CoreThingName')
+
+        for thing in iot_client.list_things()['things']:
+            if thing['thingName'] == self.thing_name:
+                self.thing_arn = thing['thingArn']
+                break
+
+        if not self.thing_arn:
+            raise Exception("Core Thing ARN not found.")
+
+    def create_deployment(self):
+        """
+        Creates a Greengrass v2 continuous deployment for the stack's core thing.
+        It deploys on the board the Telemetry component, the greengrass cli,
+        the greengrass nucleus, and four components required to connect to SJA1110's thing.
+        """
+        ggv2_client = boto3.client("greengrassv2")
+        sja_thing_name = self.stack_name + "_SjaThing"
+
+        with open("/home/root/cloud-gw/ggv2_deployment_configurations.json",
+                  "r", encoding="utf-8") as config_file:
+            configs = json.loads(config_file.read())
+
+        ggv2_client.create_deployment(
+            targetArn=self.thing_arn,
+            deploymentName=self.deployment_name,
+            components={
+                'aws.greengrass.Nucleus': {
+                    'componentVersion': '2.4.0',
+                    'configurationUpdate': {
+                        'merge': json.dumps(configs['nucleus']
+                                            ).replace("MQTT_PORT", str(self.mqtt_port)
+                                                      ).replace("HTTPS_PORT", str(self.https_port))
+                    }
+                },
+                'aws.greengrass.Cli' : {
+                    'componentVersion': '2.4.0'
+                },
+                self.stack_name + ".GoldVIP.Telemetry" : {
+                    'componentVersion': '1.0.0',
+                    'configurationUpdate': {
+                        'merge': json.dumps(configs['telemetry']
+                                            ).replace('STACK_NAME', self.stack_name),
+                    }
+                },
+                'aws.greengrass.clientdevices.mqtt.Bridge' : {
+                    'componentVersion': '2.0.1',
+                    'configurationUpdate': {
+                        'merge': json.dumps(configs['bridge']
+                                            ).replace('STACK_NAME', self.stack_name),
+                    }
+                },
+                'aws.greengrass.clientdevices.mqtt.Moquette' : {
+                    'componentVersion': '2.0.1'
+                },
+                'aws.greengrass.clientdevices.Auth' : {
+                    'componentVersion': '2.0.2',
+                    'configurationUpdate': {
+                        'merge': json.dumps(configs['auth']).replace(
+                            'STACK_NAME', self.stack_name).replace(
+                                'GG_THING_NAME', self.thing_name).replace(
+                                    'SJA_THING_NAME', sja_thing_name),
+                    }
+                },
+                'aws.greengrass.clientdevices.IPDetector' : {
+                    'componentVersion': '2.0.2'
+                }
+            }
         )
 
-        self.__deployment_id = response['DeploymentId']
-        print("Triggered a new deployment with ID: '{0}'.".format(self.__deployment_id))
-
-    def check_deployment_status(self):
+    def run_installer(self, timeout=180):
         """
-        Query the Greengrass group deployment status.
-        :return: the deployment status as string or exception
+        Execute the Greengrass v2 installer command and wait for the Nucleus
+        to be launched succesfully. The command will continue to run in the background,
+        keeping this Nucleus alive.
+        :param timeout: Time in seconds to wait for the installer to report a succesfull launch.
         """
-        print('Checking the deployment status...')
+        installer_command = f"java -Droot='/greengrass/v2' -Dlog.store=FILE\
+        -jar /greengrass/v2/alts/init/distro/lib/Greengrass.jar\
+        --aws-region {self.region} --component-default-user ggc_user:ggc_group\
+        --provision true --thing-name {self.thing_name}"
 
-        response = self.__gg_client.get_deployment_status(
-            DeploymentId=self.__deployment_id,
-            GroupId=self.group_id
-        )
+        Greengrassv2Deployment.stop_greengrass_nucleus()
 
-        deployment_status = response['DeploymentStatus']
-        if deployment_status not in {'Success', 'Failure'}:
-            print("Deployment status: '{0}'.".format(deployment_status))
-            raise Exception("Deployment is still in progress.")
+        # Run the installer command in background, the Greengrass v2 nucleus will continue to run
+        # while this process is running.
+        with tempfile.TemporaryFile(mode='w+') as stdout_file, \
+             tempfile.TemporaryFile(mode='w+') as stderr_file:
+            # pylint: disable=consider-using-with
+            subprocess.Popen(installer_command, stdout=stdout_file,
+                             stderr=stderr_file, shell=True)
 
-        return deployment_status
+            print("Starting Greengrass V2 Nucleus...")
 
-    def wait_for_deployment_ending(self):
-        """
-        Wait until the triggered deployment has ended, or the maximum
-        number of retries was reached.
-        """
-        print('Waiting for deployment to finish...')
+            # Check every 10 seconds if the nucleus launched succesfully.
+            while timeout > 0:
+                time.sleep(10)
+                timeout -= 10
 
-        deployment_status = Utils.retry(self.check_deployment_status, self.status_retries)
-        print("Deployment finished with status: '{0}'.".format(deployment_status))
-        if deployment_status == 'Failure':
-            raise Exception('Group deployment has failed.')
+                stdout_file.seek(0)
+                stdout = stdout_file.read()
+
+                if 'Launched Nucleus successfully.' in stdout:
+                    print("Launched Greengrass V2 Nucleus successfully.")
+                    return
+
+            stderr_file.seek(0)
+            stderr = stderr_file.read()
+
+        raise Exception(f"Failed to start Greengrass V2: {stderr}")
 
     def execute(self):
         """
-        Execute the steps required to deploy the Greengrass group.
+        Execute the steps required to deploy the Greengrass v2 Nucleus.
         """
-        self.prepare_deployment()
-        self.wait_for_deployment_ending()
-
-
-class GreengrassCertsProvisioner:
-    """ Class containing the Greengrass certificate deployment steps. """
-
-    # Greengrass root directory
-    GREENGRASS_DIR = '/greengrass/'
-    # Path to the Greengrass core daemon
-    GREENGRASSD_PATH = os.path.join(GREENGRASS_DIR, 'ggc', 'core', 'greengrassd')
-    # Path to config.json file
-    CONFIG_PATH = os.path.join(GREENGRASS_DIR, 'config', 'config.json')
-
-    def __init__(self, bucket_name=None):
-        """
-        :param bucket_name: the name of the S3 bucket that stores the certificates
-        """
-        self.bucket_name = bucket_name
-        self.__s3_client = boto3.client('s3')
-        self.__setup_tarball = None
-
-    def deploy_certificates(self):
-        """
-        Download the setup tarball and unpack it.
-        """
-        gzip = BytesIO()
-        print('Downloading the setup tarball...')
-        self.__s3_client.download_fileobj(self.bucket_name, self.__setup_tarball, gzip)
-        gzip.seek(0)
-
-        print('Copying the Greengrass configuration files...')
-        with tarfile.open(fileobj=gzip, mode='r:gz') as tar:
-            tar.extractall(path=self.GREENGRASS_DIR)
-
-    def set_ports(self, mqtt_port, http_port):
-        """
-        Configure the Greengrass core to use port 443 for
-        MQTT and HTTPS communication (by default 8883 and 8443)
-        :param mqtt_port: mqtt port used by greengrass.
-        :param http_port: http port used by greengrass.
-        """
-        with open(self.CONFIG_PATH, 'r+', encoding="utf-8") as config_file:
-            config = json.load(config_file)
-            config["coreThing"]["iotMqttPort"] = mqtt_port
-            config["coreThing"]["iotHttpPort"] = http_port
-            config["coreThing"]["ggHttpPort"] = http_port
-            config_file.seek(0, 0)
-            config_file.write(json.dumps(config, indent=4))
+        self.get_thing_arn()
+        self.create_deployment()
+        self.run_installer()
 
     @staticmethod
-    def control_greengrass(command):
+    def stop_greengrass_nucleus():
+        """ Stop the Greengrass V2 nucleus running process.
         """
-        Control the Greengrass service (restart / stop / start).
+        print("Stopping Greengrass V2 Nucleus...")
+        command = "kill -9 $(ps aux | grep '[g]reengrass/v2' | awk '{print $2}') || true"
+
+        Utils.execute_command(command)
+
+    @staticmethod
+    def restart_greengrass_nucleus():
+        """ Restart the Greengrass V2 Nucleus running process.
         """
-        print('{0}ing greengrass daemon...'.format(command.title()))
-        Utils.execute_command('{0} {1}'.format(GreengrassCertsProvisioner.GREENGRASSD_PATH,
-                                               command))
+        # Stop the Greengrass V2 Nucleus, if it is already running.
+        Greengrassv2Deployment.stop_greengrass_nucleus()
 
-    def execute(self, mqtt_port, http_port):
-        """
-        Execute the steps required to deploy the Greengrass certificates.
-        :param mqtt_port: mqtt port used by greengrass.
-        :param http_port: http port used by greengrass.
-        """
-        self.__setup_tarball = Utils.check_certificates_tarball(
-            self.__s3_client, self.bucket_name, Utils.GOLDVIP_SETUP_ARCHIVE)
-
-        try:
-            # Stopping the greengrass daemon may fail when the config files are missing.
-            self.control_greengrass('stop')
-        # pylint: disable=broad-except
-        except Exception:
-            pass
-
-        self.deploy_certificates()
-        self.set_ports(mqtt_port, http_port)
-        self.control_greengrass('restart')
-
-
-class GreengrassSetup():
-    """ Class that contains the setup steps for Greengrass core. """
-
-    def __init__(self, cfn_stack_name, aws_region_name=None):
-        """
-        :param cfn_stack_name: the name of the deployed CloudFormation stack
-        :param aws_region_name: the AWS region where the stack was deployed
-        """
-        self.cfn_stack_name = cfn_stack_name
-        self.aws_region_name = aws_region_name
-        self.__gg_group_id = None
-        self.__s3_bucket_name = None
-
-    def get_cfn_stack_outputs(self):
-        """
-        Get the Greengrass group id and the S3 bucket name from the CloudFormation stack's
-        output list.
-        """
-        cfn_stack_outputs = Utils.pull_stack_outputs(
-            boto3.client('cloudformation'),
-            self.cfn_stack_name)
-
-        self.__gg_group_id = Utils.get_cfn_output_value(cfn_stack_outputs, 'GreengrassGroupId')
-        print("Found Greengrass group ID: '{0}'.".format(self.__gg_group_id))
-        self.__s3_bucket_name = Utils.get_cfn_output_value(cfn_stack_outputs, 'CertificateBucket')
-        print("Found certificates S3 bucket: '{0}'.".format(self.__s3_bucket_name))
-
-    def execute(self, mqtt_port, http_port):
-        """
-        Check the prerequisites and execute the steps required to setup Greengrass.
-        :param mqtt_port: mqtt port used by greengrass.
-        :param http_port: http port used by greengrass.
-        """
-        # Check if the AWS credentials were provided
-        if boto3.session.Session().get_credentials() is None:
-            raise Exception('There are no AWS credentials defined. '
-                            'Please define them via environment variables.')
-
-        # Set the AWS region
-        if self.aws_region_name:
-            boto3.setup_default_session(region_name=self.aws_region_name)
-
-        # Get the certificate S3 bucket and the Greengrass group ID from the
-        # output list of the CloudFormation stack.
-        self.get_cfn_stack_outputs()
-
-        GreengrassCertsProvisioner(self.__s3_bucket_name).execute(mqtt_port, http_port)
-        GreengrassGroupDeployment(self.__gg_group_id).execute()
-
+        print("Starting Greengrass V2 Nucleus...")
+        installer_command = "/greengrass/v2/alts/current/distro/bin/loader"
+        # pylint: disable=consider-using-with
+        subprocess.Popen(installer_command,
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL,
+                         shell=True)
 
 def main():
     """ Parse the arguments and setup Greengrass. """
@@ -247,10 +222,13 @@ def main():
                         'password authentication, provide empty input.')
     parser.add_argument('--mqtt-port', dest='mqtt_port', type=int, default=443, choices=[8883, 443],
                         help='MQTT port used by Greengrass.')
-    parser.add_argument('--http-port', dest='http_port', type=int, default=443, choices=[8443, 443],
-                        help='HTTP port used by Greengrass.')
+    parser.add_argument('--https-port', dest='https_port', type=int, default=443,
+                        choices=[8443, 443], help='HTTP port used by Greengrass.')
     parser.add_argument('--setup-sja', dest='setup_sja', default=False, action='store_true',
                         help="Local ip address of the sja1110 interface.")
+    parser.add_argument('--deployment-name', dest='deployment_name', type=str,
+                        default='GoldVIP_Telemetry_Deployment',
+                        help="Name of the Greengrass V2 continuous deployment.")
 
     args = parser.parse_args()
 
@@ -267,11 +245,28 @@ def main():
     # Ensure that the clock is synchronized with the ntp servers
     Utils.sync_system_datetime()
 
+    # Check for AWS credentials
+    if not args.no_deploy or args.setup_sja:
+        # Check if the AWS credentials were provided
+        if boto3.session.Session().get_credentials() is None:
+            raise Exception('There are no AWS credentials defined. '
+                            'Please define them via environment variables.')
+
+        # Set the AWS region
+        if args.aws_region_name:
+            boto3.setup_default_session(region_name=args.aws_region_name)
+
     if args.no_deploy:
-        GreengrassCertsProvisioner.control_greengrass('restart')
+        # Start the Greengrass V2 Nucleus.
+        Greengrassv2Deployment.restart_greengrass_nucleus()
     else:
-        GreengrassSetup(args.cfn_stack_name,
-                        args.aws_region_name).execute(args.mqtt_port, args.http_port)
+        # Deploy Greengrass V2
+        Greengrassv2Deployment(
+            args.aws_region_name,
+            args.cfn_stack_name,
+            args.deployment_name,
+            (args.mqtt_port,
+             args.https_port)).execute()
 
     # Start the sja provisioning client.
     if args.setup_sja:

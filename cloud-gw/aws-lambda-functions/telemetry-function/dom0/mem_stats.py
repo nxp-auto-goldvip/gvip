@@ -30,7 +30,7 @@ class MemStats:
         """
         mem_dict = {}
 
-        with open(MEM_INFO, "r") as file:
+        with open(MEM_INFO, "r", encoding="utf-8") as file:
             for _ in range(MEM_NUMBER_ITEMS):
                 line = file.readline()
                 stat, _, line = line.partition(":")
@@ -38,7 +38,7 @@ class MemStats:
                 if stat.startswith("Mem"):
                     stat = stat[3:]
 
-                stat = "mem_" + stat
+                stat = "mem_" + stat.lower()
 
                 if verbose:
                     val = line.strip()
@@ -47,10 +47,10 @@ class MemStats:
                     val, _, _ = line.strip().partition(" ")
                     mem_dict[stat] = int(val)
 
-            if "mem_Available" in mem_dict:
-                mem_dict["mem_Load"] = mem_dict["mem_Total"] - mem_dict["mem_Available"]
-            elif "mem_Free" in mem_dict:
-                mem_dict["mem_Load"] = mem_dict["mem_Total"] - mem_dict["mem_Free"]
+            if "mem_available" in mem_dict:
+                mem_dict["mem_load"] = mem_dict["mem_total"] - mem_dict["mem_available"]
+            elif "mem_free" in mem_dict:
+                mem_dict["mem_load"] = mem_dict["mem_total"] - mem_dict["mem_free"]
 
         return mem_dict
 
@@ -67,7 +67,7 @@ class MemStats:
         :rtype: dict
         """
         mem_dict = MemStats.get_telemetry(verbose=False)
-        mem_total = mem_dict["mem_Total"]
+        mem_total = mem_dict["mem_total"]
 
         for item in mem_dict:
             mem_dict[item] /= mem_total
@@ -85,7 +85,7 @@ class MemStats:
         mem_dict = MemStats.mem_load()
         str_ret = ""
 
-        for item in mem_dict:
-            str_ret += "{:14} {:5.2f}\n".format(item, mem_dict[item])
+        for item, value in mem_dict.items():
+            str_ret += f"{item} {value}\n"
 
         return str_ret[:-1]

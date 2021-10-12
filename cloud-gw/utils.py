@@ -19,8 +19,7 @@ class Utils():
     # Time in seconds used to wait for wpa_supplicant initialization.
     WPA_WAIT_TIME = 3
 
-    # Certificate tarball names.
-    GOLDVIP_SETUP_ARCHIVE = "GoldVIP_setup.tar.gz"
+    # Certificate tarball name.
     SJA_CERTIFICATE = "Sja_Certificate.tar.gz"
 
     @staticmethod
@@ -41,8 +40,8 @@ class Utils():
             std_out, std_err = proc.communicate()
 
         if proc.returncode != 0:
-            err_msg = 'Execution of command {0} resulted in error.\nstdout: {1}\nstderr: {2}' \
-                      .format(command, std_out, std_err)
+            err_msg = f'Execution of command {command} resulted in error.\n'\
+                      f'stdout: {std_out}\nstderr: {std_err}'
             raise Exception(err_msg)
 
         return proc.returncode, std_out, std_err
@@ -68,7 +67,7 @@ class Utils():
             else:
                 break
         else:
-            raise Exception('retry failed: {0}'.format(func.__name__))
+            raise Exception(f'retry failed: {func.__name__}')
 
         return ret
 
@@ -88,10 +87,9 @@ class Utils():
         # Stop wpa_supplicant, if it is running.
         Utils.execute_command('pkill wpa_supplicant || true')
         # If wpa_supplicant is killed, it will set the interface down. Bring it up again.
-        Utils.execute_command('ip link set dev {0} up'.format(netif))
+        Utils.execute_command(f'ip link set dev {netif} up')
         # Start wpa_supplicand service on the given interface.
-        Utils.execute_command('wpa_supplicant -i{0} -Dnl80211,wext -c{1} -B'.format(
-            netif, wpa_conf_file))
+        Utils.execute_command(f'wpa_supplicant -i{netif} -Dnl80211,wext -c{wpa_conf_file} -B')
 
         # Wait a bit for proper initialization.
         time.sleep(Utils.WPA_WAIT_TIME)
@@ -101,7 +99,7 @@ class Utils():
         if 'wpa_state=COMPLETED' in wpa_status:
             used_ssid = [val for val in wpa_status if val.startswith('ssid=')][0].split('=', 1)[1]
             if not ssid or used_ssid == ssid:
-                print("Successfully connected to '{0}'.".format(used_ssid))
+                print(f"Successfully connected to '{used_ssid}'.")
                 return
 
         # Create a new network configuration.
@@ -109,18 +107,17 @@ class Utils():
 
         if ssid:
             # Setup de SSID.
-            Utils.execute_command('wpa_cli set_network {0} ssid "\\"{1}\\""'.format(
-                wpa_network_id, ssid))
+            Utils.execute_command(f'wpa_cli set_network {wpa_network_id} ssid "\\"{ssid}\\""')
             # Configure the network password.
             if password:
-                Utils.execute_command('wpa_cli set_network {0} psk "\\"{1}\\""'.format(
-                    wpa_network_id, password))
+                Utils.execute_command(
+                    f'wpa_cli set_network {wpa_network_id} psk "\\"{password}\\""')
 
         if not password:
-            Utils.execute_command('wpa_cli set_network {0} key_mgmt NONE'.format(wpa_network_id))
+            Utils.execute_command(f'wpa_cli set_network {wpa_network_id} key_mgmt NONE')
 
         # Connect to the configured network (it will disable the others).
-        Utils.execute_command('wpa_cli select_network {0}'.format(wpa_network_id))
+        Utils.execute_command(f'wpa_cli select_network {wpa_network_id}')
 
         # Give a bit of time for the connection to be established.
         time.sleep(Utils.WPA_WAIT_TIME)
@@ -129,14 +126,14 @@ class Utils():
         wpa_status = Utils.execute_command('wpa_cli status')[1].decode().splitlines()
         if 'wpa_state=COMPLETED' in wpa_status:
             used_ssid = [val for val in wpa_status if val.startswith('ssid=')][0].split('=', 1)[1]
-            print("Successfully connected to '{0}'. Saving the configuration...".format(used_ssid))
+            print(f"Successfully connected to '{used_ssid}'. Saving the configuration...")
             # Save the credentials for future use.
             Utils.execute_command('wpa_cli save_config')
         else:
             print("wpa_supplicant wasn't able to connect to any known network...")
             # Scan for nearby networks and list them for the user.
             avail_networks = Utils.execute_command('wpa_cli scan && wpa_cli scan_results')[1]
-            print('(Hint) Nearby wireless networks:\n{0}'.format(avail_networks.decode()))
+            print(f'(Hint) Nearby wireless networks:\n{avail_networks.decode()}')
 
             raise Exception("Couldn't establish a connection to a known wireless network.")
 
@@ -151,13 +148,13 @@ class Utils():
         """
         try:
             print('Checking the internet connection...')
-            Utils.execute_command('ping -c4 -I{0} 8.8.8.8'.format(netif))
+            Utils.execute_command(f'ping -c4 -I{netif} 8.8.8.8')
         # pylint: disable=broad-except
         except Exception:
             print('Setting up the network interface...')
 
             # Bring up the given interface.
-            Utils.execute_command('ip link set dev {0} up'.format(netif))
+            Utils.execute_command(f'ip link set dev {netif} up')
 
             # Generally, the wireless interface will start with ‘w’ (i.e. 'wlan0').
             if netif.startswith('w'):
@@ -167,19 +164,19 @@ class Utils():
             # Set up the IP address on the given interface (statically or dynamically assigned).
             if netip:
                 print('Setting up static IP address...')
-                Utils.execute_command('ip address add {0} dev {1}'.format(netip, netif))
+                Utils.execute_command(f'ip address add {netip} dev {netif}')
             else:
                 print('Getting an IP address using DHCP client...')
-                Utils.execute_command('udhcpc -nq -i{0} -t10'.format(netif))
+                Utils.execute_command(f'udhcpc -nq -i{netif} -t10')
 
-        print("Setting '{0}' as the default network interface...".format(netif))
+        print(f"Setting '{netif}' as the default network interface...")
         # Increase the route metric so the given network interface will be used by default for
         # access to open internet.
         default_routes = Utils.execute_command('ip route show default to match 8.8.8.8')[1]
         for dev in re.findall(r"dev\s+(\S+)", default_routes.decode()):
             if dev != netif:
-                Utils.execute_command('ifmetric {0} 1024'.format(dev))
-        Utils.execute_command('ifmetric {0} 0'.format(netif))
+                Utils.execute_command(f'ifmetric {dev} 1024')
+        Utils.execute_command(f'ifmetric {netif} 0')
 
     @staticmethod
     def sync_system_datetime():
@@ -189,8 +186,8 @@ class Utils():
         ntpd_path = os.path.join('/usr', 'sbin', 'ntpd')
         ntpd_pid_filename = os.path.join('/var', 'run', 'ntpd.pid')
 
-        restart_ntp_service = '{0} -u ntp:ntp -p {1} -g'.format(ntpd_path, ntpd_pid_filename)
-        sync_system_timedate = '{0} -gq'.format(ntpd_path)
+        restart_ntp_service = f'{ntpd_path} -u ntp:ntp -p {ntpd_pid_filename} -g'
+        sync_system_timedate = f'{ntpd_path} -gq'
 
         try:
             # Stop the ntp daemon, if it is running.
@@ -212,8 +209,7 @@ class Utils():
         matching_stacks = cfn_client.describe_stacks(StackName=cfn_stack_name)['Stacks']
 
         if len(matching_stacks) != 1:
-            raise Exception("The '{0}' CloudFormation stack does not exist."
-                            .format(cfn_stack_name))
+            raise Exception(f"The '{cfn_stack_name}' CloudFormation stack does not exist.")
 
         return matching_stacks[0]['Outputs']
 
@@ -228,7 +224,7 @@ class Utils():
                             if output_data['OutputKey'] == key]
 
         if len(matching_outputs) != 1:
-            raise Exception("Couldn't find '{0}' in the output list.".format(key))
+            raise Exception(f"Couldn't find '{key}' in the output list.")
 
         return matching_outputs[0]['OutputValue']
 
@@ -242,8 +238,8 @@ class Utils():
         """
         response = s3_client.head_bucket(Bucket=bucket_name)
         if response['ResponseMetadata']['HTTPStatusCode'] != 200:
-            raise Exception("Bucket '{0}' does not exist or you don't have permission to access it."
-                            .format(bucket_name))
+            raise Exception(
+                f"Bucket '{bucket_name}' does not exist or you don't have permission to access it.")
 
         bucket_contents = s3_client.list_objects(Bucket=bucket_name)['Contents']
         if len(bucket_contents) == 0:
@@ -253,4 +249,4 @@ class Utils():
             if s3_object['Key'] == tar_name:
                 return tar_name
 
-        raise Exception("Bucket {0} does not contain tarball {1}.".format(bucket_name, tar_name))
+        raise Exception(f"Bucket {bucket_name} does not contain tarball {tar_name}.")

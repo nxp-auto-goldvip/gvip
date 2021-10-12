@@ -5,10 +5,9 @@
 """
 A custom function that creates a custom CloudFormation resource.
 Implements the 'create' and 'delete' events.
-When create is invoked it generates certificates for Greengrass, a config file,
-then packs them in a tar archive and stores it in a S3 bucket.
-When delete is invoked it empties the bucket and deletes the certificate from
-the account.
+When create is invoked it generates a certificate for the sja thing,
+one for the greengrass thing, and packs them in a tar archive and stores it in a S3 bucket.
+When delete is invoked it empties the bucket and deletes the certificate from the account.
 
 Copyright 2021 NXP
 """
@@ -28,7 +27,7 @@ LOGGER.setLevel(logging.INFO)
 
 class CertificateHandler:
     """
-    Handles the create and delete events for the certificate.
+    Handles the create and delete events for the certificates.
     """
 
     CA_CERT_URL = "https://www.amazontrust.com/repository/AmazonRootCA1.pem"
@@ -50,16 +49,17 @@ class CertificateHandler:
         :param file_content: Content of the file to be added to the archive
         :param archive: The archive.
         :param filename: Name of the file to be added to the archive.
+        :param path: Directory path for the certificates.
         """
         with tempfile.NamedTemporaryFile() as file:
             file.write(str.encode(file_content))
             file.seek(0)
-            archive.add(file.name, arcname='{1}/{0}'.format(filename, path))
+            archive.add(file.name, arcname=f'{path}/{filename}')
 
     @staticmethod
     def create(event, response_data, archive_name, thing, prefix=""):
         """
-        Creates the certificate and associates it to a Greengrass Group.
+        Creates a certificate and associates it to a thing and a policy.
         :param event: The MQTT message in json format.
         :param response_data: Dictionary of resource ids to be returned.
         :param archive_name: Name of the archive in which the certificates will be stored.
@@ -94,35 +94,14 @@ class CertificateHandler:
             principal=response.get('certificateArn')
         )
 
-        with tarfile.open(
-                '/tmp/{0}'.format(archive_name), 'w:gz') as archive:
-
+        with tarfile.open(f'/tmp/{archive_name}', 'w:gz') as archive:
             for key, value in certificates.items():
                 CertificateHandler._write_to_archive(
                     value, archive, key)
 
-            with open("./config-template.json", 'r', encoding="utf-8") as template_file:
-                config = template_file.read()
-
-                replacements = [
-                    ('CERT_PEM', CertificateHandler.CERT_PEM),
-                    ('CERT_PRIVATE_KEY', CertificateHandler.CERT_PRIVATE_KEY),
-                    ('THING_ARN', event['ResourceProperties']['ThingArn']),
-                    ('IOT_HOST', CertificateHandler.IOT_CLIENT.describe_endpoint(
-                        endpointType='iot:Data-ATS')['endpointAddress']),
-                    ('REGION', event['ResourceProperties']['Region']),
-                    ('CA_CERT', CertificateHandler.CA_CERT)
-                ]
-
-                for first, second in replacements:
-                    config = config.replace(first, second)
-
-                CertificateHandler._write_to_archive(
-                    config, archive, 'config.json', path="config")
-
         CertificateHandler.S3_CLIENT = boto3.client('s3')
         CertificateHandler.S3_CLIENT.upload_file(
-            '/tmp/{0}'.format(archive_name),
+            f'/tmp/{archive_name}',
             event['ResourceProperties']['BucketName'],
             archive_name)
 
@@ -139,13 +118,11 @@ class CertificateHandler:
         :param event: The MQTT message in json format.
         """
         bucket_name = event['ResourceProperties']['BucketName']
-        core_thing_name = event['ResourceProperties']['GGCoreName']
+        core_thing_name = event['ResourceProperties']['GGv2CoreName']
         sja_thing_name = event['ResourceProperties']['SjaThingName']
         policy_name = event['ResourceProperties']['PolicyName']
 
         LOGGER.info("Initiated certificate deletion")
-
-        certificates = event['PhysicalResourceId'].split('|')
 
         CertificateHandler.S3_CLIENT.delete_objects(
             Bucket=bucket_name,
@@ -160,24 +137,37 @@ class CertificateHandler:
 
         CertificateHandler.S3_CLIENT.delete_bucket(Bucket=bucket_name)
 
-        # detatch core and policy from certificate
-        things = [core_thing_name, sja_thing_name]
+        # Detach all certificates from the greengrass thing.
+        certificates = CertificateHandler.IOT_CLIENT.list_thing_principals(
+            thingName=core_thing_name
+        )
+        for certificate in certificates['principals']:
+            CertificateHandler.IOT_CLIENT.detach_thing_principal(
+                thingName=core_thing_name,
+                principal=certificate
+            )
 
-        for i, gg_certificate_arn in enumerate(certificates):
-            gg_certificate_id = gg_certificate_arn.split('/')[1]
+        gg_certificate_arn = event['PhysicalResourceId'].split("|")[0]
+        sja_certificate_arn = event['PhysicalResourceId'].split("|")[1]
 
+        # Detach certificate from sja thing.
+        CertificateHandler.IOT_CLIENT.detach_thing_principal(
+            thingName=sja_thing_name,
+            principal=sja_certificate_arn
+        )
+
+        for certificate_arn in [gg_certificate_arn, sja_certificate_arn]:
+            certificate_id = certificate_arn.split('/')[1]
+
+            # Detach policy from the certificate.
             CertificateHandler.IOT_CLIENT.detach_principal_policy(
                 policyName=policy_name,
-                principal=gg_certificate_arn
+                principal=certificate_arn
             )
-            CertificateHandler.IOT_CLIENT.detach_thing_principal(
-                thingName=things[i],
-                principal=gg_certificate_arn
-            )
-
+            # Delete the certificate.
             CertificateHandler.IOT_CLIENT.update_certificate(
-                certificateId=gg_certificate_id, newStatus='INACTIVE')
-            CertificateHandler.IOT_CLIENT.delete_certificate(certificateId=gg_certificate_id)
+                certificateId=certificate_id, newStatus='INACTIVE')
+            CertificateHandler.IOT_CLIENT.delete_certificate(certificateId=certificate_id)
 
 
 def lambda_handler(event, context):
@@ -186,7 +176,7 @@ def lambda_handler(event, context):
     :param event: The MQTT message in json format.
     :param context: A Lambda context object, it provides information.
     """
-    LOGGER.info('Handler got event %s', json.dumps(event))
+    LOGGER.info('Certificate custom function handler got event %s', json.dumps(event))
 
     try:
         response_data = {}
@@ -196,7 +186,7 @@ def lambda_handler(event, context):
                 event,
                 response_data,
                 CertificateHandler.GOLDVIP_SETUP_ARCHIVE,
-                event['ResourceProperties']['GGCoreName'],
+                event['ResourceProperties']['GGv2CoreName'],
                 "gg_")
             CertificateHandler.create(
                 event,
@@ -219,7 +209,9 @@ def lambda_handler(event, context):
             LOGGER.info('Unexpected RequestType!')
             cfnresponse.send(
                 event, context, cfnresponse.SUCCESS, response_data)
-    except Exception as err:  # pylint: disable=broad-except
-        LOGGER.error(err)
+
+    # pylint: disable=broad-except
+    except Exception as err:
+        LOGGER.error("Certificate custom function handler error: %s", err)
         response_data = {"Data": str(err)}
         cfnresponse.send(event, context, cfnresponse.FAILED, response_data)

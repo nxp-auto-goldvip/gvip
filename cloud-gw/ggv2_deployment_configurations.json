@@ -1,0 +1,75 @@
+{
+  "telemetry": {
+    "accessControl": {
+      "aws.greengrass.ipc.mqttproxy": {
+        "STACK_NAME.GoldVIP.Telemetry:mqttproxy:1": {
+          "policyDescription": "Allows access to publish/subscribe to all topics.",
+          "operations": [
+            "aws.greengrass#PublishToIoTCore",
+            "aws.greengrass#SubscribeToIoTCore"
+          ],
+          "resources": [
+            "*"
+          ]
+        }
+      }
+    }
+  },
+  "auth": {
+    "deviceGroups": {
+      "formatVersion": "2021-03-05",
+      "definitions": {
+        "MyDeviceGroup": {
+          "selectionRule": "thingName: GG_THING_NAME OR thingName: SJA_THING_NAME",
+          "policyName": "MyClientDevicePolicy"
+        }
+      },
+      "policies": {
+        "MyClientDevicePolicy": {
+          "AllowConnect": {
+            "statementDescription": "Allow client devices to connect.",
+            "operations": [
+              "mqtt:connect"
+            ],
+            "resources": [
+              "*"
+            ]
+          },
+          "AllowPublish": {
+            "statementDescription": "Allow client devices to publish to all topics.",
+            "operations": [
+              "mqtt:publish"
+            ],
+            "resources": [
+              "*"
+            ]
+          },
+          "AllowSubscribe": {
+            "statementDescription": "Allow client devices to subscribe to all topics.",
+            "operations": [
+              "mqtt:subscribe"
+            ],
+            "resources": [
+              "*"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "bridge": {
+    "mqttTopicMapping": {
+      "HelloWorldIotCoreMapping": {
+        "topic": "s32g/sja/switch/STACK_NAME",
+        "source": "LocalMqtt",
+        "target": "IotCore"
+      }
+    }
+  },
+  "nucleus": {
+    "mqtt": {
+      "port": "MQTT_PORT"
+    },
+    "greengrassDataPlanePort": "HTTPS_PORT"
+  }
+}

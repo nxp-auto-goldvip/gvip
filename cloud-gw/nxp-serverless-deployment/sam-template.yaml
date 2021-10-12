@@ -13,7 +13,11 @@ Parameters:
   ContactEmail:
     Default: example@mail.com
     Type: String
-    Description: Contact email for Sitewise project
+    Description: Contact email for the Sitewise project.
+  CoreThingName:
+    Default: DefaultName
+    Type: String
+    Description: Name for the Greengrass Core Device Thing.
 
 Metadata:
   AWS::ServerlessRepo::Application:
@@ -25,8 +29,11 @@ Metadata:
     ReadmeUrl: ../README.rst
     Labels: ['nxp', 'goldvip', 's32g']
     HomePageUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
-    SemanticVersion: 0.6.0
+    SemanticVersion: 0.7.0
     SourceCodeUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
+
+Conditions:
+  DefaultThingName: !Equals [!Ref CoreThingName, 'DefaultName']
 
 Resources:
 ### S3 Bucket ###
@@ -251,7 +258,7 @@ Resources:
     Properties:
       Runtime: python3.8
       Role: !GetAtt 'LambdaRole.Arn'
-      Handler: telemetry_lambda.function_handler
+      Handler: telemetry_component.function_handler
       CodeUri: ../aws-lambda-functions/telemetry-function/domU/
       Description: Invoke a function during stack creation.
   TelemetryVersion:
@@ -269,7 +276,18 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: nxp_cfn_gg_custom_function.lambda_handler
-      Description: "Creates: a thing, a thing policy, a greengrass group, an asset model, an asset, a sitewise portal, project and dashboard"
+      Description: "Creates: A Greengrass V2 Component."
+      Timeout: 700
+      Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
+      Runtime: python3.8
+      CodeUri: ../cfn-custom-functions/
+    DependsOn: SitewisePortalRole
+
+  SitewiseCustomFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: nxp_cfn_sitewise_custom_function.lambda_handler
+      Description: "Creates: an asset model, an asset, a portal, project and dashboards"
       Timeout: 700
       Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
       Runtime: python3.8
@@ -280,20 +298,17 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: nxp_cfn_cert_custom_function.lambda_handler
-      Description: "Creates a certificate for greengrass and stores it in a S3 bucket."
+      Description: "Creates a certificate for the SJA1110 Thing and stores it in a S3 bucket."
       Timeout: 30
       Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
       Runtime: python3.8
       CodeUri: ../cfn-custom-functions/
 
 ### Things ###
-  GoldVIPCore:
+  GGv2CoreDeviceThing:
     Type: 'AWS::IoT::Thing'
     Properties:
-      ThingName: !Join
-       - "_"
-       - - !Ref 'AWS::StackName'
-         - CoreThing
+      ThingName: !If [DefaultThingName, !Join ["_", [!Ref 'AWS::StackName', "CoreDeviceThing"]], !Ref CoreThingName]
 
   SjaThing:
     Type: 'AWS::IoT::Thing'
@@ -308,7 +323,7 @@ Resources:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken: !GetAtt 'GreengrassCustomFunction.Arn'
-      ThingArn: !Join
+      CoreThingArn: !Join
         - ':'
         - - 'arn:aws:iot'
           - !Ref 'AWS::Region'
@@ -316,7 +331,7 @@ Resources:
           - !Join
             - "/"
             - - thing
-              - !Ref GoldVIPCore
+              - !Ref GGv2CoreDeviceThing
       SjaThingArn: !Join 
         - ':'
         - - 'arn:aws:iot'
@@ -326,21 +341,28 @@ Resources:
             - "/"
             - - thing
               - !Ref SjaThing
+      CoreThingName: !Ref GGv2CoreDeviceThing
       Region: !Ref 'AWS::Region'
       StackName: !Ref 'AWS::StackName'
-      AccountId: !Ref 'AWS::AccountId'
       TelemetryTopic: !Ref TelemetryTopic
-      CertificateArn: !GetAtt CertificateCustomResource.gg_certificateArn
-      SjaThingCertArn: !GetAtt CertificateCustomResource.sja_certificateArn
-      TelemetryLambdaArn: !Ref TelemetryVersionAlias
-      ContactEmail: !Ref ContactEmail
-      PortalRoleArn: !GetAtt SitewisePortalRole.Arn
+      TelemetryLambdaArn: !Ref TelemetryVersion
       ServiceRoleArn: !GetAtt GreengrassServiceRole.Arn
       ServiceRoleName: !Ref GreengrassServiceRole
       ServiceRolePolicyName:  !Join
            - "_"
            - - !Ref 'AWS::StackName'
              - GreengrassServiceRole
+
+  SitewiseCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt 'SitewiseCustomFunction.Arn'
+      Region: !Ref 'AWS::Region'
+      StackName: !Ref 'AWS::StackName'
+      ContactEmail: !Ref ContactEmail
+      PortalRoleArn: !GetAtt SitewisePortalRole.Arn
+      TelemetryTopic: !Ref TelemetryTopic
+      SiteWiseRuleRoleArn: !GetAtt SitewiseRuleRole.Arn
 
   CertificateCustomResource:
     Type: AWS::CloudFormation::CustomResource
@@ -355,1002 +377,33 @@ Resources:
           - !Join
             - "/"
             - - thing
-              - !Ref GoldVIPCore
+              - !Ref GGv2CoreDeviceThing
       Region: !Ref 'AWS::Region'
-      GGCoreName: !Ref GoldVIPCore
+      GGv2CoreName: !Ref GGv2CoreDeviceThing
       SjaThingName: !Ref SjaThing
       PolicyName: !Ref CertificatePolicy
 
-### Sitewise Rules ###
-  SitewiseTopicSjaRule:
-    Type: AWS::IoT::TopicRule
-    Properties:
-      TopicRulePayload:
-        RuleDisabled: false
-        Sql: !Join
-         - "'"
-         - - "SELECT * FROM"
-           - !Join
-             - "/"
-             - - "s32g/sja/switch"
-               - !Ref "AWS::StackName"
-           - " "
-        Actions:
-        - IotSiteWise:
-            RoleArn:
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p0.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p0
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p0.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p0
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p0.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p0
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p0.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p0
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p0.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p0
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p0.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p0
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p1.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p1
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p1.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p1
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p1.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p1
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p1.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p1
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p1.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p1
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p1.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p1
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p2.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p2
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p2.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p2
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p2.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p2
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p2.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p2
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p2.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p2
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p2.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p2
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p3.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p3
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p3.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p3
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p3.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p3
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p3.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p3
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p3.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p3
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p3.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p3
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p4.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p4
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p4.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p4
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p4.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p4
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p4.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p4
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p4.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p4
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p4.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p4
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p5.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p5
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p5.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p5
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p5.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p5
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p5.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p5
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p5.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p5
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p5.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p5
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p6.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p6
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p6.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p6
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p6.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p6
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p6.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p6
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p6.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p6
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p6.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p6
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p7.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p7
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p7.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p7
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p7.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p7
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p7.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p7
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p7.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p7
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p7.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p7
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p8.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p8
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p8.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p8
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p8.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p8
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p8.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p8
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p8.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p8
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p8.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p8
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p9.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p9
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p9.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p9
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p9.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p9
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p9.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p9
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p9.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p9
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p9.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p9
-  SitewiseTopicSjaRule2: # Second sja rule; rules are limited to 10 actions.
-    Type: AWS::IoT::TopicRule
-    Properties:
-      TopicRulePayload:
-        RuleDisabled: false
-        Sql: !Join
-         - "'"
-         - - "SELECT * FROM"
-           - !Join
-             - "/"
-             - - "s32g/sja/switch"
-               - !Ref "AWS::StackName"
-           - " "
-        Actions:
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p10.DropEventsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_counter_s0_p10
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p10.IngressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_counter_s0_p10
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p10.EgressPktsCounter}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_counter_s0_p10
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p10.DropEventsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /drop_delta_s0_p10
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p10.IngressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ingress_delta_s0_p10
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${s0.p10.EgressPktsDelta}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /egress_delta_s0_p10
-  SitewiseTopicRule:
-    Type: AWS::IoT::TopicRule
-    Properties:
-      TopicRulePayload:
-        RuleDisabled: false
-        Sql: !Join
-         - "'"
-         - - SELECT * FROM 
-           - !Ref TelemetryTopic
-           - " "
-        Actions:
-        - IotSiteWise:
-            RoleArn: 
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${cpu_idle}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /cpu_idle
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${cpu0_idle}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /cpu0_idle
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${cpu1_idle}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /cpu1_idle
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${cpu2_idle}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /cpu2_idle
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${cpu3_idle}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /cpu3_idle
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${mem_Load}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /memory_load
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${pfe0_Receive_bps}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /pfe0_rx_bps
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${pfe0_Transmit_bps}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /pfe0_tx_bps
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${pfe2_Receive_bps}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /pfe2_rx_bps
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${pfe2_Transmit_bps}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /pfe2_tx_bps
-        - IotSiteWise:
-            RoleArn:
-              Fn::GetAtt:
-              - SitewiseRuleRole
-              - Arn
-            PutAssetPropertyValueEntries:
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${m7_0}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /m7_0
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${m7_1}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /m7_1
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${m7_2}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /m7_2
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${ddr_sram_temperature}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ddr_sram_temperature
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${a53_cluster_temperature}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /a53_cluster_temperature
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${hse_llce_temperature}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /hse_llce_temperature
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${ddr_sram_average_temperature}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /ddr_sram_average_temperature
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${a53_cluster_average_temperature}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /a53_cluster_average_temperature
-            - PropertyValues:
-              - Timestamp:
-                  TimeInSeconds: ${floor(timestamp() / 1E3)}
-                Value:
-                  DoubleValue: ${hse_llce_average_temperature}
-              PropertyAlias: !Join
-                - ""
-                - - /telemetry/
-                  - !Ref 'AWS::StackName'
-                  - /hse_llce_average_temperature
-
 ### Outputs ###
 Outputs:
-  GreengrassGroupId:
-    Value: !GetAtt GreengrassCustomResource.GroupId
+  CoreThingName:
+    Value: !Ref GGv2CoreDeviceThing
   CertificateBucket:
     Value: !Ref CertStorage
   SitewisePortalId:
-    Value: !GetAtt GreengrassCustomResource.portalId
+    Value: !GetAtt SitewiseCustomResource.portalId
   SitewisePortalUrl:
-    Value: !GetAtt GreengrassCustomResource.portalUrl
+    Value: !GetAtt SitewiseCustomResource.portalUrl
   SitewiseDashboardId:
-    Value: !GetAtt GreengrassCustomResource.dashboard1Id
+    Value: !GetAtt SitewiseCustomResource.dashboard1Id
   SitewiseSJADashboard1Id:
-    Value: !GetAtt GreengrassCustomResource.dashboard2Id
+    Value: !GetAtt SitewiseCustomResource.dashboard2Id
   SitewiseSJADashboard2Id:
-    Value: !GetAtt GreengrassCustomResource.dashboard3Id
+    Value: !GetAtt SitewiseCustomResource.dashboard3Id
   SitewiseSJADashboard3Id:
-    Value: !GetAtt GreengrassCustomResource.dashboard4Id
+    Value: !GetAtt SitewiseCustomResource.dashboard4Id
   SitewiseProjectId:
-    Value: !GetAtt GreengrassCustomResource.projectId
+    Value: !GetAtt SitewiseCustomResource.projectId
   SitewiseAssetId:
-    Value: !GetAtt GreengrassCustomResource.assetId
+    Value: !GetAtt SitewiseCustomResource.assetId
   SitewiseAssetModelId:
-    Value: !GetAtt GreengrassCustomResource.assetModelId
+    Value: !GetAtt SitewiseCustomResource.assetModelId

@@ -111,9 +111,11 @@ Deployment of the Telemetry Stack in AWS
 
 This CloudFormation stack creates on your account:
 
-- A Greengrass Group (Classic V1); this manages the connection between the board and the AWS cloud.
-- A SiteWise Portal with multiple Dashboards; after the board is connected to AWS, a live visual representation
-  of the telemetry data received via Greengrass is displayed in these.
+- A Greengrass V2 telemetry component, this is a python function which runs on v2xdomu and sends data to AWS IoT Core.
+  The provisioning script described in chapter :ref:`connecting-the-board-to-aws` creates a Greengrass V2
+  continuous deployment which will run the telemetry component on your board.
+- A SiteWise Portal with multiple Dashboards; after the board is connected to AWS a live visual representation
+  of the telemetry data received via the Greengrass V2 component is displayed in these.
 
 SJA1110 Telemetry Setup
 -----------------------
@@ -173,8 +175,9 @@ Connecting the board to AWS
    ``us-west-2`` or ``eu-west-1``.
    ``--setup-sja`` starts the sja provisioning script.
 
-   This will setup the network interface and deploy the Greengrass group created by
-   the telemetry application.
+   This will setup the network interface, start the Greengrass V2 Nucleus,
+   and create a Greengrass V2 continuous deployment, which will run the telemetry
+   component created by the Telemetry Stack.
 
    Note: the provisioning script will try to setup the internet connection using the
    ``eth0`` network interface by default.
@@ -236,24 +239,17 @@ Testing the Telemetry Application
 Deleting the Telemetry Application
 ----------------------------------
 
-1. Go to the SiteWise console: https://console.aws.amazon.com/iotsitewise/
-2. Click on ``Portals`` from the list on the left.
-3. Click on the name of your portal,
-   it starts with ``SitewisePortal_serverlessrepo``
-4. Remove all administrators and users from the portal.
-5. Go to Cloudformation: https://console.aws.amazon.com/cloudformation/
-6. Select your stack and delete it.
+1. Go to Cloudformation: https://console.aws.amazon.com/cloudformation/
+2. Select your stack and delete it.
 
 .. _config-telemetry-after-reboot:
 
 Configure Greengrass after reboot
 ---------------------------------
 
-Greengrass will start after every following board reboot if the telemetry application was
-successfully deployed on the board.
-
-The network configuration is not persistent between reboots, so it must be recreated for internet
-connection.
+The Greengrass V2 Nucleus does not start automatically between reboots. The network configuration
+is not persistent between reboots, so it must be recreated for internet connection. To restart
+the Greengrass V2 Nucleus and configure the network:
 
 - Log into the v2xdomu virtual machine as described in :ref:`xen_hypervisor` chapter.
 
@@ -263,6 +259,8 @@ connection.
   ``$ python3 ~/cloud-gw/greengrass_provision.py --no-deploy --netif <net-dev>``
 
   Where ``<net-dev>`` is the network interface that shall be configured.
+  When the flag ``--no-deploy`` is set, the script will not create a Greengrass deployment,
+  it will just start the Greengrass V2 Nucleus.
 
 - Alternatively, other commands could be used:
 
@@ -273,3 +271,7 @@ connection.
   Synchronise date and time (restart ntpd):
 
     ``$ killall ntpd && ntpd -gq``
+
+  Restart the Greengrass V2 Nucleus:
+
+    ``$ /greengrass/v2/alts/current/distro/bin/loader &``
