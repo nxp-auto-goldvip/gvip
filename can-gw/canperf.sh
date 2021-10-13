@@ -216,7 +216,7 @@ setup_can() {
         ip link set "${can_rx_interface}" up type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on
 
         if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
-            service avtp_listener restart ${can_to_eth_log}
+                service avtp_listener restart ${can_to_eth_log}
         fi
         sleep 1
 }
@@ -231,8 +231,20 @@ stop_cangen() {
         kill ${pid_candump} 2>/dev/null
 
         if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
-            service avtp_listener stop
+                service avtp_listener stop
         fi
+}
+
+# Compute the core load using measurement data from a given file.
+# arguments: 
+#       - core_load_file
+#       - core name (M7_0, M7_1, M7_2)
+
+compute_core_load() {
+        local core_load_file="$1"
+        local core_name=$2
+        awk "/^${core_name}/ { total += \$2; count++ } END { core_load = count ? (total / count) : \"No measurement\"; print core_load}" "${core_load_file}"
+
 }
 
 # Run performance measurements by running the candump listener on the RX interface and
@@ -259,11 +271,14 @@ run_perf() {
 
         # Compute M7 load during the canperf run
         local m7_load_file="/tmp/m7_load"
+
         # Clear file.
         : >"${m7_load_file}"
-
         # Start M7 core load measurement
-        python3 "$(dirname "${BASH_SOURCE[0]}")/m7_core_load.py" --file "${m7_load_file}" --time $((time_gen / 1000)) &
+        python3 "$(dirname "${BASH_SOURCE[0]}")/m7_core_load.py" \
+        --outfile "${m7_load_file}" \
+        --monitored-cores "M7_0" "M7_1" \
+        --time $((time_gen / 1000)) &
 
         echo "Running CAN generator..."
         # Wait until requested session length expires
@@ -273,7 +288,8 @@ run_perf() {
         stop_cangen
 
         # Read the series of M7 core loads and compute their average
-        M7_LOAD=$(awk '{ total += $1; count++ } END { core_load = count ? (total / count) : "No measurement"; print core_load }' "${m7_load_file}")
+        M7_0_LOAD=$(compute_core_load "${m7_load_file}" "M7_0")
+        M7_1_LOAD=$(compute_core_load "${m7_load_file}" "M7_1")
 }
 
 # Display report by parsing the previously generated logs
@@ -303,7 +319,9 @@ display_report() {
         echo "Tx throughput:            $((tx_bytes * 8 / time_gen)) Kbit/s"
         echo "Rx throughput:            $((rx_bytes * 8 / time_gen)) Kbit/s"
         echo "Lost frames:              $((tx_frames_count - rx_frames_count))"
-        echo "M7 core load:             ${M7_LOAD}%"
+        echo "M7_0 core load:           ${M7_0_LOAD}%"
+        echo "M7_1 core load:           ${M7_1_LOAD}%"
+
         if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
             can_to_eth_bytes=$(tail ${can_to_eth_log} | grep "Received data size" | tail -1 | grep -o -E '[0-9]+')
             echo "CAN to ETH data transfer: ${can_to_eth_bytes} Bytes"
