@@ -239,12 +239,21 @@ stop_cangen() {
 # arguments: 
 #       - core_load_file
 #       - core name (M7_0, M7_1, M7_2)
-
 compute_core_load() {
         local core_load_file="$1"
         local core_name=$2
         awk "/^${core_name}/ { total += \$2; count++ } END { core_load = count ? (total / count) : \"No measurement\"; print core_load}" "${core_load_file}"
+}
 
+# Compute can to ethernet data transfer
+compute_can_to_eth_transfer() {
+        local data_transfer
+        data_transfer=0
+        # Check that data has been captured
+        if [ -s ${can_to_eth_log} ]; then
+                data_transfer=$(tail ${can_to_eth_log} | grep "Received data size" | tail -1 | grep -o -E '[0-9]+')
+        fi
+        printf %d "${data_transfer}"
 }
 
 # Run performance measurements by running the candump listener on the RX interface and
@@ -323,7 +332,7 @@ display_report() {
         echo "M7_1 core load:           ${M7_1_LOAD}%"
 
         if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
-            can_to_eth_bytes=$(tail ${can_to_eth_log} | grep "Received data size" | tail -1 | grep -o -E '[0-9]+')
+            can_to_eth_bytes=$(compute_can_to_eth_transfer)
             echo "CAN to ETH data transfer: ${can_to_eth_bytes} Bytes"
         fi
         echo "#############################################################"
