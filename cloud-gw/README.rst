@@ -19,7 +19,7 @@ The following access policies to hardware resources are applicable for the virtu
 
 - Domain-0 has access to all the hardware resources in the system.
 
-- v2xdomu has access to limited resources which are virtualized by XEN.
+- v2xdomu has access to limited resources which are virtualized by Xen.
 
 Telemetry data is collected from Domain-0 and passed to v2xdomu through a
 TCP client-server communication. The Domain-0 v2xbr is a virtual switch with no outbound

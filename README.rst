@@ -3,7 +3,7 @@ GoldVIP Quick Start
 ===================
 
 This guide contains the steps to quickly deploy GoldVIP images, setup the board
-connectivity and try out some vehicle gateway use-cases.
+connectivity and try out some vehicle gateway use cases.
 
 Setup cable connections
 =======================
@@ -34,8 +34,8 @@ Deploy GoldVIP SD-card image
 
 At this point you can plug in the SD-card power on the board and it will boot
 u-boot + Linux from SD-card. For trying out Ethernet and cloud telemetry
-use-cases you can skip the boot-loader deployment from next section. However,
-for CAN use-cases you need to follow the steps from next section too.
+use cases you can skip the boot-loader deployment from next section. However,
+for CAN use cases you need to follow the steps from next section too.
 
 Deploy real-time boot-loader
 ----------------------------

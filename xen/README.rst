@@ -6,12 +6,12 @@ Virtualization uses software to create an abstraction layer over computer hardwa
 
 .. _xen_hypervisor:
 
-XEN
+Xen
 ===
 
-By default, the GoldVIP deliverable includes XEN hypervisor. XEN is a type 1 hypervisor (bare metal) that makes possible running multiple instances of the same operating system seamlessly on the hardware. XEN allows creation of virtual machines from the command line or automatically at startup. XEN virtualizes CPUs, memory, interrupts and timers, providing virtual machines with virtualized resources.
+By default, the GoldVIP deliverable includes Xen hypervisor. Xen is a type 1 hypervisor (bare metal) that makes possible running multiple instances of the same operating system seamlessly on the hardware. Xen allows creation of virtual machines from the command line or automatically at startup. Xen virtualizes CPUs, memory, interrupts and timers, providing virtual machines with virtualized resources.
 
-Two types of virtual machines are defined by XEN:
+Two types of virtual machines are defined by Xen:
 
     - Privileged (**Dom0** or **Domain-0**): The first machine that runs natively on the hardware and provides access to the hardware for unprivileged domains.
 
@@ -26,7 +26,7 @@ In the GoldVIP, two virtual machines are started by default, before the user log
 Using the DomUs
 ---------------
 
-XEN provides several commands via the xl tool stack which can be used to spawn/restart/shutdown unprivileged domains. Several commands can be used from the Domain-0 command line:
+Xen provides several commands via the xl tool stack which can be used to spawn/restart/shutdown unprivileged domains. Several commands can be used from the Domain-0 command line:
 
     ``- xl list``: lists all the active domains running in the system.
 
@@ -71,4 +71,4 @@ Several configuration fields are present in the V2X domU configuration file:
     - **extra**: Root device, console setting;
     - **vif**: Network bridge that forwards frames from the physical interface, created automatically at Domain-0 boot time.
 
-For more detailed information please consult the XEN official documentation: https://xenproject.org/
+For more detailed information please consult the Xen official documentation: https://xenproject.org/
