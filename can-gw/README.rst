@@ -100,15 +100,23 @@ Running the measurements
 
    Note: Please run ``./canperf.sh -h`` to see all the available options.
 
-Patching the EB AutoCore OS
----------------------------
+Updating the EB AutoCore
+------------------------
 
-The distributed CAN-GW binary is compiled from an EB Tresos AutoCore Platform that requires some patches for the OS plugin.
-Before building the CAN-GW application, one has to patch the EB AutoCore OS to get the same functionality present in the distributed image.
+The distributed CAN-GW binary is compiled from an EB Tresos AutoCore Platform that requires some patches and updates for the Tresos plugins to get the same functionality as in the distributed binary image:
+
+1. Patch the OS plugin:
+
 These patches can be found under `<GoldVIP_install_path>/configuration/can-gw/patches` and they shall be applied on the OS plugin that can be found under `<EB_Tresos_install_path>/plugins/Os_TS_T40D33M6I0R0`.
-
 There are various ways of applying these patches, such as using the UNIX `patch` tool (i.e., ``patch -p0 < <file.patch>``) or a git-specific command like `git apply` (i.e., ``git apply -p0 <file.patch>``).
 For example, one can use the following commands to apply all the existing patches::
 
   cd <EB_Tresos_install_path>/plugins/Os_TS_T40D33M6I0R0
   git apply -p0 <GoldVIP_install_path>/configuration/can-gw/patches/*.patch
+  
+2. Update NXP plugins:
+
+Replace the `McalExt_TS_T40D33M1I0R0` plugin found in the `<EB_Tresos_install_path>/plugins/` directory with 
+the contents of the `McalExt_TS_T40D33M1I0R0.zip` archive, which can be found in the GoldVIP installation page. 
+
+**Note**: EB Tresos needs to be restarted after performing this change, in order to load the new plugins. 
