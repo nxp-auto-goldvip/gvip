@@ -92,3 +92,24 @@ This usecase plays prerecorded network traffic from PC, containing valid and inv
      sudo ./eth-idps-slow-path-host.sh <eth-interface>
 
    Note: Use -h option to see all available arguments.
+
+Connecting to a Wi-Fi network
+-------------------------------
+
+1. Insert the Wireless Adapter into the board's USB port.
+
+2. Modify configuration file at /etc/wifi_nxp.conf to choose the Wi-Fi interface to run on
+
+3. Add ssid and passphrase to /etc/wpa_supplicant.conf:
+
+   - If your Wi-Fi network uses a password::
+
+      wpa_passphrase SSID PASSPHRASE >> /etc/wpa_supplicant.conf
+
+   - If you are using a public network::
+
+      echo -e "network={\n\tssid="SSID"\n\tkey_mgmt=NONE\n}" >> /etc/wpa_supplicant.conf
+
+4. Restart Wi-Fi service::
+
+      /etc/init.d/wifi_setup restart

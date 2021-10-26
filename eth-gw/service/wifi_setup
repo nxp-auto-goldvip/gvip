@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+### BEGIN INIT INFO
+# Provides:          Wi-Fi-setup
+# Required-Start:    networking
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start:
+# Default-Stop:
+# Short-Description: setup Wi-Fi connection
+# Description:       Script automatically setup Wi-Fi network and bridge it to domU
+### END INIT INFO
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright 2021 NXP
+
+# Enable bash strict mode (i.e. fail on any non-zero exit code,
+# undefined variable reference and prevent masked pipeline errors).
+set -euo pipefail
+# Fail on unset variables usage.
+set -o nounset
+# Inherit the ERR trap.
+set -E
+
+wifi_interface=""
+mac_domu=""
+bridge_interface=""
+virtual_interface=""
+dom0_ip="10.0.50.1"
+domU_ip="10.0.50.31"
+dhcp_config_file="/etc/dnsmasq.conf"
+wpa_conf_file="/etc/wpa_supplicant.conf"
+wifi_config_file="/etc/wifi_nxp.conf"
+
+set_trap() {
+    # Set trap handler for INT signal given via the Ctrl-C combination.
+    trap "clean_up ; exit 130" INT
+
+    trap 'echo "An error occurred in file $0, at line ${BASH_LINENO[0]}" ; clean_up ; exit' ERR
+}
+
+usage() {
+    echo -e "Usage: $(basename "$0") start|stop|restart
+Connect to wifi access point and make it visible in DomU.\n"
+}
+
+setup_wifi() {
+    local is_connected=0
+    local checked_time=20
+
+    # Check if the Wi-Fi interface is available
+    ls /sys/class/net/"${wifi_interface}" > /dev/null || exit 1
+
+    # Connect to network
+    pkill wpa_supplicant || true
+    ip link set dev "${wifi_interface}" up
+    sleep 1
+    wpa_supplicant -i"${wifi_interface}" -Dnl80211,wext -c"${wpa_conf_file}" -B
+    sleep 1
+
+    #Check network connection
+    echo "Checking if the connection was established..."
+    while [ ${is_connected} -eq 0 ] && [ ${checked_time} -gt 0 ]; do
+        wpa_cli status -i "${wifi_interface}" | grep wpa_state=COMPLETED > /dev/null && \
+        is_connected=1
+        ((checked_time--))
+        sleep 1
+    done
+
+    if [ "${is_connected}" == "0" ]; then
+        echo "Connection timeout...Exit."
+        exit 1
+    else
+        echo "Wi-Fi network connected"
+    fi
+}
+
+setup_bridge() {
+    brctl addbr "${bridge_interface}"
+    xl network-attach v2xdomu bridge="${bridge_interface}" mac="${mac_domu}" \
+        vifname="${virtual_interface}"
+    brctl addif "${bridge_interface}" "${wifi_interface}"
+}
+
+del_bridge() {
+    xl network-detach v2xdomu ${mac_domu} || true
+    brctl delif "${bridge_interface}" "${wifi_interface}" || true
+    ifconfig "${bridge_interface}" down || true
+    brctl delbr "${bridge_interface}" || true
+}
+
+get_ip_wifi() {
+    ifconfig "${wifi_interface}" 0.0.0.0
+    udhcpc -i"${bridge_interface}"
+    ifconfig "${bridge_interface}":1 "${dom0_ip}" netmask 255.255.255.0 up
+}
+
+set_iptables() {
+    iptables -t nat -A PREROUTING --source "${domU_ip}" -j DNAT \
+        --to-destination "${dom0_ip}"
+}
+
+del_iptables() {
+    iptables -t nat -D PREROUTING --source "${domU_ip}" -j DNAT \
+        --to-destination "${dom0_ip}" || true
+}
+
+setup_dhcp_server() {
+    cp "${dhcp_config_file}" "${dhcp_config_file}"_bk
+    echo "interface=${bridge_interface}" > "${dhcp_config_file}"
+    echo "dhcp-range=${bridge_interface},10.0.50.1,10.0.50.30" >> "${dhcp_config_file}"
+    echo "dhcp-host=${bridge_interface},${mac_domu},${domU_ip}" >> "${dhcp_config_file}"
+    /etc/init.d/dnsmasq restart
+}
+
+setup_network_domU() {
+    local access_ip_domU="10.0.100.20"
+    local dhcp_cmd=""
+
+    dhcp_cmd="udhcpc -i\$(ip -br link | awk -v mac_address=${mac_domu} \
+        '\$3 == mac_address {print \$1}')"
+
+    # Disable SC2029 to avoid double parsing variable from both ssh and eval
+    # shellcheck disable=SC2029
+    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+	    root@${access_ip_domU} "${dhcp_cmd}"
+}
+
+clean_up() {
+    del_bridge
+    del_iptables
+}
+
+#Parsing config file to get network interface
+parse_config_file() {
+    local config_parameter=(wifi_interface mac_domu bridge_interface virtual_interface)
+
+    for param in "${config_parameter[@]}"; do
+        eval "${param}=$(sed -n 's/^'"${param}"'=//p' "${wifi_config_file}")"
+
+        eval "[ \${$param} == \"\" ] && \
+        (echo "Please add "${param}" into wifi config file at "${wifi_config_file}"" && \
+        exit 1) || true"
+    done
+}
+
+do_start() {
+    parse_config_file
+    setup_wifi
+    setup_bridge
+    get_ip_wifi
+    set_iptables
+    setup_dhcp_server
+    setup_network_domU
+}
+
+do_stop() {
+    parse_config_file
+    clean_up
+}
+
+do_restart() {
+    do_stop
+    do_start
+}
+
+# Main section
+if [ $# -eq 0 ]; then
+   echo -e "Please input parameters!\n"
+   usage
+   exit
+fi
+
+case "$1" in
+    start)
+        do_start
+        ;;
+    stop)
+        do_stop
+        ;;
+    restart)
+        do_restart
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac
