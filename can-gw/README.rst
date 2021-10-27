@@ -117,6 +117,6 @@ For example, one can use the following commands to apply all the existing patche
 2. Update NXP plugins:
 
 Replace the `McalExt_TS_T40D33M1I0R0` plugin found in the `<EB_Tresos_install_path>/plugins/` directory with 
-the contents of the `McalExt_TS_T40D33M1I0R0.zip` archive, which can be found in the GoldVIP installation page. 
+the contents of the `McalExt_TS_T40D33M1I0R0.zip` archive, which can be found in the `<GoldVIP_install_path>/configuration/can-gw/plugins` directory. 
 
-**Note**: EB Tresos needs to be restarted after performing this change, in order to load the new plugins. 
+**Note**: EB Tresos needs to be restarted after performing this change, in order to load the newly installed plugins. 
