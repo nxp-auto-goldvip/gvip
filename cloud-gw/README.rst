@@ -136,6 +136,9 @@ the SJA1110 switch, or directly into the router or switch the P4 port is connect
 Setting SW12 to ON-OFF will prevent the SJA1110 application to be loaded, and the
 default SJA1110 firmware will run instead.
 
+To restart the SJA1110 telemetry after a reboot rerun the provisioning script
+with the ``--setup-sja`` option, as described in chapter :ref:'config-telemetry-after-reboot'.
+
 Chapter :ref:`sja1110-telemetry-application` contains more details about the SJA1110 application.
 
 .. _connecting-the-board-to-aws:
@@ -194,7 +197,7 @@ hence 2.5 Mbps spikes can be observed in the AWS SiteWise dashboard. To close th
 client, it is necessary to run the command ``killall udhcpc``  in the Dom0 console. This
 will close the DHCP client and the spikes will no longer be observed in the dashboard.
 
-Note: The deployment of the Greengrass group has to be done only once. The network configuration
+Note: The Greengrass V2 Nucleus does not start automatically after a reboot. The network configuration
 and time are not persistent between reboots. Please check :ref:`config-telemetry-after-reboot`
 for further information.
 
@@ -256,11 +259,12 @@ the Greengrass V2 Nucleus and configure the network:
 - The provision script can be used again to configure the network interface that will be used by
   Greengrass:
 
-  ``$ python3 ~/cloud-gw/greengrass_provision.py --no-deploy --netif <net-dev>``
+  ``$ python3 ~/cloud-gw/greengrass_provision.py --no-deploy --netif <net-dev> --setup-sja``
 
   Where ``<net-dev>`` is the network interface that shall be configured.
   When the flag ``--no-deploy`` is set, the script will not create a Greengrass deployment,
-  it will just start the Greengrass V2 Nucleus.
+  it will just start the Greengrass V2 Nucleus. Adding the ``--setup-sja`` parameter will
+  start the provisioning of the SJA1110 telemetry application.
 
 - Alternatively, other commands could be used:
 
