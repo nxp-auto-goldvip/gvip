@@ -93,12 +93,15 @@ class Greengrassv2Handler:
                         {
                             'topic': telemetry_topic + '/config',
                             'type': 'PUB_SUB'
-                        },
+                        }
                     ],
                     'pinned': True,
                     'environmentVariables': {
                         'telemetryTopic': telemetry_topic
                     },
+                    'linuxProcessParams': {
+                        'isolationMode': 'NoContainer',
+                    }
                 }
             }
         )

@@ -17,6 +17,7 @@ import subprocess
 import struct
 import tarfile
 import tempfile
+import time
 
 from io import BytesIO
 
@@ -32,16 +33,22 @@ class SjaProvisioningClient():
     # Port used for connection, must match that used by the server on the SJA side.
     SJA_PORT = 8080
 
-    def __init__(self, cfn_stack_name, aws_region_name, netif, sja_hwaddr='00:04:9f:06:12:00'):
+    # pylint: disable=too-many-arguments
+    def __init__(
+            self, cfn_stack_name,
+            aws_region_name, netif,
+            mqtt_port, sja_hwaddr='00:04:9f:06:12:00'):
         """
         :param cfn_stack_name: The name of the deployed CloudFormation stack.
         :param aws_region_name: The AWS region where the stack was deployed.
         :param netif: The network interface used to connect to open internet.
+        :param mqtt_port: The port used by MQTT connections.
         :param sja_hwaddr: Mac address of SJA1110, it must match the address
                            configured in the SJA application.
         """
         self.region = aws_region_name
         self.netif = netif
+        self.mqtt_port = mqtt_port
         self.sja_hwaddr = sja_hwaddr
 
         self.aws_endpoint = None
@@ -86,6 +93,27 @@ class SjaProvisioningClient():
 
         print(f"Retrieved endpoint: {self.aws_endpoint}")
 
+    def __update_connectivity_info(self):
+        """
+        Update the connectivity information for the client devices of the
+        Greengrass Core Device Thing.
+        """
+        connectivity_info = [
+            {
+                'HostAddress': f'{self.greengrass_ip}',
+                'Id': f'{self.greengrass_ip}',
+                'Metadata': '',
+                'PortNumber': self.mqtt_port
+            }
+        ]
+
+        boto3.client('greengrass').update_connectivity_info(
+            ConnectivityInfo=connectivity_info,
+            ThingName=self.ggv2_core_name
+        )
+
+        print("Updated Core connectivity information.")
+
     def __extract_certificate(self):
         """
         Extract the thing certificate from certificate s3 bucket
@@ -109,13 +137,16 @@ class SjaProvisioningClient():
 
         print("Retrieved certificates.")
 
-    def __get_greengrass_ca(self):
+    def __get_greengrass_ca(self, nb_retries=60, wait_time=10):
         """
         Get the public Certificate Authority of the greengrass core device via
         greengrass discover api.
+        :param nb_retries: Number of times to retry fetching the Certificate Authority.
+        :param wait_time: Wait time in seconds between retries.
         """
         with tempfile.NamedTemporaryFile(mode="w+") as certpath, \
              tempfile.NamedTemporaryFile(mode="w+") as keypath:
+
             # Write the SJA thing's certificate to temporary files.
             certpath.write(self.certificates_keys['certs/certificate.pem'].decode("utf-8"))
             keypath.write(self.certificates_keys['certs/certificate.private.key'].decode("utf-8"))
@@ -127,18 +158,24 @@ class SjaProvisioningClient():
             url = f"https://greengrass-ats.iot.{self.region}.amazonaws.com:8443"\
                   f"/greengrass/discover/thing/{self.thing_name}"
 
-            # Send the request with the certificate paths.
-            ret = requests.get(url, cert=(certpath.name, keypath.name))
+            for i in range(nb_retries):
+                # Send the request with the certificate paths.
+                ret = requests.get(url, cert=(certpath.name, keypath.name))
 
-        # Save the Greengrass Certitficate Authority from the request.
-        response = json.loads(ret.text)
-        try:
-            self.greengrass_ca = response["GGGroups"][0]["CAs"][0]
+                # Save the Greengrass Certitficate Authority from the request.
+                response = json.loads(ret.text)
+                try:
+                    self.greengrass_ca = response["GGGroups"][0]["CAs"][0]
 
-            print("Greengrass certificate authority retrieved.")
-        except KeyError as exception:
-            raise Exception(f"Greengrass CA not found in request response: {response}"
-                            ) from exception
+                    print("Greengrass certificate authority retrieved.")
+                    return
+                except KeyError:
+                    time.sleep(wait_time)
+
+                    if i < nb_retries - 1:
+                        print("Certificate Authority not found, retrying...")
+
+        raise Exception(f"Greengrass CA not found in request response: {response}")
 
     def __get_greengrass_ip(self):
         """
@@ -223,6 +260,7 @@ class SjaProvisioningClient():
         """
         self.__attach_sja_to_ggcore()
         self.__get_greengrass_ip()
+        self.__update_connectivity_info()
         self.__find_sja_ip()
         self.__get_endpoint()
         self.__extract_certificate()

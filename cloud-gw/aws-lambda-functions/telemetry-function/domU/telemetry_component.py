@@ -15,11 +15,11 @@ import sys
 import threading
 import time
 
-from remote_client import RemoteClient
-
 import awsiot.greengrasscoreipc
-import awsiot.greengrasscoreipc.client as client
-import awsiot.greengrasscoreipc.model as model
+from awsiot.greengrasscoreipc import client
+from awsiot.greengrasscoreipc import model
+
+from remote_client import RemoteClient
 
 # Telemetry parameters
 # time interval between MQTT packets
@@ -33,8 +33,8 @@ M7_STAT_QUERY_TIME = "m7_status_query_time_interval"
 M7_WINDOW_SIZE_MULTIPLIER = "m7_window_size_multiplier"
 
 # server commands
-GET_STATS_COMMAND="GET_STATS"
-SET_PARAMS_COMMAND="SET_PARAMS"
+GET_STATS_COMMAND = "GET_STATS"
+SET_PARAMS_COMMAND = "SET_PARAMS"
 
 # default gap between telemetry packets
 TELEMETRY_SEND_INTERVAL = 1
@@ -50,20 +50,20 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 # Creating a interprocess comunication client
 IPC_CLIENT = awsiot.greengrasscoreipc.connect()
 
-def __extract_parameter(event, parameter_name, parameter_type, min_value, default):
+def extract_parameter(message, parameter_name, parameter_type, min_value, default):
     """
-    Extracts parameters from an event dictionary. If the event does not
+    Extracts parameters from an message dictionary. If the message does not
     contain the desired value, the default is returned
-    :param event: Event in json format
+    :param message: Event in json format
     :param parameter_name: Parameter name which shall be a key in the
-    event dictionary
+    message dictionary
     :param parameter_type: Parameter type (int, float)
     :param min_value: Minimum accepted value
     :param default: Parameter default (in case the event does not contain
     the desired parameter, this value will be returned
     :return: updated parameter value/default
     """
-    updated_param_value = event.get(parameter_name, default)
+    updated_param_value = message.get(parameter_name, default)
     # if the type is not correct, cast the parameter
     if not isinstance(updated_param_value, parameter_type):
         try:
@@ -84,7 +84,7 @@ def telemetry_run():
     call it sends an MQTT messages containing the host device's stats,
     a timestamp and the device name.
     """
-    stats = dict()
+    stats = {}
 
     with SOCKET_COM_LOCK:
         system_telemetry = SOCKET.send_request(GET_STATS_COMMAND)
@@ -96,16 +96,16 @@ def telemetry_run():
 
         try:
             stats.update(json.loads(system_telemetry))
-            op = IPC_CLIENT.new_publish_to_iot_core()
+            operation = IPC_CLIENT.new_publish_to_iot_core()
 
-            op.activate(model.PublishToIoTCoreRequest(
+            operation.activate(model.PublishToIoTCoreRequest(
                 topic_name=os.environ.get('telemetryTopic'),
                 qos=model.QOS.AT_LEAST_ONCE,
                 payload=json.dumps(stats).encode(),
             ))
 
             try:
-                result = op.get_response().result(timeout=1.0)
+                operation.get_response().result(timeout=1.0)
             except Exception as exception:  # pylint: disable=broad-except
                 LOGGER.error("Failed to publish message: %s", repr(exception))
 
@@ -120,33 +120,75 @@ def telemetry_run():
     # Asynchronously schedule this function to be run again.
     threading.Timer(telemetry_interval, telemetry_run).start()
 
+class StreamHandler(client.SubscribeToIoTCoreStreamHandler):
+    """A class for handling incoming MQTT events.
+    """
 
+    def on_stream_event(self, event: model.IoTCoreMessage) -> None:
+        """
+        Handling the incoming configuration event.
+        """
+        # pylint: disable=global-statement
+        global TELEMETRY_SEND_INTERVAL
+
+        try:
+            message = json.loads(str(event.message.payload, "utf-8"))
+
+            with LOCK:
+                TELEMETRY_SEND_INTERVAL = \
+                    extract_parameter(message=message, parameter_name=TELEMETRY_INTERVAL,
+                                      parameter_type=int, min_value=1,
+                                      default=TELEMETRY_SEND_INTERVAL)
+
+            # Check if one or more config values have been updated.
+            if set(message.keys()).intersection(
+                    set({TELEMETRY_INTERVAL, M7_STAT_QUERY_TIME, M7_WINDOW_SIZE_MULTIPLIER})):
+                LOGGER.info("Got update message.")
+                with SOCKET_COM_LOCK:
+                    SOCKET.send_fire_and_forget(SET_PARAMS_COMMAND + json.dumps(message))
+        # pylint: disable=broad-except
+        except Exception as exception:
+            print(exception)
+
+
+def listen_for_config():
+    """ Subscribe to the MQTT configuration topic, listen and handle incoming
+    configuration messages.
+    """
+    try:
+        request = model.SubscribeToIoTCoreRequest()
+        request.topic_name = os.environ.get('telemetryTopic') + "/config"
+        request.qos = model.QOS.AT_MOST_ONCE
+        handler = StreamHandler()
+        operation = IPC_CLIENT.new_subscribe_to_iot_core(handler)
+        future = operation.activate(request)
+
+        # Wait for incoming configuration messages.
+        future.result()
+
+        # Keep this running forever
+        while True:
+            time.sleep(10)
+    # pylint: disable=broad-except
+    except Exception as exception:
+        print(exception)
+        # Close the connection and restart.
+        operation.close()
+        listen_for_config()
+
+
+# pylint: disable=unused-argument
 def function_handler(event, _):
+    """To create a lambda function
+    we need to specify a handler function.
     """
-    This handler is used to update the telemetry_interval and to publish
-    the board's uuid to the AWS console.
 
-    :param event: The MQTT message in json format.
-    :param context: A Lambda context object, it provides information.
-    """
-    # pylint: disable=global-statement
-    global TELEMETRY_SEND_INTERVAL
-
-    with LOCK:
-        TELEMETRY_SEND_INTERVAL = \
-            __extract_parameter(event=event, parameter_name=TELEMETRY_INTERVAL,
-                                parameter_type=int, min_value=1,
-                                default=TELEMETRY_SEND_INTERVAL)
-
-    # Check if one or more config values have been updated.
-    if set(event.keys()).intersection(
-            set({TELEMETRY_INTERVAL, M7_STAT_QUERY_TIME, M7_WINDOW_SIZE_MULTIPLIER})):
-        LOGGER.info("Got update event.")
-        with SOCKET_COM_LOCK:
-            SOCKET.send_fire_and_forget(SET_PARAMS_COMMAND + json.dumps(event))
-
+# Connect with the telemetry agregator service on dom0.
+SOCKET = RemoteClient()
 
 # Start executing the function above.
 # It will be executed every telemetry_interval seconds indefinitely.
-SOCKET = RemoteClient()
 telemetry_run()
+
+# Start listening for configuration messages on the configuration topic.
+listen_for_config()

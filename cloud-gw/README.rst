@@ -72,7 +72,8 @@ permissions for the deployment and use of the telemetry use case::
           "iotsitewise:*",
           "iam:*",
           "sso:*",
-          "sso-directory:*"
+          "sso-directory:*",
+          "serverlessrepo:*"
         ],
         "Resource": "*"
       }

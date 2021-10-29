@@ -271,8 +271,11 @@ def main():
     # Start the sja provisioning client.
     if args.setup_sja:
         # Network error occurs when publishing without a wait.
-        time.sleep(10)
-        SjaProvisioningClient(args.cfn_stack_name, args.aws_region_name, args.netif).execute()
+        SjaProvisioningClient(
+            args.cfn_stack_name,
+            args.aws_region_name,
+            args.netif,
+            args.mqtt_port).execute()
 
 # entry point
 if __name__ == '__main__':
