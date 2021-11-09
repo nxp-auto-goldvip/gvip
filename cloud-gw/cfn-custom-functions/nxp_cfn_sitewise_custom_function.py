@@ -701,9 +701,9 @@ class SitewiseHandler:
 
         for paginator in response_iterator:
             for rule in paginator['rules']:
-                if stack_name in rule['ruleName']:
+                if stack_name.replace('-', '_') in rule['ruleName']:
                     iot_client.delete_topic_rule(
-                        ruleName=rule
+                        ruleName=rule['ruleName']
                     )
 
     @staticmethod
