@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2020-2021 NXP
+# Copyright 2020-2022 NXP
 
 # This script is used to simulate a virtual CAN network so that the user can test the CAN-GW and get some performance overview.
 # It generates pre-defined CAN traffic on a configured interface and logs the received frames on a configured interface from Linux.
@@ -51,7 +51,11 @@ tx_frames_count=0
 # Number of CAN frame received in Linux
 rx_frames_count=0
 
+# Generation mode of payload. Default value is increment
+payload_data="i"
+
 readonly integer_regex="^[0-9]+$"
+readonly hex_regex="^[0-9A-Fa-f]+$"
 
 # Set trap handler for Ctrl-C and ERR signal
 set_trap() {
@@ -70,6 +74,7 @@ OPTIONS:
         -g | --gap <ms>                  Frame gap in milliseconds between two consecutive generated CAN frames
         -s | --size <bytes>              CAN frame data size in bytes. For CAN frames with variable size, use 'i'
         -l | --length <seconds>          The length of the CAN traffic generation session
+        -D | --payload <hexvalue>        The payload of the CAN frame
         -h | --help                      help
 "
 }
@@ -84,8 +89,7 @@ check_input() {
                         if [[ ! "${frame_gap_ms}" =~ ${integer_regex} ]]; then
                                 echo "Frame gap must be a positive integer number"
                                 exit 1
-                        fi
-                        shift
+                        fi                        
                         ;;
                 -i | --tx-id)
                         shift
@@ -94,11 +98,10 @@ check_input() {
                                 echo "CAN ID must be a positive integer number"
                                 exit 1
                         fi
-                        if [[ -z "${tx_id}" ]] || [[ 10#${tx_id} -lt 0 ]] || [[ 10#${tx_id} -gt 799 ]]; then
-                                echo "CAN ID must be greater than 0 and less than 799"
+                        if [[ -z "${tx_id}" ]] || [[ 10#${tx_id} -lt 0 ]] || [[ 10#${tx_id} -gt 2047 ]]; then
+                                echo "CAN ID must be greater than or equal to 0 and less than 2048"
                                 exit 1
-                        fi
-                        shift
+                        fi                        
                         ;;
                 -o | --rx-id)
                         shift
@@ -107,11 +110,10 @@ check_input() {
                                 echo "CAN ID must be a positive integer number"
                                 exit 1
                         fi
-                        if [[ -z "${rx_id}" ]] || [[ 10#${rx_id} -lt 0 ]] || [[ 10#${rx_id} -gt 799 ]]; then
-                                echo "CAN ID must be greater than 0 and less than 799"
+                        if [[ -z "${rx_id}" ]] || [[ 10#${rx_id} -lt 0 ]] || [[ 10#${rx_id} -gt 2047 ]]; then
+                                echo "CAN ID must be greater than or equal to 0 and less than 2048"
                                 exit 1
-                        fi
-                        shift
+                        fi                        
                         ;;
                 -t | --can-tx)
                         shift
@@ -119,8 +121,7 @@ check_input() {
                         if [[ "${can_tx_interface}" != "can0" ]] && [[ "${can_tx_interface}" != "can1" ]]; then
                                 echo "Transmit interface is incorrect!"
                                 exit 1
-                        fi
-                        shift
+                        fi                        
                         ;;
                 -r | --can-rx)
                         shift
@@ -128,8 +129,7 @@ check_input() {
                         if [[ "${can_rx_interface}" != "can0" ]] && [[ "${can_rx_interface}" != "can1" ]] && [[ "{$can_rx_interface}" == "${can_tx_interface}" ]]; then
                                 echo "Receive interface is incorrect!"
                                 exit 1
-                        fi
-                        shift
+                        fi                        
                         ;;
                 -s | --size)
                         shift
@@ -144,8 +144,7 @@ check_input() {
                                         echo "Frame size must be a positive integer between 1 and 64 or 'i', received ${can_frame_data_size}"
                                         exit 1
                                 fi
-                        fi
-                        shift
+                        fi                        
                         ;;
                 -l | --length)
                         shift
@@ -154,9 +153,17 @@ check_input() {
                                 echo "Length must be a positive integer number"
                                 exit 1
                         fi
-                        ((time_gen *= 1000))
-                        shift
+                        ((time_gen *= 1000))                        
                         ;;
+                -D | --payload)
+                        shift
+                        payload_data=${1}
+                        if ! [[ "${payload_data}" =~ ${hex_regex} ]]; then
+                                echo "Payload data must be a hex value (e.g., DE42AD37)"
+                                exit 1
+                        fi                        
+                        ;;
+
                 -h | --help) usage && exit 0 ;;
                 *)
                         echo "$0: Invalid option $1"
@@ -164,6 +171,7 @@ check_input() {
                         exit 1
                         ;;
                 esac
+                shift
         done
         # Check if both CAN Ids are set by user
         if [[ "$tx_id" == "notset" ]] || [[ "$rx_id" == "notset" ]]; then
@@ -275,7 +283,7 @@ run_perf() {
         current_time_ms=${start_time_ms}
 
         # Start cangen on can_tx_interface interface with requested frame size and gap
-        cangen "${can_tx_interface}" -g "${frame_gap_ms}" -p 10 -b -I "${tx_id}" -L "${can_frame_data_size}" -D i -v -v >${tx_log} &
+        cangen "${can_tx_interface}" -g "${frame_gap_ms}" -p 10 -b -I "${tx_id}" -L "${can_frame_data_size}" -D "${payload_data}" -v -v >${tx_log} &
         pid_cangen=$!
 
         # Compute M7 load during the canperf run

@@ -31,6 +31,14 @@ The CAN gateway currently supports the following use cases:
  - CAN to ETH routing through M7 core.
    The CAN packets are sent from Linux and received on the M7 CAN driver from where they are passed to the AUTOSAR COM
    stack which forwards it to the PFE2. The format used for the ethernet packets is UDP.
+ - IDPS filtering.
+   IDPS is provided by Argus Cyber Security (https://argus-sec.com/) and it is only a trial of the full product.
+   For the full feature set of this IDPS please contact Argus.
+   Every CAN frame shall undergo inspection by an IDPS library supplied by Argus. The library inspects CAN frames based on a preconfigured set of
+   deterministic rules (henceforth “the Ruleset”). The Ruleset may include features such as ensuring that the DLC matches the OEM’s definitions,
+   that all signals are in their allowed ranges, that frames’ timing is as expected, that diagnostic frames are meeting the requirements of the ISO standards etc.
+   Any frame meeting the rules in the Ruleset is considered “accepted” and is forwarded to be further handled by the CAN driver.
+   In the case a frame is detected to include an anomaly, it is considered “rejected”, dropped and an anomaly report shall be sent to CAN driver.
 
 Prerequisites
 -------------
@@ -99,6 +107,39 @@ Running the measurements
       - Optionally, one can use the default script provided in the can-gw directory: can-to-eth.sh
 
         ex: ``./can-to-eth.sh``
+		
+   e) For IDPS:
+
+      - CAN-GW IDPS library ruleset is configured to act on CAN IDs 257 and 258 on can0 bus. If all preconditions are met then the frame will be routed
+        with CAN ID 256 on can1 bus otherwise the CAN frame is considered malicious and dropped.
+
+      - The preconditions are as follows:
+
+         1. Both frames must have a value between 0x00 and 0x20 in the first byte of the payload (e.g., ``-D 2000000000000000``).
+         2. Both frames must have a DLC value of 8 (e.g., ``-s 8``).
+         3. Both frames must have only zeros in the last 7 bytes of the payload (e.g., ``-D 2000000000000000``).
+         4. CAN ID 257 shall have a cycle time of 1000 ms with a tolerance of 180 ms (e.g., ``-g 1000``).
+         5. CAN ID 258 must not have a cycle time lower than 18 ms (e.g., ``-g 100``).
+
+      - With all the preconditions from above the following arguments to canperf should give you the same count of Tx and Rx frames:
+
+       | -t can0 -r can1 -i 257 -o 256 -s 8 -g 1000 -D 2000000000000000
+       | -t can0 -r can1 -i 258 -o 256 -s 8 -g 1000 -D 1000000000000000
+
+       ex: ``./canperf.sh -t can0 -r can1 -i 257 -o 256 -s 8 -g 1000 -D 2000000000000000 -l 10``
+	
+      - With all the preconditions from above the following arguments to canperf should result in the frames being rejected:
+
+       | -t can0 -r can1 -i 257 -o 256 **-s 7** -g 1000 -D 2000000000000000
+       | -t can0 -r can1 -i 257 -o 256 -s 8 -g 1000 **-D 4500000000000000**
+       | -t can0 -r can1 -i 258 -o 256 -s 8 -g 1000 **-D 1000000000000001**
+       | -t can0 -r can1 -i 257 -o 256 -s 8 **-g 100** -D 1000000000000000
+
+       ex: ``./canperf.sh -t can0 -r can1 -i 257 -o 256 -s 7 -g 1000 -D 2000000000000000 -l 10``
+
+      - Optionally, one can use the default script provided in the can-gw directory: can-aidps-slow-path.sh
+
+       ex: ``./can-aidps-slow-path.sh``
 
    **Note**: Please run ``./canperf.sh -h`` to see all the available options.
 
@@ -116,12 +157,12 @@ Running the measurements
 
       **Note**: run ``ip a`` command on your host PC to find out the exact name of the
       ethernet interface <eth> connected to the board.
-      
+
       **Note**: The script is connecting to target console via */dev/ttyUSB0*. In case
       tty port is different on your PC, specify it explicitly with *-u* argument,
       e.g., *-u /dev/ttyUSB1*. Also, no other process should use the port during the test.
 
- 
+
 
 
 Building the M7 Application
@@ -136,12 +177,12 @@ The distributed CAN-GW binary is compiled from an EB tresos AutoCore Platform th
 3. Update NXP plugins:
 
    Replace the `McalExt_TS_T40D33M1I0R0` plugin found in the `<EB_tresos_install_path>/plugins/` directory with
-   the contents of the `McalExt_TS_T40D33M1I0R0.zip` archive, which can be found in the `<GoldVIP_install_path>/configuration/can-gw/plugins` directory. 
+   the contents of the `McalExt_TS_T40D33M1I0R0.zip` archive, which can be found in the `<GoldVIP_install_path>/configuration/can-gw/plugins` directory.
 
-   **Note**: EB tresos needs to be restarted after performing this change, in order to load the newly installed plugins. 
+   **Note**: EB tresos needs to be restarted after performing this change, in order to load the newly installed plugins.
 
 4. Update the build environment:
-   
+
    Adapt `<GoldVIP_install_path>/configuration/can-gw/workspace/goldvip-gateway/util/launch_cfg.bat` to your particular system needs.
    In particular *TOOLPATH_COMPILER* needs to point to the compiler that you installed at step 2 and *TRESOS_BASE* needs to point to tresos install location from step 1.
 
@@ -152,10 +193,10 @@ The distributed CAN-GW binary is compiled from an EB tresos AutoCore Platform th
    in `Project->Unattended Wizards` tresos menu and select *Execute multiple tasks(CodeGenerator)* entry.
 
 7. You should be ready to build the project. Open a Command Prompt and run the following commands::
-   
+
      cd <GoldVIP_install_path>/configuration/can-gw/workspace/goldvip-gateway/util
      launch.bat make -j
-     
+
    To create a binary file from elf run the following command in the same Command Prompt::
-   
+
      C:/NXP/S32DS.3.4/S32DS/build_tools/gcc_v9.2/gcc-9.2-arm32-eabi/arm-none-eabi/bin/objcopy.exe -S -O binary ../output/bin/CORTEXM_S32G27X_goldvip-gateway.elf ../output/bin/can-gw.bin
