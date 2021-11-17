@@ -117,6 +117,9 @@ class Greengrassv2Deployment():
                 },
                 'aws.greengrass.clientdevices.IPDetector' : {
                     'componentVersion': '2.0.2'
+                },
+                'aws.greengrass.LambdaManager' : {
+                    'componentVersion': '2.1.4'
                 }
             }
         )
