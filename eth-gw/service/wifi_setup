@@ -79,30 +79,31 @@ setup_bridge() {
     brctl addbr "${bridge_interface}"
     xl network-attach v2xdomu bridge="${bridge_interface}" mac="${mac_domu}" \
         vifname="${virtual_interface}"
-    brctl addif "${bridge_interface}" "${wifi_interface}"
 }
 
 del_bridge() {
     xl network-detach v2xdomu ${mac_domu} || true
-    brctl delif "${bridge_interface}" "${wifi_interface}" || true
     ifconfig "${bridge_interface}" down || true
     brctl delbr "${bridge_interface}" || true
 }
 
 get_ip_wifi() {
-    ifconfig "${wifi_interface}" 0.0.0.0
-    udhcpc -i"${bridge_interface}"
-    ifconfig "${bridge_interface}":1 "${dom0_ip}" netmask 255.255.255.0 up
+    udhcpc -i"${wifi_interface}"
+    ifconfig "${bridge_interface}" "${dom0_ip}" netmask 255.255.255.0 up
 }
 
-set_iptables() {
-    iptables -t nat -A PREROUTING --source "${domU_ip}" -j DNAT \
-        --to-destination "${dom0_ip}"
+# Forward packet from domU bridge to Wi-Fi interface
+set_forwarding_packet_rule() {
+    echo 1 > /proc/sys/net/ipv4/ip_forward
+    iptables -t nat -A POSTROUTING -o "${wifi_interface}" -j MASQUERADE
+    iptables -A FORWARD -i "${bridge_interface}" -o "${wifi_interface}" -j ACCEPT
 }
 
-del_iptables() {
-    iptables -t nat -D PREROUTING --source "${domU_ip}" -j DNAT \
-        --to-destination "${dom0_ip}" || true
+# Clean setup of forwarding packet
+clean_forwarding_packet_rule() {
+    echo 0 > /proc/sys/net/ipv4/ip_forward
+    iptables -t nat -D POSTROUTING -o "${wifi_interface}" -j MASQUERADE || true
+    iptables -D FORWARD -i "${bridge_interface}" -o "${wifi_interface}" -j ACCEPT || true
 }
 
 setup_dhcp_server() {
@@ -128,7 +129,7 @@ setup_network_domU() {
 
 clean_up() {
     del_bridge
-    del_iptables
+    clean_forwarding_packet_rule
 }
 
 #Parsing config file to get network interface
@@ -149,7 +150,7 @@ do_start() {
     setup_wifi
     setup_bridge
     get_ip_wifi
-    set_iptables
+    set_forwarding_packet_rule
     setup_dhcp_server
     setup_network_domU
 }
