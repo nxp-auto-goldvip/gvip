@@ -13,5 +13,8 @@ set_trap
 flush_ip
 delete_bridge
 delete_pfe_fast_path
+# stop dhcpcd on pfe0 and pfe2
+dhcpcd -x pfe2 || true
+dhcpcd -x pfe0 || true
 delete_log
 exit
