@@ -138,7 +138,7 @@ Setting SW12 to ON-OFF will prevent the SJA1110 application to be loaded, and th
 default SJA1110 firmware will run instead.
 
 To restart the SJA1110 telemetry after a reboot rerun the provisioning script
-with the ``--setup-sja`` option, as described in chapter :ref:'config-telemetry-after-reboot'.
+with the ``--setup-sja`` option, as described in chapter :ref:`config-telemetry-after-reboot`.
 
 Chapter :ref:`sja1110-telemetry-application` contains more details about the SJA1110 application.
 
