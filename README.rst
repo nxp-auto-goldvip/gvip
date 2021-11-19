@@ -37,10 +37,12 @@ u-boot + Linux from SD-card. For trying out Ethernet and cloud telemetry
 use cases you can skip the boot-loader deployment from next section. However,
 for CAN use cases you need to follow the steps from next section too.
 
-Deploy real-time boot-loader
+.. _deploying_realtime_bootloader:
+
+Deploy Real Time Bootloader
 ----------------------------
 
-The real-time boot-loader runs on Cortex-M7-0 and is loaded from QSPI NOR flash.
+The real time bootloader runs on Cortex-M7-0 and is loaded from QSPI NOR flash.
 It's main function is to load u-boot on Cortex-A53 cores and the real-time
 applications on Cortex-M7 cores.
 
