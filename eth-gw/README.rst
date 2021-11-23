@@ -10,21 +10,27 @@ The Ethernet gateway currently supports the following use cases:
 Both use cases can be run either in slow-path mode with Cortex-A53 cores
 handling the forwarding or in fast path mode on SJA1110A switch without any
 load on A53 cores.
+For the case of Cortex-M7 forwarding only the L3 option is available since
+the routing can be done only on IP level in the Autosar COM stack.
 
 GoldVIP provides scripts that can be used to measure performance in slow-path and
-fast-path mode for both UDP and TCP traffic generated with iperf3 from host PC.
-Slow-path means the traffic is routed by Linux running on A53 cores. Fast-path
-means the data-path traffic is routed by PFE (Packet Forwarding Engine) or
+fast-path mode for both UDP and TCP traffic generated with iperf3(python for M7
+use case) from host PC.
+Slow-path means the traffic is routed by Linux running on A53 cores or AUTOSAR COM
+stack running on M7 cores. 
+Fast-path means the data-path traffic is routed by PFE (Packet Forwarding Engine) or
 SJA1110 companion switch from the board.
 
 Prerequisites
 -------------
 
  - S32G-VNP-RDB2 board running GoldVIP images.
- - PC with 2 Ethernet ports, running Ubuntu 18.04 (with iperf3, minicom,
-   iproute2) or a built GoldVIP Docker image that already contains all the necessary tools.
+ - PC with 2 Ethernet ports, running Ubuntu 18.04 (with iperf3, minicom, iproute2, 
+   python3) or a built GoldVIP Docker image that already contains all the necessary tools.
 
-Running the slow-path use cases
+.. _running_A53_slow_path:
+
+Running the A53 slow-path use cases
 -------------------------------
 
 1. Connect one host PC ETH port to the board's SJA1110A switch Port 2.
@@ -52,11 +58,30 @@ Running the slow-path use cases
    Note: The script is connecting to target console via /dev/ttyUSB0. In case
    tty port is different on your PC, specify it explicitly with -u argument,
    e.g., -u /dev/ttyUSB1
+   
+Running the M7 slow-path use cases
+-------------------------------
 
+1. Follow steps 1-3 from :ref:`running_A53_slow_path`. 
+
+2. Run on host PC eth-slow-path-m7-host.sh script to measure the performance of
+   ethernet forwarding between pfe0 and pfe2 but through the Autosar COM stack
+   running on M7 core::
+
+    sudo ./eth-slow-path-m7-host.sh -l 10 -d full -t UDP <eth0> <eth1>
+
+   The above command is measuring throughput between PC eth0 and eth1 that are
+   connected to the board pfe0 and pfe2 for a test length of 10 seconds(*-l 10*)
+   in full duplex mode (*-d full*), with UDP traffic (*-t UDP*) with default packet 
+   size (ETH MTU). Use *-h* option to list all available options.
+
+   Note: run ``ip a`` command on your host PC to find out the exact names of the
+   interfaces <eth0> and <eth1> connected to the board.
+   
 Running the PFE fast-path use cases
 -----------------------------------
 
-1. Follow steps 1-3 from previous section
+1. Follow steps 1-3 from :ref:`running_A53_slow_path`.
 
 2. Run on host PC eth-pfe-fast-path-host.sh script to measure the same performance
    scenarios as above but this time offloaded in PFE without involving A53 core::
