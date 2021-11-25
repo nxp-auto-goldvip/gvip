@@ -47,32 +47,25 @@ It's main function is to load u-boot on Cortex-A53 cores and the real-time
 applications on Cortex-M7 cores.
 
 To write boot-loader in NOR flash, first boot from SD-card using the above
-SD-card image, stop in u-boot console when prompted, and run the following commands:
+SD-card image, stop in u-boot console when prompted, and run the following command,
+which writes all the images in flash::
 
-Load QSPI driver::
+    run write_goldvip_images
 
-    sf probe 6:0
+This operation shall take at most 20 seconds. It is also possible to update images in flash 
+individually:
 
-Update boot-loader image::
+1. Update boot-loader image::
 
-    setenv image boot-loader
-    run loadimage
-    sf erase 0x0 +${filesize}
-    sf write ${loadaddr} 0x0 ${filesize}
+    run write_bootloader
 
-Update U-Boot image::
+2. Update U-Boot image::
 
-    setenv image u-boot.bin
-    run loadimage
-    sf erase 0x00100000 +${filesize}
-    sf write ${loadaddr} 0x00100000 ${filesize}
+    run write_uboot
 
-Update CAN-GW binary::
+3. Update CAN-GW binary::
 
-    setenv image can-gw.bin
-    run loadimage
-    sf erase 0x00200000 +${filesize}
-    sf write ${loadaddr} 0x00200000 ${filesize}
+    run write_cangw
 
 After all the binaries are written, power off the board, configure the DIP switches
 for NOR Flash Boot mode (set SW4.7 to OFF) and then power on the board.
