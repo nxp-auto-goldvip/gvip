@@ -68,4 +68,7 @@ individually:
     run write_cangw
 
 After all the binaries are written, power off the board, configure the DIP switches
-for NOR Flash Boot mode (set SW4.7 to OFF) and then power on the board.
+for NOR Flash Boot mode (set SW4.7 to OFF) and then power on the board. 
+
+**Note**: It is recommended to setup SW12 to ON-ON position in order to 
+have the SJA telemetry application loaded to the board by Linux.

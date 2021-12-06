@@ -123,16 +123,17 @@ SJA1110 Telemetry Setup
 
 Steps needed to enable SJA1110 telemetry:
 
-1. Connect the SJA1110 application to the internet using the P4 ethernet port
+1. Connect the SJA1110 to the internet using the P4 ethernet port
    on the board (See Appendix A). The SJA1110 application and v2xdomu will need
    to be connected to the same local network.
-2. Set SW12 to ON-ON position.
-3. Run the provisioning script (described in chapter :ref:`connecting-the-board-to-aws`)
+2. Connect the GMAC0 port to the same network as the SJA1110.
+3. Make sure that SW12 is set to ON-ON position. If not, set it to ON-ON and reboot the board.
+4. Run the provisioning script (described in chapter :ref:`connecting-the-board-to-aws`)
    with the ``--setup-sja`` option.
 
 Notes:
-You can connect the GMAC0 port either to P2A or P2B to access the internet through
-the SJA1110 switch, or directly into the router or switch the P4 port is connected to.
+You can connect the GMAC0 port to P2A or P2B to access the internet through the SJA1110 switch,
+but if this type of connection is used, the SJA fast path cannot be used any longer.
 
 Setting SW12 to ON-OFF will prevent the SJA1110 application to be loaded, and the
 default SJA1110 firmware will run instead.
@@ -225,7 +226,7 @@ You will now see the live telemetry data from your board.
 Testing the Telemetry Application
 ---------------------------------
 
-1. Log into the Domain-0 virtual machine as described in :ref:`xen_hypervisor` chapter.
+1. Log into the Domain-0 virtual machine using ``CTRL+]``.
 
 2. Simulate core load:
 
@@ -255,7 +256,7 @@ The Greengrass V2 Nucleus does not start automatically between reboots. The netw
 is not persistent between reboots, so it must be recreated for internet connection. To restart
 the Greengrass V2 Nucleus and configure the network:
 
-- Log into the v2xdomu virtual machine as described in :ref:`xen_hypervisor` chapter.
+- Log into the v2xdomu virtual machine using the command: ``xl console v2xdomu``.
 
 - The provision script can be used again to configure the network interface that will be used by
   Greengrass:
