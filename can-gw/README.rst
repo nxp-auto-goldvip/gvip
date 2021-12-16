@@ -28,7 +28,9 @@ The CAN gateway currently supports the following use cases:
    When the canperf script detects that the injected packets will also be sent to the AUX0 interface, a network service
    listener, namely "avtp_listener", will start to capture AVTP packets and log them to a file. In this case, the canperf
    script will also report how much data was captured by the ethernet service listener.
-
+ - CAN to ETH routing through M7 core.
+   The CAN packets are sent from Linux and received on the M7 CAN driver from where they are passed to the Autosar COM
+   stack which forwards it to the PFE2. The format used for the ethernet packets is UDP.
 
 Prerequisites
 -------------
@@ -40,6 +42,8 @@ Running the measurements
 
    These commands will measure throughput of CAN frames routing between the configured CAN ports (``-t can0 -r can1``).
    The used CAN frames are 8(``-s 8``) to 64-bytes in size. A configured ms gap(``-g 10``) is used between consecutive frames.
+
+.. _can_gw_hw_setup:
 
 2. HW setup:
 
@@ -85,7 +89,7 @@ Running the measurements
 
         ex: ``./can-fast-path.sh``
 
-   d) For can to ethernet route:
+   d) For can to ethernet route fast path:
 
       - Use the following arguments combinations which match the GoldVIP default configuration for CAN-GW
 
@@ -99,6 +103,29 @@ Running the measurements
         ex: ``./can-to-eth.sh``
 
    Note: Please run ``./canperf.sh -h`` to see all the available options.
+
+4. Running CAN to ethernet slow path:
+
+   a) Do the HW setup from :ref:`can_gw_hw_setup`
+   
+   b) Connect one host PC ETH port to the board's PFE-MAC2 ETH port.
+
+   c) Start GoldVIP Docker container on PC (see :ref:`building_goldvip_docker_image` chapter)
+
+   d) Run on host PC can-to-eth-slow-path-m7-host.sh script to measure performance for CAN to
+      ethernet routing, with various payload sizes and time gaps between CAN frames e.g.::
+
+        sudo ./eth-slow-path-host.sh -s 64 -g 10 <can> <eth>
+
+
+      Note: run ``ip a`` command on your host PC to find out the exact name of the
+      ethernet interface <eth> connected to the board.
+      
+      Note: The script is connecting to target console via */dev/ttyUSB0*. In case
+      tty port is different on your PC, specify it explicitly with *-u* argument,
+      e.g., *-u /dev/ttyUSB1*. Also, no other process should use the port during the test.
+
+ 
 
 Updating the EB AutoCore
 ------------------------

@@ -12,7 +12,7 @@
 # Copyright 2021 NXP
 
 SERVER_PATH=/home/root/can-gw/avtp_listener.py
-DEFAULT_LOG_FILE=/tmp/can2eth.log
+DEFAULT_LOG_FILE=/tmp/can2eth_fast_path.log
 
 # Service start function
 start_service() {

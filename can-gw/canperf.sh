@@ -31,7 +31,7 @@ tx_log=/tmp/cangen.log
 rx_log=/tmp/candump.log
 
 # Log used for received CAN frames over ETH
-can_to_eth_log=/tmp/can2eth.log
+can_to_eth_log=/tmp/can2eth_fast_path.log
 
 # CAN frame data size in bytes
 can_frame_data_size=notset
