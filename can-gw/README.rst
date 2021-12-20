@@ -43,8 +43,6 @@ Running the measurements
    These commands will measure throughput of CAN frames routing between the configured CAN ports (``-t can0 -r can1``).
    The used CAN frames are 8(``-s 8``) to 64-bytes in size. A configured ms gap(``-g 10``) is used between consecutive frames.
 
-.. _can_gw_hw_setup:
-
 2. HW setup:
 
    Connect Flex-CAN0 to LLCE-CAN0 and Flex-CAN1 to LLCE-CAN1. To locate the CAN
@@ -106,13 +104,11 @@ Running the measurements
 
 4. Running CAN to ethernet slow path:
 
-   a) Do the HW setup from :ref:`can_gw_hw_setup`
-   
-   b) Connect one host PC ETH port to the board's PFE-MAC2 ETH port.
+   a) Connect one host PC ETH port to the board's PFE-MAC2 ETH port.
 
-   c) Start GoldVIP Docker container on PC (see :ref:`building_goldvip_docker_image` chapter)
+   b) Start GoldVIP Docker container on PC (see :ref:`building_goldvip_docker_image` chapter)
 
-   d) Run on host PC can-to-eth-slow-path-m7-host.sh script to measure performance for CAN to
+   c) Run on host PC can-to-eth-slow-path-m7-host.sh script to measure performance for CAN to
       ethernet routing, with various payload sizes and time gaps between CAN frames e.g.::
 
         sudo ./eth-slow-path-host.sh -s 64 -g 10 <can> <eth>
