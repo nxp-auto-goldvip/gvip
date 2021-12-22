@@ -284,7 +284,7 @@ run_perf() {
         # Clear file.
         : >"${m7_load_file}"
         # Start M7 core load measurement
-        python3 "$(dirname "${BASH_SOURCE[0]}")/m7_core_load.py" \
+        m7_core_load.py \
         --outfile "${m7_load_file}" \
         --monitored-cores "M7_0" "M7_1" \
         --time $((time_gen / 1000)) &
