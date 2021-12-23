@@ -123,23 +123,39 @@ Running the measurements
 
  
 
-Updating the EB tresos AutoCore
--------------------------------
 
-The distributed CAN-GW binary is compiled from an EB tresos AutoCore Platform that requires some patches and updates for the tresos plugins to get the same functionality as in the distributed binary image:
+Building the M7 Application
+---------------------------
 
-1. Patch the OS tresos plugin:
+The distributed CAN-GW binary is compiled from an EB tresos AutoCore Platform that requires some updates for the tresos plugins to get the same functionality as in the distributed binary image:
 
-These patches can be found under `<GoldVIP_install_path>/configuration/can-gw/patches` and they shall be applied on the OS plugin that can be found under `<EB_tresos_install_path>/plugins/Os_TS_T40D33M6I0R0`.
-There are various ways of applying these patches, such as using the UNIX `patch` tool (i.e., ``patch -p0 < <file.patch>``) or a git-specific command like `git apply` (i.e., ``git apply -p0 <file.patch>``).
-For example, one can use the following commands to apply all the existing patches::
+1. Install the Elektrobit tresos ACP version provided with the GoldVIP release.
 
-  cd <EB_tresos_install_path>/plugins/Os_TS_T40D33M6I0R0
-  git apply -p0 <GoldVIP_install_path>/configuration/can-gw/patches/*.patch
-  
-2. Update NXP plugins:
+2. Download S32 Design Studio v3.4 from your nxp.com account and install it. We need this for the compiler used in the build process.
 
-Replace the `McalExt_TS_T40D33M1I0R0` plugin found in the `<EB_tresos_install_path>/plugins/` directory with 
-the contents of the `McalExt_TS_T40D33M1I0R0.zip` archive, which can be found in the `<GoldVIP_install_path>/configuration/can-gw/plugins` directory. 
+3. Update NXP plugins:
 
-**Note**: EB tresos needs to be restarted after performing this change, in order to load the newly installed plugins. 
+   Replace the `McalExt_TS_T40D33M1I0R0` plugin found in the `<EB_tresos_install_path>/plugins/` directory with
+   the contents of the `McalExt_TS_T40D33M1I0R0.zip` archive, which can be found in the `<GoldVIP_install_path>/configuration/can-gw/plugins` directory. 
+
+   **Note**: EB tresos needs to be restarted after performing this change, in order to load the newly installed plugins. 
+
+4. Update the build environment:
+   
+   Adapt `<GoldVIP_install_path>/configuration/can-gw/workspace/goldvip-gateway/util/launch_cfg.bat` to your particular system needs.
+   In particular *TOOLPATH_COMPILER* needs to point to the compiler that you installed at step 2 and *TRESOS_BASE* needs to point to tresos install location from step 1.
+
+5. Open tresos and import *goldvip-gateway* project located at `<GoldVIP_install_path>/configuration/can-gw/workspace/goldvip-gateway`.
+
+6. If you have a valid system model (`SystemModel2.tdb` file) you can right click the project and hit the generate button. Otherwise, if the system model
+   is not valid anymore or if you have done any changes to the configuration it is best to use *CodeGenerator* wizard. You can launch this wizard by going
+   in `Project->Unattended Wizards` tresos menu and select *Execute multiple tasks(CodeGenerator)* entry.
+
+7. You should be ready to build the project. Open a Command Prompt and run the following commands::
+   
+     cd <GoldVIP_install_path>/configuration/can-gw/workspace/goldvip-gateway/util
+     launch.bat make -j
+     
+   To create a binary file from elf run the following command in the same Command Prompt::
+   
+     C:/NXP/S32DS.3.4/S32DS/build_tools/gcc_v9.2/gcc-9.2-arm32-eabi/arm-none-eabi/bin/objcopy.exe -S -O binary ../output/bin/CORTEXM_S32G27X_goldvip-gateway.elf ../output/bin/can-gw.bin
