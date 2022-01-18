@@ -6,7 +6,7 @@
 Script used for deploying the Greengrass certificate on the board and
 starting a new Greengrass group deployment.
 
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import argparse
@@ -79,7 +79,7 @@ class Greengrassv2Deployment():
             deploymentName=self.deployment_name,
             components={
                 'aws.greengrass.Nucleus': {
-                    'componentVersion': '2.4.0',
+                    'componentVersion': '2.5.3',
                     'configurationUpdate': {
                         'merge': json.dumps(configs['nucleus']
                                             ).replace("MQTT_PORT", str(self.mqtt_port)
@@ -87,7 +87,7 @@ class Greengrassv2Deployment():
                     }
                 },
                 'aws.greengrass.Cli' : {
-                    'componentVersion': '2.4.0'
+                    'componentVersion': '2.5.3'
                 },
                 self.stack_name + ".GoldVIP.Telemetry" : {
                     'componentVersion': '1.0.0',
@@ -97,17 +97,17 @@ class Greengrassv2Deployment():
                     }
                 },
                 'aws.greengrass.clientdevices.mqtt.Bridge' : {
-                    'componentVersion': '2.0.1',
+                    'componentVersion': '2.1.0',
                     'configurationUpdate': {
                         'merge': json.dumps(configs['bridge']
                                             ).replace('STACK_NAME', self.stack_name),
                     }
                 },
                 'aws.greengrass.clientdevices.mqtt.Moquette' : {
-                    'componentVersion': '2.0.1'
+                    'componentVersion': '2.0.2'
                 },
                 'aws.greengrass.clientdevices.Auth' : {
-                    'componentVersion': '2.0.2',
+                    'componentVersion': '2.0.4',
                     'configurationUpdate': {
                         'merge': json.dumps(configs['auth']).replace(
                             'STACK_NAME', self.stack_name).replace(
@@ -116,10 +116,10 @@ class Greengrassv2Deployment():
                     }
                 },
                 'aws.greengrass.clientdevices.IPDetector' : {
-                    'componentVersion': '2.0.2'
+                    'componentVersion': '2.1.1'
                 },
                 'aws.greengrass.LambdaManager' : {
-                    'componentVersion': '2.1.4'
+                    'componentVersion': '2.2.1'
                 }
             }
         )
