@@ -11,7 +11,7 @@ Both use cases can be run either in slow-path mode with Cortex-A53 cores
 handling the forwarding or in fast path mode on SJA1110A switch without any
 load on A53 cores.
 For the case of Cortex-M7 forwarding only the L3 option is available since
-the routing can be done only on IP level in the Autosar COM stack.
+the routing can be done only on IP level in the AUTOSAR COM stack.
 
 GoldVIP provides scripts that can be used to measure performance in slow-path and
 fast-path mode for both UDP and TCP traffic generated with iperf3(python for M7
@@ -24,14 +24,14 @@ SJA1110 companion switch from the board.
 Prerequisites
 -------------
 
- - S32G-VNP-RDB2 board running GoldVIP images.
+ - S32G Reference Design Board or GoldBox running GoldVIP images.
  - PC with 2 Ethernet ports, running Ubuntu 18.04 (with iperf3, minicom, iproute2, 
    python3) or a built GoldVIP Docker image that already contains all the necessary tools.
 
 .. _running_A53_slow_path:
 
 Running the A53 slow-path use cases
--------------------------------
+-----------------------------------
 
 1. Connect one host PC ETH port to the board's SJA1110A switch Port 2.
 
@@ -52,21 +52,21 @@ Running the A53 slow-path use cases
    traffic (-t UDP) with default packet size (ETH MTU). Use -h option to
    list all available options.
 
-   Note: run ``ip a`` command on your host PC to find out the exact names of the
+   **Note**: run ``ip a`` command on your host PC to find out the exact names of the
    interfaces <eth0> and <eth1> connected to the board.
 
-   Note: The script is connecting to target console via /dev/ttyUSB0. In case
+   **Note**: The script is connecting to target console via /dev/ttyUSB0. In case
    tty port is different on your PC, specify it explicitly with -u argument,
    e.g., -u /dev/ttyUSB1
    
-Running the M7 slow-path use cases
--------------------------------
+Running the Cortex-M7 slow-path use cases
+-----------------------------------------
 
 1. Follow steps 1-3 from :ref:`running_A53_slow_path`. 
 
 2. Run on host PC eth-slow-path-m7-host.sh script to measure the performance of
-   ethernet forwarding between pfe0 and pfe2 but through the Autosar COM stack
-   running on M7 core::
+   Ethernet packet forwarding between pfe0 and pfe2 but through the AUTOSAR COM stack
+   running on Cortex-M7 core::
 
     sudo ./eth-slow-path-m7-host.sh -l 10 -d full -t UDP <eth0> <eth1>
 
@@ -75,7 +75,7 @@ Running the M7 slow-path use cases
    in full duplex mode (*-d full*), with UDP traffic (*-t UDP*) with default packet 
    size (ETH MTU). Use *-h* option to list all available options.
 
-   Note: run ``ip a`` command on your host PC to find out the exact names of the
+   **Note**: run ``ip a`` command on your host PC to find out the exact names of the
    interfaces <eth0> and <eth1> connected to the board.
    
 Running the PFE fast-path use cases
@@ -103,9 +103,13 @@ Running the SJA1110A fast-path use cases
    Same notes apply as in previous sections.
 
 Running the IDPS slow-path use cases
-------------------------------------------------------------------------
+------------------------------------
 
-This usecase plays prerecorded network traffic from PC, containing valid and invalid/malicious SOME/IP messages to prove the IDPS (Intrusion Detection and Prevention System) running on target. The IDPS is provided by Argus Cyber Security (https://argus-sec.com/) and it is only a trial of the full product. For the full feature set of this IDPS please contact Argus.
+This use case plays prerecorded network traffic from PC, containing valid and
+invalid/malicious SOME/IP messages to exercise the IDPS (Intrusion Detection
+and Prevention System) running on target. The IDPS is provided by Argus Cyber Security (https://argus-sec.com/)
+and it is only a demonstration of the intrusion detection capability of the product.
+For information on the full IDPS feature set support for S32G, please contact Argus.
 
 1. Connect one host PC ETH port to the board's PFE-MAC2
 
@@ -116,10 +120,10 @@ This usecase plays prerecorded network traffic from PC, containing valid and inv
 
      sudo ./eth-idps-slow-path-host.sh <eth-interface>
 
-   Note: Use -h option to see all available arguments.
+   **Note**: Use -h option to see all available arguments.
 
 Connecting to a Wi-Fi network
--------------------------------
+-----------------------------
 
 1. Insert the Wireless Adapter into the board's USB port.
 
