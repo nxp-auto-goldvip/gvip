@@ -57,6 +57,9 @@ payload_data="i"
 readonly integer_regex="^[0-9]+$"
 readonly hex_regex="^[0-9A-Fa-f]+$"
 
+# The variable that specifies whether the CAN RX interface is used or not
+use_rx_interface="true"
+
 # Set trap handler for Ctrl-C and ERR signal
 set_trap() {
         trap 'stop_cangen ; exit 1' INT
@@ -101,7 +104,7 @@ check_input() {
                         if [[ -z "${tx_id}" ]] || [[ 10#${tx_id} -lt 0 ]] || [[ 10#${tx_id} -gt 2047 ]]; then
                                 echo "CAN ID must be greater than or equal to 0 and less than 2048"
                                 exit 1
-                        fi                        
+                        fi
                         ;;
                 -o | --rx-id)
                         shift
@@ -113,7 +116,7 @@ check_input() {
                         if [[ -z "${rx_id}" ]] || [[ 10#${rx_id} -lt 0 ]] || [[ 10#${rx_id} -gt 2047 ]]; then
                                 echo "CAN ID must be greater than or equal to 0 and less than 2048"
                                 exit 1
-                        fi                        
+                        fi
                         ;;
                 -t | --can-tx)
                         shift
@@ -121,7 +124,7 @@ check_input() {
                         if [[ "${can_tx_interface}" != "can0" ]] && [[ "${can_tx_interface}" != "can1" ]]; then
                                 echo "Transmit interface is incorrect!"
                                 exit 1
-                        fi                        
+                        fi
                         ;;
                 -r | --can-rx)
                         shift
@@ -129,7 +132,7 @@ check_input() {
                         if [[ "${can_rx_interface}" != "can0" ]] && [[ "${can_rx_interface}" != "can1" ]] && [[ "{$can_rx_interface}" == "${can_tx_interface}" ]]; then
                                 echo "Receive interface is incorrect!"
                                 exit 1
-                        fi                        
+                        fi
                         ;;
                 -s | --size)
                         shift
@@ -173,16 +176,35 @@ check_input() {
                 esac
                 shift
         done
-        # Check if both CAN Ids are set by user
-        if [[ "$tx_id" == "notset" ]] || [[ "$rx_id" == "notset" ]]; then
-                echo "CAN routing message IDs should be set by user."
+        # Check if CAN tx_id is set by user
+        if [[ "$tx_id" == "notset" ]]; then
+                echo "CAN routing message tx_id should be set by user."
                 usage
                 exit 1
         fi
 
-        # Check if both CAN interfaces are set by user
-        if [[ "${can_tx_interface}" == "notset" ]] || [[ "${can_rx_interface}" == "notset" ]]; then
-                echo "CAN routing interfaces should be set by user."
+        # Check if CAN tx_interface is set by user
+        if [[ "${can_tx_interface}" == "notset" ]]; then
+                echo "CAN routing tx_interface should be set by user."
+                usage
+                exit 1
+        fi
+
+        # Check if rx_id and can_rx_interface are not set by user
+        if [[ "${rx_id}" == "notset" ]] && [[ "${can_rx_interface}" == "notset" ]]; then
+                use_rx_interface="false" 
+        fi
+
+        # Check if CAN rx_id is set by user
+        if [[ "${rx_id}" == "notset" ]] && [[ "${can_rx_interface}" != "notset" ]]; then
+                echo "CAN routing message rx_id should be set by user."
+                usage
+                exit 1
+        fi
+
+        # Check if CAN rx_interface is set by user
+        if [[ "${rx_id}" != "notset" ]] && [[ "${can_rx_interface}" == "notset" ]]; then
+                echo "CAN routing message rx_interface should be set by user."
                 usage
                 exit 1
         fi
@@ -208,20 +230,27 @@ check_input() {
                 exit 1
         fi
 
-        rx_id=$(printf %x "${rx_id}")
         tx_id=$(printf %x "${tx_id}")
-        echo "Transmit CAN id         : ${tx_id}"
-        echo "Receive CAN id          : ${rx_id}"
-        echo "CAN transmit interface  : ${can_tx_interface}"
-        echo "CAN receive interface   : ${can_rx_interface}"
+        if [[ "${use_rx_interface}" == "true" ]]; then
+                rx_id=$(printf %x "${rx_id}")
+                echo "Transmit CAN id         : ${tx_id}"
+                echo "Receive CAN id          : ${rx_id}"
+                echo "CAN transmit interface  : ${can_tx_interface}"
+                echo "CAN receive interface   : ${can_rx_interface}"
+        else
+                echo "Transmit CAN id         : ${tx_id}"
+                echo "CAN transmit interface  : ${can_tx_interface}"
+        fi
 }
 
 # Bring CAN interfaces up
 setup_can() {
         ip link set "${can_tx_interface}" down
-        ip link set "${can_rx_interface}" down
         ip link set "${can_tx_interface}" up type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on
-        ip link set "${can_rx_interface}" up type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on
+        if [[ "${use_rx_interface}" == "true" ]]; then
+                ip link set "${can_rx_interface}" down
+                ip link set "${can_rx_interface}" up type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on
+        fi
 
         if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
                 service avtp_listener restart ${can_to_eth_log}
@@ -229,12 +258,16 @@ setup_can() {
         sleep 1
 }
 
-# Terminate cangen and candump processes
+# Terminate cangen processes
 stop_cangen() {
         disown ${pid_cangen}
         kill ${pid_cangen} 2>/dev/null
         # wait for in-flight frames to be processed by candump
         sleep 1
+}
+
+# Terminate candump processes
+stop_candump() {
         disown ${pid_candump}
         kill ${pid_candump} 2>/dev/null
 
@@ -275,8 +308,10 @@ run_perf() {
 
         # Run candump on can_rx_interface interface expecting CAN id rx_id. Swap byte
         # order argument (-S) is used to facilitate incremental payload checking
-        candump -S "${can_rx_interface}","${rx_id}":"${id_filter}" >${rx_log} &
-        pid_candump=$!
+        if [[ "${use_rx_interface}" == "true" ]]; then
+                candump -S "${can_rx_interface}","${rx_id}":"${id_filter}" >${rx_log} &
+                pid_candump=$!
+        fi
 
         # Get time base
         start_time_ms=$(date +%s%3N)
@@ -304,6 +339,10 @@ run_perf() {
         done
         stop_cangen
 
+        if [[ "${use_rx_interface}" == "true" ]]; then
+                stop_candump
+        fi
+
         # Read the series of M7 core loads and compute their average
         M7_0_LOAD=$(compute_core_load "${m7_load_file}" "M7_0")
         M7_1_LOAD=$(compute_core_load "${m7_load_file}" "M7_1")
@@ -312,38 +351,51 @@ run_perf() {
 # Display report by parsing the previously generated logs
 display_report() {
         echo "Generating report..."
-        tx_frames_count=$(wc -l ${tx_log} | awk '{ print $1 }')
-        rx_frames_count=$(wc -l ${rx_log} | awk '{ print $1 }')
+        tx_frames_count=$(wc -l ${tx_log} | awk '{ print $1 }')        
         tx_bytes=$(awk -F'[][]' '{print $2}' ${tx_log} | awk '{ sum += $1 } END { print sum }')
         if [[ ! "${tx_bytes}" =~ ${integer_regex} ]]; then
                 echo "No frames have been transmitted. Please check your connections."
                 tx_bytes=0
         fi
 
-        rx_bytes=$(awk -F'[][]' '{print $2}' ${rx_log} | awk '{ sum += $1 } END { print sum }')
-        if [[ ! "${rx_bytes}" =~ ${integer_regex} ]]; then
-                rx_bytes=0
-                echo "No frames have been received. Please check the connections or reset the board."
+        if [[ "${use_rx_interface}" == "true" ]]; then
+                rx_frames_count=$(wc -l ${rx_log} | awk '{ print $1 }')
+                rx_bytes=$(awk -F'[][]' '{print $2}' ${rx_log} | awk '{ sum += $1 } END { print sum }')
+                if [[ ! "${rx_bytes}" =~ ${integer_regex} ]]; then
+                        rx_bytes=0
+                        echo "No frames have been received. Please check the connections or reset the board."
+                fi
+
+                echo "#############################################################"
+                echo "Tx frames:                ${tx_frames_count}"
+                echo "Rx frames:                ${rx_frames_count}"
+                echo "Tx data transfer:         ${tx_bytes} bytes"
+                echo "Rx data transfer:         ${rx_bytes} bytes"
+                echo "Tx frames/s:              $((tx_frames_count * 1000 / time_gen))"
+                echo "Rx frames/s:              $((rx_frames_count * 1000 / time_gen))"
+                echo "Tx throughput:            $((tx_bytes * 8 / time_gen)) Kbit/s"
+                echo "Rx throughput:            $((rx_bytes * 8 / time_gen)) Kbit/s"
+                echo "Lost frames:              $((tx_frames_count - rx_frames_count))"
+                echo "M7_0 core load:           ${M7_0_LOAD}%"
+                echo "M7_1 core load:           ${M7_1_LOAD}%"
+
+                if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
+                    can_to_eth_bytes=$(compute_can_to_eth_transfer)
+                    echo "CAN to ETH data transfer: ${can_to_eth_bytes} Bytes"
+                fi
+                echo "#############################################################"
+        else
+                echo "#############################################################"
+                echo "Tx frames:                ${tx_frames_count}"
+                echo "Tx data transfer:         ${tx_bytes} bytes"
+                echo "Tx frames/s:              $((tx_frames_count * 1000 / time_gen))"
+                echo "Tx throughput:            $((tx_bytes * 8 / time_gen)) Kbit/s"
+                echo "M7_0 core load:           ${M7_0_LOAD}%"
+                echo "M7_1 core load:           ${M7_1_LOAD}%"
+                echo "#############################################################"
         fi
 
-        echo "#############################################################"
-        echo "Tx frames:                ${tx_frames_count}"
-        echo "Rx frames:                ${rx_frames_count}"
-        echo "Tx data transfer:         ${tx_bytes} bytes"
-        echo "Rx data transfer:         ${rx_bytes} bytes"
-        echo "Tx frames/s:              $((tx_frames_count * 1000 / time_gen))"
-        echo "Rx frames/s:              $((rx_frames_count * 1000 / time_gen))"
-        echo "Tx throughput:            $((tx_bytes * 8 / time_gen)) Kbit/s"
-        echo "Rx throughput:            $((rx_bytes * 8 / time_gen)) Kbit/s"
-        echo "Lost frames:              $((tx_frames_count - rx_frames_count))"
-        echo "M7_0 core load:           ${M7_0_LOAD}%"
-        echo "M7_1 core load:           ${M7_1_LOAD}%"
 
-        if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
-            can_to_eth_bytes=$(compute_can_to_eth_transfer)
-            echo "CAN to ETH data transfer: ${can_to_eth_bytes} Bytes"
-        fi
-        echo "#############################################################"
 }
 
 set_trap
