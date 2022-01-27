@@ -39,8 +39,8 @@ for CAN use cases you need to follow the steps from next section too.
 
 .. _deploying_realtime_bootloader:
 
-Deploy Real Time Bootloader
-----------------------------
+Deploy images to Flash
+----------------------
 
 The real time bootloader runs on Cortex-M7-0 and is loaded from QSPI NOR flash.
 It's main function is to load u-boot on Cortex-A53 cores and the real-time
