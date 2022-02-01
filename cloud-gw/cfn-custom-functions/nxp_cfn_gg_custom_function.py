@@ -10,7 +10,7 @@ and, if needed, attaches a Greengrass Service Role to the AWS account.
 When 'delete' is invoked it handles the deletion of all resources
 created by this function.
 
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import json
@@ -97,7 +97,8 @@ class Greengrassv2Handler:
                     ],
                     'pinned': True,
                     'environmentVariables': {
-                        'telemetryTopic': telemetry_topic
+                        'telemetryTopic': telemetry_topic,
+                        'AppDataTopic': telemetry_topic + "/app_data"
                     },
                     'linuxProcessParams': {
                         'isolationMode': 'NoContainer',

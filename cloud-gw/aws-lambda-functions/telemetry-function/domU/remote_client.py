@@ -20,12 +20,12 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 class RemoteClient:
     """Class used for remote client abstraction."""
-    def __init__(self):
+    def __init__(self, server_config_filename="server_config"):
         """
-        :param port: port on which machine is listening
-        :param host: server host ip
+        Class constructor.
+        :param server_config_filename: Name of the server configuration file.
         """
-        server_config = self.__get_server_configuration()
+        server_config = self.__get_server_configuration(server_config_filename)
         self.__host = server_config["server_address"]
         self.__port = int(server_config["server_port"])
         self.__receive_buffer_size = int(server_config["buffer_size"])
@@ -40,14 +40,15 @@ class RemoteClient:
                     self.__host, self.__port)
 
     @staticmethod
-    def __get_server_configuration():
+    def __get_server_configuration(server_config_filename):
         """
         Retrieves the server configuration from the server_config file
+        :param server_config_filename: Name of the server configuration file.
         :return: dictionary containing the configuration parameters
         """
         server_config = dict.fromkeys(["server_address", "server_port", "buffer_size"])
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               "server_config"), 'r') as file_:
+                               server_config_filename), 'r', encoding="utf-8") as file_:
             for line in file_:
                 for key in server_config:
                     if key in line:
@@ -56,16 +57,15 @@ class RemoteClient:
 
         # check whether all configurations are present
         if not all(server_config.values()):
-            err = "Failed to retrieve configuration for server: found {0}".format(server_config)
+            err = f"Failed to retrieve configuration for server: found {server_config}"
             LOGGER.error(err)
-            raise Exception (err)
+            raise Exception(err)
         try:
             ipaddress.ip_address(server_config["server_address"])
             int(server_config["server_port"])
             int(server_config["buffer_size"])
         except ValueError as exc:
-            raise Exception("Invalid IP address provided {0}".
-                            format(server_config)) from exc
+            raise Exception(f"Invalid IP address provided {server_config}") from exc
 
         return server_config
 
@@ -89,7 +89,6 @@ class RemoteClient:
             LOGGER.error("Failed to send message to %s:%s", self.__host, self.__port)
             return False
 
-
     def __receive(self):
         """
         Method used for receiving information from remote machine. In case timeout has
@@ -100,7 +99,7 @@ class RemoteClient:
         # pylint: disable=broad-except
         except Exception:
             LOGGER.error("Failed to receive any reply from server in time")
-            return ''
+            return b''
         return received_buffer
 
     def send_fire_and_forget(self, message_buffer):

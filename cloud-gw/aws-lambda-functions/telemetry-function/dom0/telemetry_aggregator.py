@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import json
@@ -19,6 +19,7 @@ from mem_stats import MemStats
 from net_stats import NetStats
 from m7_stats import M7CoreMovingAverage
 from temperature_stats import TemperatureStats
+from app_data_collector_server import AppDataCollectorServer
 
 # Telemetry parameters
 # time interval between MQTT packets
@@ -61,6 +62,10 @@ class TelemetryAggregator:
         self.__m7_core_load.start()
         self.__stats = None
 
+        # Start the App Data Collector server in a separate thread.
+        self.__app_data_collector = AppDataCollectorServer()
+        threading.Thread(target=self.__app_data_collector.run).start()
+
     def __calculate_stats(self):
         """
         Compiles a dictionary of all telemetry statistics and
@@ -81,7 +86,7 @@ class TelemetryAggregator:
             "board_uuid_low" : get_uid()[1],
         }
 
-        tot_stats = {
+        telemetry_stats = {
             **platform_name,
             **net_stats,
             **cpu_stats,
@@ -89,6 +94,12 @@ class TelemetryAggregator:
             **m7_stats,
             **temperature_stats
         }
+
+        tot_stats = {
+            "system_telemetry": telemetry_stats,
+        }
+        # Add the application data
+        tot_stats.update(self.__app_data_collector.get_data())
 
         # Prepare stats as a string
         self.__stats = json.dumps(tot_stats)
@@ -131,7 +142,7 @@ class TelemetryAggregator:
             else:
                 # Log the updated value
                 LOGGER.info("Updated %s, new value %s",
-                    parameter_name.replace("_", " "), updated_param_value)
+                            parameter_name.replace("_", " "), updated_param_value)
         return updated_param_value
 
     def update_configuration_parameters(self, event):

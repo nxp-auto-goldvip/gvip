@@ -1,12 +1,10 @@
 #!/usr/bin/env python3.8
 # SPDX-License-Identifier: BSD-3-Clause
 # -*- coding: utf-8 -*-
-# Telemetry collector server.
-# Implements a socket on top of the V2XBR bridge.
-# Sends telemetry data to clients running on a different Virtual Machine
+# Generic collector server.
 
 """
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import ipaddress
@@ -14,43 +12,55 @@ import socket
 import os
 import time
 
-from telemetry_aggregator import TelemetryAggregator
+from abc import ABC, abstractmethod
 
-class RemoteServer:
+class RemoteServer(ABC):
     """
     Generic server listener, this class covers the basic functionality of a socket:
     create and accept incoming connections.
+    This abstract class is meant to be extended and not used directly.
     """
-    # Known commands for the server
-    GET_STATS_COMMAND = "GET_STATS"
-    SET_PARAMS_COMMAND = "SET_PARAMS"
-    # maximum simultaneous connections
-    MAX_CLIENTS=1
-    def __init__(self):
+
+    # pylint: disable=too-many-arguments
+    def __init__(self,
+                 port=None, host=None,
+                 buffer_size=None,
+                 max_clients=1,
+                 server_config_filename=None):
         """
         Class constructor
+        :param port: Port on which the server waits for incoming connections.
+        :param host: Server ip.
+        :param buffer_size: Send-receive buffer size.
+        :param max_clients: Maximum number of concurrent clients.
+        :param server_config_filename: Name of the server configuration file.
         """
-        server_config = self.__get_server_configuration()
-        # port on which the server waits for incoming connections
-        self.__port = int(server_config["server_port"])
-        # server ip
-        self.__host = server_config["server_address"]
-        # send-receive buffer size. If data size is bigger than this value
-        # it will be trimmed
-        self.__receive_buffer_size = int(server_config["buffer_size"])
         self.__sock = None
         self.__conn = None
+        self.__port = port
+        self.__receive_buffer_size = buffer_size
+
+        server_config = {}
+        if server_config_filename:
+            server_config = RemoteServer.__get_server_configuration(server_config_filename)
+            self.__port = int(server_config['server_port'])
+            self.__receive_buffer_size = int(server_config['buffer_size'])
+
+        self.__host = server_config.get('server_address', host)
+        self.__max_clients = max_clients
+
         self.__create_socket()
 
     @staticmethod
-    def __get_server_configuration():
+    def __get_server_configuration(server_config_filename):
         """
         Retrieves the server configuration from the server_config file
+        :param server_config_filename: the server configuration filename
         :return: dictionary containing the configuration parameters
         """
         server_config = dict.fromkeys(["server_address", "server_port", "buffer_size"])
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               "server_config"), 'r') as file_:
+                               server_config_filename), 'r', encoding="utf-8") as file_:
             for line in file_:
                 for key in server_config:
                     if key in line:
@@ -59,15 +69,13 @@ class RemoteServer:
 
         # check whether all configurations are present
         if not all(server_config.values()):
-            raise Exception ("Failed to retrieve configuration for server: found {0}".
-                             format(server_config))
+            raise Exception(f"Failed to retrieve configuration for server: found {server_config}")
         try:
             ipaddress.ip_address(server_config["server_address"])
             int(server_config["server_port"])
             int(server_config["buffer_size"])
         except ValueError as exc:
-            raise Exception("Invalid IP address provided {0}".
-                            format(server_config)) from exc
+            raise Exception(f"Invalid IP address provided {server_config}") from exc
 
         return server_config
 
@@ -82,12 +90,11 @@ class RemoteServer:
             try:
                 self.__sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.__sock.bind((self.__host, self.__port))
-                self.__sock.listen(self.MAX_CLIENTS)
+                self.__sock.listen(self.__max_clients)
                 break
             # pylint: disable=broad-except
             except BaseException as exc:
-                print ("Failed to open the socket for {0}:{1} {2}".
-                       format(self.__host, self.__port, repr(exc)))
+                print(f"Failed to open the socket for {self.__host}:{self.__port} {repr(exc)}")
                 time.sleep(10)
 
     def __accept(self):
@@ -100,41 +107,24 @@ class RemoteServer:
         self.__conn, _ = self.__sock.accept()
         return self.__conn.recv(self.__receive_buffer_size).decode()
 
-    def __send(self, data):
+    def send(self, data):
         """
         Sends data to client
-        :return:
+        :param data: Payload to be send to the client.
         """
         self.__conn.send(data.encode())
 
-    def dispatch(self, data):
-        """
-        This method dispatches messages received from clients and depending on the message type,
-        command will be processed accordingly
-        :param data: command received from clients.
-        """
-        if not data:
-            return
-
-        if data.startswith(self.GET_STATS_COMMAND):
-            # reply with stats
-            self.__send(AGGREGATOR.get_stats())
-
-        if data.startswith(self.SET_PARAMS_COMMAND):
-            # update configuration parameters
-            AGGREGATOR.update_configuration_parameters(
-                data.replace(self.SET_PARAMS_COMMAND, ""))
-
     def run(self):
         """
-        Class runnable, will be called whenever user wants to start the server listener
+        Class runnable, will be called whenever the user wants to start the server listener
         """
         while True:
             received_data = self.__accept()
             self.dispatch(received_data)
 
-if __name__ == "__main__":
-    # Start telemetry collector
-    AGGREGATOR = TelemetryAggregator()
-    AGGREGATOR.run()
-    RemoteServer().run()
+    @abstractmethod
+    def dispatch(self, data):
+        """
+        Abstract dispatch method.
+        :param data: Data received from client.
+        """

@@ -78,6 +78,28 @@ def extract_parameter(message, parameter_name, parameter_type, min_value, defaul
             LOGGER.info("Updated %s", parameter_name.replace("_", " "))
     return updated_param_value
 
+def publish_to_topic(topic, payload, qos=model.QOS.AT_LEAST_ONCE):
+    """
+    Publish a payload to an MQTT topic.
+    :param topic: Mqtt topic.
+    :param payload: Payload to be sent.
+    :param qos: Quality of service.
+    """
+    try:
+        operation = IPC_CLIENT.new_publish_to_iot_core()
+
+        operation.activate(model.PublishToIoTCoreRequest(
+            topic_name=topic,
+            qos=qos,
+            payload=payload,
+        ))
+
+        operation.get_response().result(timeout=1.0)
+    # pylint: disable=broad-except
+    except Exception as exception:
+        LOGGER.error("Failed to publish message: %s", repr(exception))
+
+
 def telemetry_run():
     """
     This function is called every telemetry_interval seconds. In each
@@ -85,9 +107,16 @@ def telemetry_run():
     a timestamp and the device name.
     """
     stats = {}
+    system_telemetry = None
+    app_data = None
 
     with SOCKET_COM_LOCK:
-        system_telemetry = SOCKET.send_request(GET_STATS_COMMAND)
+        data = SOCKET.send_request(GET_STATS_COMMAND).decode()
+
+    data = json.loads(data)
+
+    system_telemetry = data.get('system_telemetry', None)
+    app_data = data.get('app_data', None)
 
     if system_telemetry:
         # Set timestamp for current telemetry packet
@@ -95,24 +124,24 @@ def telemetry_run():
         stats["Datetime"] = str(datetime.datetime.fromtimestamp(int(time.time())))
 
         try:
-            stats.update(json.loads(system_telemetry))
-            operation = IPC_CLIENT.new_publish_to_iot_core()
-
-            operation.activate(model.PublishToIoTCoreRequest(
-                topic_name=os.environ.get('telemetryTopic'),
-                qos=model.QOS.AT_LEAST_ONCE,
-                payload=json.dumps(stats).encode(),
-            ))
-
-            try:
-                operation.get_response().result(timeout=1.0)
-            except Exception as exception:  # pylint: disable=broad-except
-                LOGGER.error("Failed to publish message: %s", repr(exception))
-
+            # Send the telemetry statistics.
+            stats.update(system_telemetry)
+            publish_to_topic(
+                topic=os.environ.get('telemetryTopic'),
+                payload=json.dumps(stats).encode())
         except ValueError:
             LOGGER.error("Malformed packet received from socket %s", system_telemetry)
-    else:
-        LOGGER.error("Did not receive packets from remote server")
+
+    if app_data:
+        for topic, data_list in app_data.items():
+            # If the topic is None use the generic application data topic
+            if not topic:
+                topic = os.environ.get('AppDataTopic')
+
+            for data in data_list:
+                publish_to_topic(
+                    topic=topic,
+                    payload=json.dumps(data).encode())
 
     with LOCK:
         telemetry_interval = TELEMETRY_SEND_INTERVAL

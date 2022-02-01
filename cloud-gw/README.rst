@@ -282,3 +282,28 @@ the AWS IoT Greengrass V2 Nucleus and configure the network:
   Restart the AWS IoT Greengrass V2 Nucleus:
 
     ``$ /greengrass/v2/alts/current/distro/bin/loader &``
+
+Sending custom data to AWS IoT MQTT client
+------------------------------------------
+
+You can use the Cloud Gateway to send custom data to AWS.
+
+To send data from your custom application, connect with a socket to ``localhost:51001`` and
+send a message with the following format::
+
+  {
+    "app_data": <payload>,
+    "mqtt_topic": <topic>
+  }
+
+Where ``payload`` can either be a payload of any format, or a list of payloads.
+``mqtt_topic`` is optional, and if it is not specified, then the default application data
+MQTT topic will be used: ``<TelemetryTopic>/app_data``.
+``TelemetryTopic`` was specified in the deployment of the Telemetry Stack in AWS.
+
+Run the following command on dom0 to send data to AWS through the telemetry service::
+
+  $  echo '{"app_data": ["payload", "other payload"], "mqtt_topic": "example/topic"}' | nc -c -v 127.0.0.1 51001
+
+In the AWS IoT MQTT client subscribe to the topic ``example/topic``
+before running the command to see the incoming example messages.
