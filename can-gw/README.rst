@@ -170,7 +170,7 @@ Building the M7 Application
 
 The distributed CAN-GW binary is compiled from an EB tresos AutoCore Platform that requires some updates for the tresos plugins to get the same functionality as in the distributed binary image:
 
-1. Install the Elektrobit tresos ACP version provided with the GoldVIP release.
+1. Download and install the Elektrobit tresos ACG version mentioned in :ref:`software_prerequisites`.
 
 2. Download S32 Design Studio v3.4 from your nxp.com account and install it. We need this for the compiler used in the build process.
 
