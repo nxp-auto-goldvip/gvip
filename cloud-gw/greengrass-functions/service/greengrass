@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+### BEGIN INIT INFO
+# Provides:          greengrass
+# Required-Start:    networking
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:      0 6
+# Short-Description: Start Greengrass service
+# Description:       Wrapper for starting / stopping GoldVIP Greengrass service
+#                    Runs when domU boots / shuts down on systems using init.
+### END INIT INFO
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright 2022 NXP
+
+GREENGRASS_PATH=/greengrass/v2/alts/current/distro/bin/loader
+
+case "$1" in
+start)
+        echo "Starting Greengrass service"
+        ${GREENGRASS_PATH} &
+        ;;
+stop)
+        echo "Stopping Greengrass service"
+        kill -9 $(ps aux | grep '[g]reengrass/v2' | awk '{print $2}') 2> /dev/null || true
+        ;;
+restart)
+        echo "Restart Greengrass service"
+        kill -9 $(ps aux | grep '[g]reengrass/v2' | awk '{print $2}') 2> /dev/null || true
+        ${GREENGRASS_PATH} &
+        ;;
+*)
+        echo "Usage: /etc/init.d/greengrass {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0
