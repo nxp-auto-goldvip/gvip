@@ -130,22 +130,46 @@ transport or tunnel mode, with X.509 authentication.
 Running the IDPS slow-path use cases
 ------------------------------------
 
-This use case plays prerecorded network traffic from PC, containing valid and
-invalid/malicious SOME/IP messages to exercise the IDPS (Intrusion Detection
-and Prevention System) running on target. The IDPS is provided by Argus Cyber Security (https://argus-sec.com/)
-and it is only a demonstration of the intrusion detection capability of the product.
-For information on the full IDPS feature set support for S32G, please contact Argus.
+This use case demonstrates the Ethernet IDPS (Intrusion Detection and Prevention System) provided 
+by Argus Cyber Security (https://argus-sec.com/).
+Argus Ethernet IDPS is a security mechanism designed to provide complementary protection 
+for automotive Ethernet networks, on top of the existing commodity security controls available 
+for Ethernet components.
+
+Argus’s IDPS includes Access control capabilities from the Data link layer to the Application layer and supports 
+most of the protocols in those layers (both whitelist and blacklist are supported). In addition, more advanced 
+inspection features are available (stateful inspection, DPI). For information on the full IDPS feature set, please contact Argus. 
+
+In this use case, the access control capabilities of the IDPS are demonstrated. The inspection is done on the whole 
+network stack (Ethernet, IP, UDP, SOME/IP) on prerecorded network traffic that contains both valid and invalid SOME/IP packets.
+Only intrusion detection capability is demonstrated in this use case (no prevention or packet dropping).
+The prerecorded traffic is injected from PC and sent to the target that runs the Ethernet IDPS.
+
+Please follow these steps in order to run this use case:
 
 1. Connect one host PC ETH port to the board's PFE-MAC2.
 
 2. Run on host PC ``eth-idps-slow-path-host.sh`` script to send packets from PC ETH port
-   to the board's PFE-MAC2. The IDPS will catch invalid messages and send the log back
+   to the board's PFE-MAC2. The IDPS will detect invalid messages and send the log back
    to the PC.
-   On host PC, run the following command::
+   On the host PC, run the following command::
 
      sudo ./eth-idps-slow-path-host.sh <eth-interface>
 
    **Note**: Use *-h* option to see all available arguments.
+
+The output of this use case has two parts:
+
+*  **IDPS host log:** Contains information about the number of packets transmitted from the host.
+*  **IDPS target log:** Contains the output of the IDPS executable:
+
+   *  **Valid packets:** The number of packets that matched a whitelist rule of the IDPS and are considered valid.
+   *  **Invalid packets:** The number of packets that did not match any whitelist rule of the IDPS and are considered invalid. 
+   *  **Relevant packets:** The number of packets that are relevant to this use case (SOME/IP packets), this value 
+      should contain the sum of the valid and invalid packets and shall be equal to the number of packets that were transmitted by the host.   
+   *  **Irrelevant packets:** - Packets that are not part of the use case (ARP, general network packets), and not SOME/IP packets. 
+      This number varies between different runs of this use case.
+
 
 Connecting to a Wi-Fi network
 -----------------------------

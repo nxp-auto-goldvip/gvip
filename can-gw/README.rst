@@ -32,13 +32,58 @@ The CAN gateway currently supports the following use cases:
    The CAN packets are sent from Linux and received on the M7 CAN driver from where they are passed to the AUTOSAR COM
    stack which forwards it to the PFE2. The format used for the ethernet packets is UDP.
  - IDPS filtering.
-   IDPS is provided by Argus Cyber Security (https://argus-sec.com/) and it is only a trial of the full product.
-   For the full feature set of this IDPS please contact Argus.
-   Every CAN frame shall undergo inspection by an IDPS library supplied by Argus. The library inspects CAN frames based on a preconfigured set of
-   deterministic rules (henceforth “the Ruleset”). The Ruleset may include features such as ensuring that the DLC matches the OEM’s definitions,
-   that all signals are in their allowed ranges, that frames’ timing is as expected, that diagnostic frames are meeting the requirements of the ISO standards etc.
-   Any frame meeting the rules in the Ruleset is considered “accepted” and is forwarded to be further handled by the CAN driver.
-   In the case a frame is detected to include an anomaly, it is considered “rejected”, dropped and an anomaly report shall be sent to CAN driver.
+   CAN frames inspection by Argus CAN IDPS (Intrusion Detection and Prevention System). IDPS is provided by 
+   Argus Cyber Security (https://argus-sec.com/) for demonstration purposes. Argus CAN IDPS looks for cyber attacks in 
+   the CAN network by monitoring frames for deviations in expected behavior and characteristics. Analysis is performed by
+   an advanced rule-based heuristic detection and prevention engine.
+
+   The engine is based on a Ruleset specifically generated for each vehicle model (i.e., in consideration of its
+   architecture, messaging database, communication traffic models and other elements unique to the vehicle line). 
+   This Ruleset reflects the vehicle’s traffic in normal operating circumstances and based on this Ruleset, Argus CAN IDS
+   determines when a frame is anomalous, valid or in need of further investigation.
+
+   Every CAN frame is inspected by Argus CAN IDPS based on the configuration of the Ruleset. The Ruleset may include
+   features such as ensuring that the DLC (Data Length Code) matches the OEM’s definitions, that all signals are in their
+   allowed ranges, that frames’ timing is as expected and that diagnostic frames are meeting the requirements of the ISO
+   standards (see further details below under `Available CAN IDPS features`_ chapter).
+   
+   Any frame meeting the rules in the Ruleset is considered “accepted” and is forwarded to be further handled by the
+   gateway and routed to its destination.
+   In the case a frame is detected to include an anomaly, it is considered “rejected”, dropped and an anomaly report
+   shall be sent for further diagnostics and logging.
+
+   There could be cases where an anomaly is identified, yet the specific anomalous frame cannot be pinpointed. In these
+   cases, the frame by which the anomaly was detected shall also be considered “accepted”, but an anomaly report 
+   shall be sent for further diagnostics and logging. 
+   This can happen, for example, when a Fixed-Periodic frame is received twice in a very short time interval. 
+   In this case, the legitimate frame cannot be distinguished from the injected frame, yet it is clearly an anomaly in
+   the CAN traffic.
+ 
+
+Available CAN IDPS features
+---------------------------
+
+The features detailed below are available in Argus CAN IDPS. Each of the available features are enabled via Ruleset
+configuration.
+
+*    **ID Enforcement**: Reports and drops a frame as anomalous when the CAN ID is not expected on the inspected bus.
+*    **DLC Enforcement**: Reports and drops a frame as anomalous when its DLC (Data Length Code) does not match the value defined by the customer.
+*    **Signal Range Enforcement**: Reports and drops a frame as anomalous when at least one signal value is out of its allowed range.
+*    **Unallocated Bits**: Reports and drops a frame as anomalous when bits not allocated to any signal have an unexpected value.
+*    **Various frame timing inspection features**: The IDPS has several features to check the timing of frames on the
+     bus. When frames appear on the bus at an unexpected timing, the frame shall be reported either as “rejected” and
+     shall be dropped, or as “accepted” but with an anomaly report. This depends on the measure of certainty that the 
+     IDPS can determine the specific anomalous frame.
+*    **Bus Load detection**: Reports when a bus or several buses are loaded beyond a predefined threshold that suggest
+     that the bus might be flooded. This feature only detects the load.
+*    **Diagnostic frames inspection features**: The IDPS offers several features for inspecting diagnostic frames of 
+      the UDS protocol (Unified Diagnostics Services), including:
+
+     *    Inspection of service identifiers (reports and drops “rejected” frames)
+     *    Detection of Brute force usage of diagnostics
+     *    Detection of diagnostic services scanning
+     *    Detection and prevention (drops “rejected” frames) of diagnostic services forbidden during driving.
+
 
 Prerequisites
 -------------
@@ -172,7 +217,7 @@ The distributed CAN-GW binary is compiled from an EB tresos AutoCore Platform th
 
 1. Download and install the Elektrobit tresos ACG version mentioned in :ref:`software_prerequisites`.
 
-2. Download S32 Design Studio v3.4 from your nxp.com account and install it. We need this for the compiler used in the build process.
+2. Download S32 Design Studio v3.4 from your nxp.com account and install it. The GCC compiler needed for the build process is included in S32 Design Studio.
 
 3. Update NXP plugins:
 
