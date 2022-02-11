@@ -18,7 +18,7 @@ appendix or check S32G-VNP-RDB2 Quick Start Guide from the board's box.
 Deploy GoldVIP images
 =====================
 
-Download GoldVIP binary images from `here <https://are.nxp.com/FlexNetCatalog.aspx>`_.
+Download GoldVIP binary images from `here <https://www.nxp.com/app-autopackagemgr/software-package-manager:AUTO-SW-PACKAGE-MANAGER>`_.
 
 Deploy GoldVIP SD-card image
 ----------------------------
