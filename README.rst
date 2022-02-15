@@ -63,9 +63,9 @@ individually:
 
     run write_uboot
 
-3. Update CAN-GW binary::
+3. Update GoldVIP Gateway binary::
 
-    run write_cangw
+    run write_gateway_app
 
 After all the binaries are written, power off the board, configure the DIP switches
 for NOR Flash Boot mode (set SW4.7 to OFF) and then power on the board. 

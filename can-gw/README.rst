@@ -244,4 +244,4 @@ The distributed CAN-GW binary is compiled from an EB tresos AutoCore Platform th
 
    To create a binary file from elf run the following command in the same Command Prompt::
 
-     C:/NXP/S32DS.3.4/S32DS/build_tools/gcc_v9.2/gcc-9.2-arm32-eabi/arm-none-eabi/bin/objcopy.exe -S -O binary ../output/bin/CORTEXM_S32G27X_goldvip-gateway.elf ../output/bin/can-gw.bin
+     C:/NXP/S32DS.3.4/S32DS/build_tools/gcc_v9.2/gcc-9.2-arm32-eabi/arm-none-eabi/bin/objcopy.exe -S -O binary ../output/bin/CORTEXM_S32G27X_goldvip-gateway.elf ../output/bin/goldvip-gateway.bin
