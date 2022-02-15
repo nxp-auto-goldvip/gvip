@@ -11,7 +11,7 @@ which routes the telemetry data from AWS IoT Core to SiteWise.
 When 'delete' is invoked it handles the deletion of all resources
 created by this function.
 
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import json
@@ -38,11 +38,11 @@ class SitewiseHandler:
     }
 
     MEASUREMENTS = [
-        ('CPU idle', '%'),
-        ('CPU0 idle', '%'),
-        ('CPU1 idle', '%'),
-        ('CPU2 idle', '%'),
-        ('CPU3 idle', '%'),
+        ('Dom0 vCPU idle', '%'),
+        ('Dom0 vCPU0 idle', '%'),
+        ('Dom0 vCPU1 idle', '%'),
+        ('Dom0 vCPU2 idle', '%'),
+        ('Dom0 vCPU3 idle', '%'),
         ('Mem Load', 'kb'),
         ('PFE0 RX bps', 'bps'),
         ('PFE0 TX bps', 'bps'),
@@ -537,7 +537,7 @@ class SitewiseHandler:
 
         # Properties of the main dashboard.
         main_properties = [
-            'cpu_idle',
+            'dom0_vcpu_idle',
             'mem_load',
             'ddr_sram_temperature',
             'a53_cluster_temperature',
@@ -548,7 +548,7 @@ class SitewiseHandler:
         ]
 
         for i in range(4):
-            main_properties.append(f"cpu{i}_idle")
+            main_properties.append(f"dom0_vcpu{i}_idle")
 
         for i in range(3):
             main_properties.append(f"m7_{i}")

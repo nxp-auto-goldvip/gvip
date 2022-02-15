@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2020-2021 NXP
+Copyright 2020-2022 NXP
 """
 
 import json
@@ -76,7 +76,7 @@ class CpuStats:
         :rtype: dict
         """
         cpus_dict = {}
-        with open(PROC_STAT, "r") as file:
+        with open(PROC_STAT, "r", encoding="utf-8") as file:
             while True:
                 stat, items = CpuStats._parse_stat_line(file)
 
@@ -174,9 +174,9 @@ class CpuStats:
         str_ret = ""
 
         for cpu_no, cpu_items in self._current_load_dict.items():
-            str_ret += "{:5} ".format(cpu_no)
+            str_ret += f"{cpu_no:5f} "
             for item in items:
-                str_ret += "{:5.2f} ".format(cpu_items[item])
+                str_ret += f"{cpu_items[item]:5.2f} "
 
             str_ret += "\n"
 
@@ -200,10 +200,10 @@ class CpuStats:
         if scale_to_percents:
             scale = 100.
 
-        for cpu in self._current_load_dict:
+        for cpu, value in self._current_load_dict.items():
             for i in range(CPU_IDLE + 1):
-                stat_name = "{}_{}".format(cpu, STATS[i])
-                load_dict[stat_name] = scale * self._current_load_dict[cpu][i]
+                stat_name = f"dom0_v{cpu}_{STATS[i]}"
+                load_dict[stat_name] = scale * value[i]
 
         return load_dict
 
