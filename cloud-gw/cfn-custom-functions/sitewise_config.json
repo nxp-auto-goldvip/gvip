@@ -1,0 +1,597 @@
+{
+    "common": {
+        "CORE_LOADS_DB": "Core Loads Dashboard",
+        "SOC_DB":"SOC Dashboard",
+        "CORE_LOADS_IDS_KEY": "dashboard1_id",
+        "CORE_LOADS_RESPONSE_DATA_KEY": "dashboard1Id",
+        "SOC_IDS_KEY": "dashboard2_id",
+        "SOC_RESPONSE_DATA_KEY": "dashboard2Id",
+        "SJA_DASHBOARD_IDX_START": 3,
+        "MAX_PROPERTIES_PER_ACTION": 10,
+        "MAX_ACTIONS_PER_TOPIC": 10,
+        "MAX_WIDGETS_PER_SJA_DASHBOARD": 5,
+        "WAITER_CONFIG": {
+            "Delay": 3,
+            "MaxAttempts": 200
+        },
+        "PFE_PORTS": [
+            0,
+            2
+        ],
+        "SJA_NB_PORTS": 11,
+        "SJA_DASHBOARD_IDS": [
+            1,
+            2,
+            3
+        ],
+        "SJA_PROPERTIES_SUFFIXES": [
+            "DropEventsCounter",
+            "IngressPktsCounter",
+            "EgressPktsCounter",
+            "DropEventsDelta",
+            "IngressPktsDelta",
+            "EgressPktsDelta"
+        ],
+        "SJA_ALIASES_SUFFIXES": [
+            "drop_counter",
+            "ingress_counter",
+            "egress_counter",
+            "drop_delta",
+            "ingress_delta",
+            "egress_delta"
+        ],
+        "MAIN_PROPERTIES": [
+            "dom0_vcpu_idle",
+            "mem_load",
+            "ddr_sram_temperature",
+            "a53_cluster_temperature",
+            "hse_llce_temperature",
+            "ddr_sram_average_temperature",
+            "a53_cluster_average_temperature",
+            "hse_llce_average_temperature"
+        ],
+        "SOC_WIDGETS_PARAMS": {
+            "PFE0 Traffic": {
+                "x": 0,
+                "y": 3,
+                "height": 3,
+                "width": 6,
+                "title": "PFE0 Traffic (Mbps)",
+                "metrics": {
+                    "PFE0 RX": {
+                        "label": "PFE0 RX",
+                        "property_ids": "PFE0 RX Mbps"
+                    },
+                    "PFE0 TX": {
+                        "label": "PFE0 TX",
+                        "property_ids": "PFE0 TX Mbps"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "PFE2 Traffic": {
+                "x": 0,
+                "y": 6,
+                "height": 3,
+                "width": 6,
+                "title": "PFE2 Traffic (Mbps)",
+                "metrics": {
+                    "PFE2 RX": {
+                        "label": "PFE2 RX",
+                        "property_ids": "PFE2 RX Mbps"
+                    },
+                    "PFE2 TX": {
+                        "label": "PFE2 TX",
+                        "property_ids": "PFE2 TX Mbps"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 Memory Load": {
+                "x": 0,
+                "y": 9,
+                "height": 3,
+                "width": 6,
+                "title": "Dom0 Memory Load (MB)",
+                "metrics": {
+                    "Dom0 Memory Load": {
+                        "label": "Dom0 Memory Load (MB)",
+                        "property_ids": "Dom0 Memory Load (MB)"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Immediate Temperature": {
+                "x": 0,
+                "y": 12,
+                "height": 3,
+                "width": 6,
+                "title": "Immediate Temperature",
+                "metrics": {
+                    "DDR SRAM Temperature": {
+                        "label": "DDR SRAM Temperature",
+                        "property_ids": "DDR SRAM Temperature"
+                    },
+                    "A53 cluster Temperature": {
+                        "label": "A53 cluster Temperature",
+                        "property_ids": "A53 cluster Temperature"
+                    },
+                    "HSE LLCE Temperature": {
+                        "label": "HSE LLCE Temperature",
+                        "property_ids": "HSE LLCE Temperature"
+                    }
+                },
+                "type": "monitor-line-chart"
+            }
+        }
+    },
+    "s32g2": {
+        "CPU_CORES_NUM": 4,
+        "M7_CORES_NUM": 3,
+        "MEASUREMENTS": {
+            "Dom0 vCPU idle": "%",
+            "Dom0 vCPU0 idle": "%",
+            "Dom0 vCPU1 idle": "%",
+            "Dom0 vCPU2 idle": "%",
+            "Dom0 vCPU3 idle": "%",
+            "Mem Load": "kb",
+            "PFE0 RX bps": "bps",
+            "PFE0 TX bps": "bps",
+            "PFE2 RX bps": "bps",
+            "PFE2 TX bps": "bps",
+            "m7_0": "%",
+            "m7_1": "%",
+            "m7_2": "%",
+            "DDR SRAM Temperature": "C",
+            "A53 cluster Temperature": "C",
+            "HSE LLCE Temperature": "C"
+        },
+        "TRANSFORMS": [
+            [
+                "Dom0 vCPU Load",
+                "%",
+                "100 - cpuidle",
+                "cpuidle",
+                "Dom0 vCPU idle"
+            ],
+            [
+                "Dom0 vCPU0 Load",
+                "%",
+                "100 - cpu0idle",
+                "cpu0idle",
+                "Dom0 vCPU0 idle"
+            ],
+            [
+                "Dom0 vCPU1 Load",
+                "%",
+                "100 - cpu1idle",
+                "cpu1idle",
+                "Dom0 vCPU1 idle"
+            ],
+            [
+                "Dom0 vCPU2 Load",
+                "%",
+                "100 - cpu2idle",
+                "cpu2idle",
+                "Dom0 vCPU2 idle"
+            ],
+            [
+                "Dom0 vCPU3 Load",
+                "%",
+                "100 - cpu3idle",
+                "cpu3idle",
+                "Dom0 vCPU3 idle"
+            ],
+            [
+                "Dom0 Memory Load (MB)",
+                "MB",
+                "memload / 1024",
+                "memload",
+                "Mem Load"
+            ],
+            [
+                "PFE0 RX Mbps",
+                "Mbps",
+                "pfe0rx / 1024",
+                "pfe0rx",
+                "PFE0 RX bps"
+            ],
+            [
+                "PFE0 TX Mbps",
+                "Mbps",
+                "pfe0tx / 1024",
+                "pfe0tx",
+                "PFE0 TX bps"
+            ],
+            [
+                "PFE2 RX Mbps",
+                "Mbps",
+                "pfe2rx / 1024",
+                "pfe2rx",
+                "PFE2 RX bps"
+            ],
+            [
+                "PFE2 TX Mbps",
+                "Mbps",
+                "pfe2tx / 1024",
+                "pfe2tx",
+                "PFE2 TX bps"
+            ]
+        ],
+        "CORE_LOAD_WIDGETS_PARAMS": {
+            "Dom0 vCPU Load": {
+                "x": 0,
+                "y": 0,
+                "height": 3,
+                "width": 6,
+                "title": "Dom0 vCPU Load (%)",
+                "metrics": {
+                    "Dom0 vCPU Load": {
+                        "label": "Dom0 vCPU Load",
+                        "property_ids": "Dom0 vCPU Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU0 Load": {
+                "x": 0,
+                "y": 3,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU0 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU Load": {
+                        "label": "Dom0 vCPU0 Load",
+                        "property_ids": "Dom0 vCPU0 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU1 Load": {
+                "x": 3,
+                "y": 3,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU1 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU1 Load": {
+                        "label": "Dom0 vCPU1 Load",
+                        "property_ids": "Dom0 vCPU1 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU2 Load": {
+                "x": 0,
+                "y": 6,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU2 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU2 Load": {
+                        "label": "Dom0 vCPU2 Load",
+                        "property_ids": "Dom0 vCPU2 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU3 Load": {
+                "x": 3,
+                "y": 6,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU3 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU3 Load": {
+                        "label": "Dom0 vCPU3 Load",
+                        "property_ids": "Dom0 vCPU3 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "M7 Core Load": {
+                "x": 0,
+                "y": 9,
+                "height": 3,
+                "width": 6,
+                "title": "M7 Core Load",
+                "metrics": {
+                    "M7 Core0 Load": {
+                        "label": "M7 Core0 Load",
+                        "property_ids": "m7_0"
+                    },
+                    "M7 Core1 Load": {
+                        "label": "M7 Core1 Load",
+                        "property_ids": "m7_1"
+                    },
+                    "M7 Core2 Load": {
+                        "label": "M7 Core2 Load",
+                        "property_ids": "m7_2"
+                    }
+                },
+                "type": "monitor-line-chart"
+            }
+        }
+    },
+    "s32g3": {
+        "CPU_CORES_NUM": 8,
+        "M7_CORES_NUM": 4,
+        "MEASUREMENTS": {
+            "Dom0 vCPU idle": "%",
+            "Dom0 vCPU0 idle": "%",
+            "Dom0 vCPU1 idle": "%",
+            "Dom0 vCPU2 idle": "%",
+            "Dom0 vCPU3 idle": "%",
+            "Dom0 vCPU4 idle": "%",
+            "Dom0 vCPU5 idle": "%",
+            "Dom0 vCPU6 idle": "%",
+            "Dom0 vCPU7 idle": "%",
+            "Mem Load": "kb",
+            "PFE0 RX bps": "bps",
+            "PFE0 TX bps": "bps",
+            "PFE2 RX bps": "bps",
+            "PFE2 TX bps": "bps",
+            "m7_0": "%",
+            "m7_1": "%",
+            "m7_2": "%",
+            "m7_3": "%",
+            "DDR SRAM Temperature": "C",
+            "A53 cluster Temperature": "C",
+            "HSE LLCE Temperature": "C"
+        },
+        "TRANSFORMS": [
+            [
+                "Dom0 vCPU Load",
+                "%",
+                "100 - cpuidle",
+                "cpuidle",
+                "Dom0 vCPU idle"
+            ],
+            [
+                "Dom0 vCPU0 Load",
+                "%",
+                "100 - cpu0idle",
+                "cpu0idle",
+                "Dom0 vCPU0 idle"
+            ],
+            [
+                "Dom0 vCPU1 Load",
+                "%",
+                "100 - cpu1idle",
+                "cpu1idle",
+                "Dom0 vCPU1 idle"
+            ],
+            [
+                "Dom0 vCPU2 Load",
+                "%",
+                "100 - cpu2idle",
+                "cpu2idle",
+                "Dom0 vCPU2 idle"
+            ],
+            [
+                "Dom0 vCPU3 Load",
+                "%",
+                "100 - cpu3idle",
+                "cpu3idle",
+                "Dom0 vCPU3 idle"
+            ],
+            [
+                "Dom0 vCPU4 Load",
+                "%",
+                "100 - cpu4idle",
+                "cpu4idle",
+                "Dom0 vCPU4 idle"
+            ],
+            [
+                "Dom0 vCPU5 Load",
+                "%",
+                "100 - cpu5idle",
+                "cpu5idle",
+                "Dom0 vCPU5 idle"
+            ],
+            [
+                "Dom0 vCPU6 Load",
+                "%",
+                "100 - cpu6idle",
+                "cpu6idle",
+                "Dom0 vCPU6 idle"
+            ],
+            [
+                "Dom0 vCPU7 Load",
+                "%",
+                "100 - cpu7idle",
+                "cpu7idle",
+                "Dom0 vCPU7 idle"
+            ],
+            [
+                "Dom0 Memory Load (MB)",
+                "MB",
+                "memload / 1024",
+                "memload",
+                "Mem Load"
+            ],
+            [
+                "PFE0 RX Mbps",
+                "Mbps",
+                "pfe0rx / 1024",
+                "pfe0rx",
+                "PFE0 RX bps"
+            ],
+            [
+                "PFE0 TX Mbps",
+                "Mbps",
+                "pfe0tx / 1024",
+                "pfe0tx",
+                "PFE0 TX bps"
+            ],
+            [
+                "PFE2 RX Mbps",
+                "Mbps",
+                "pfe2rx / 1024",
+                "pfe2rx",
+                "PFE2 RX bps"
+            ],
+            [
+                "PFE2 TX Mbps",
+                "Mbps",
+                "pfe2tx / 1024",
+                "pfe2tx",
+                "PFE2 TX bps"
+            ]
+        ],
+        "CORE_LOAD_WIDGETS_PARAMS": {
+            "Dom0 vCPU Load": {
+                "x": 0,
+                "y": 0,
+                "height": 3,
+                "width": 6,
+                "title": "Dom0 vCPU Load (%)",
+                "metrics": {
+                    "Dom0 vCPU Load": {
+                        "label": "Dom0 vCPU Load",
+                        "property_ids": "Dom0 vCPU Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU0 Load": {
+                "x": 0,
+                "y": 3,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU0 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU Load": {
+                        "label": "Dom0 vCPU0 Load",
+                        "property_ids": "Dom0 vCPU0 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU1 Load": {
+                "x": 3,
+                "y": 3,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU1 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU1 Load": {
+                        "label": "Dom0 vCPU1 Load",
+                        "property_ids": "Dom0 vCPU1 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU2 Load": {
+                "x": 0,
+                "y": 6,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU2 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU2 Load": {
+                        "label": "Dom0 vCPU2 Load",
+                        "property_ids": "Dom0 vCPU2 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU3 Load": {
+                "x": 3,
+                "y": 6,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU3 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU3 Load": {
+                        "label": "Dom0 vCPU3 Load",
+                        "property_ids": "Dom0 vCPU3 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU4 Load": {
+                "x": 0,
+                "y": 9,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU4 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU4 Load": {
+                        "label": "Dom0 vCPU4 Load",
+                        "property_ids": "Dom0 vCPU4 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU5 Load": {
+                "x": 3,
+                "y": 9,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU5 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU5 Load": {
+                        "label": "Dom0 vCPU5 Load",
+                        "property_ids": "Dom0 vCPU5 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU6 Load": {
+                "x": 0,
+                "y": 12,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU6 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU6 Load": {
+                        "label": "Dom0 vCPU6 Load",
+                        "property_ids": "Dom0 vCPU6 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "Dom0 vCPU7 Load": {
+                "x": 3,
+                "y": 12,
+                "height": 3,
+                "width": 3,
+                "title": "Dom0 vCPU7 Load (%)",
+                "metrics": {
+                    "Dom0 vCPU7 Load": {
+                        "label": "Dom0 vCPU7 Load",
+                        "property_ids": "Dom0 vCPU7 Load"
+                    }
+                },
+                "type": "monitor-line-chart"
+            },
+            "M7 Core Load": {
+                "x": 0,
+                "y": 15,
+                "height": 3,
+                "width": 6,
+                "title": "M7 Core Load",
+                "metrics": {
+                    "M7 Core0 Load": {
+                        "label": "M7 Core0 Load",
+                        "property_ids": "m7_0"
+                    },
+                    "M7 Core1 Load": {
+                        "label": "M7 Core1 Load",
+                        "property_ids": "m7_1"
+                    },
+                    "M7 Core2 Load": {
+                        "label": "M7 Core2 Load",
+                        "property_ids": "m7_2"
+                    },
+                    "M7 Core3 Load": {
+                        "label": "M7 Core3 Load",
+                        "property_ids": "m7_3"
+                    }
+                },
+                "type": "monitor-line-chart"
+            }
+        }
+    }
+}

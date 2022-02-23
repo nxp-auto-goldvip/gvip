@@ -18,6 +18,13 @@ Parameters:
     Default: DefaultName
     Type: String
     Description: Name for the Greengrass Core Device Thing.
+  DeviceType:
+    Default: s32g2
+    Type: String
+    AllowedValues:
+      - s32g2
+      - s32g3
+    Description: Enter s32g2 or s32g3. Default is s32g2.
 
 Metadata:
   AWS::ServerlessRepo::Application:
@@ -331,7 +338,7 @@ Resources:
             - "/"
             - - thing
               - !Ref GGv2CoreDeviceThing
-      SjaThingArn: !Join 
+      SjaThingArn: !Join
         - ':'
         - - 'arn:aws:iot'
           - !Ref 'AWS::Region'
@@ -358,6 +365,7 @@ Resources:
       ServiceToken: !GetAtt 'SitewiseCustomFunction.Arn'
       Region: !Ref 'AWS::Region'
       StackName: !Ref 'AWS::StackName'
+      DeviceType: !Ref DeviceType
       ContactEmail: !Ref ContactEmail
       PortalRoleArn: !GetAtt SitewisePortalRole.Arn
       TelemetryTopic: !Ref TelemetryTopic
@@ -392,14 +400,16 @@ Outputs:
     Value: !GetAtt SitewiseCustomResource.portalId
   SitewisePortalUrl:
     Value: !GetAtt SitewiseCustomResource.portalUrl
-  SitewiseDashboardId:
+  SitewiseCoreLoadDashboardId:
     Value: !GetAtt SitewiseCustomResource.dashboard1Id
-  SitewiseSJADashboard1Id:
+  SitewiseSocDashboardId:
     Value: !GetAtt SitewiseCustomResource.dashboard2Id
-  SitewiseSJADashboard2Id:
+  SitewiseSJADashboard1Id:
     Value: !GetAtt SitewiseCustomResource.dashboard3Id
-  SitewiseSJADashboard3Id:
+  SitewiseSJADashboard2Id:
     Value: !GetAtt SitewiseCustomResource.dashboard4Id
+  SitewiseSJADashboard3Id:
+    Value: !GetAtt SitewiseCustomResource.dashboard5Id
   SitewiseProjectId:
     Value: !GetAtt SitewiseCustomResource.projectId
   SitewiseAssetId:

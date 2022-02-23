@@ -1,0 +1,6 @@
+# Copyright 2022 NXP
+#
+# Add json configuration file to the package.
+# About this file, please visit: https://packaging.python.org/guides/using-manifest-in/ for more information.
+#
+include configuration/*.json

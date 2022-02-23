@@ -3,14 +3,13 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import argparse
 import time
 
-# pylint: disable=import-error
-from m7_stats import M7CoreMovingAverage, M7_0, M7_1, M7_2
+from telemetry import M7CoreMovingAverage
 
 # Time interval between core load value updates in seconds.
 LOAD_UPDATE_TIME = 0.5
@@ -39,7 +38,7 @@ def main():
 
     parser.add_argument(
         "--monitored-cores",
-        choices=['all', 'M7_0', 'M7_1', 'M7_2'],
+        choices=['all', 'M7_0', 'M7_1', 'M7_2', 'M7_3'],
         nargs="+",
         dest="chosen_cores",
         type=str,
@@ -70,17 +69,11 @@ def main():
         time.sleep(LOAD_UPDATE_TIME)
 
         loads = M7CoreMovingAverage.get_load()
-        load_m7_0 = loads.get(M7_0, -1)
-        load_m7_1 = loads.get(M7_1, -1)
-        load_m7_2 = loads.get(M7_2, -1)
 
         with open(args.output_file, "a", encoding="UTF-8") as output_file:
-            if ("M7_0" in args.chosen_cores) or ("all" in args.chosen_cores):
-                output_file.write(f"M7_0: {load_m7_0}\n")
-            if ("M7_1" in args.chosen_cores) or ("all" in args.chosen_cores):
-                output_file.write(f"M7_1: {load_m7_1}\n")
-            if ("M7_2" in args.chosen_cores) or ("all" in args.chosen_cores):
-                output_file.write(f"M7_2: {load_m7_2}\n")
+            for core in M7CoreMovingAverage.M7_CORES:
+                if (core.upper() in args.chosen_cores ) or ("all" in args.chosen_cores):
+                    output_file.write(f"{core.upper()}: {loads.get(core, -1)}\n")
 
     # Stop thread.
     M7CoreMovingAverage.terminate_thread()

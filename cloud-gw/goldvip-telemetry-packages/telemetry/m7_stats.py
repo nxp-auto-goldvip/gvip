@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import logging
@@ -12,52 +12,12 @@ import os
 import time
 import threading
 
+from collections import defaultdict
+
+from configuration import config
 
 LOCK = threading.Lock()
 LOGGER = logging.getLogger(__name__)
-
-# Values of status registers of m7 cores.
-CORE_INACTIVE = 0x0
-CORE_ACTIVE = 0x1
-CORE_WFI = 0x80000001
-
-M7_0 = "m7_0"
-M7_1 = "m7_1"
-M7_2 = "m7_2"
-
-# Address of /dev/mem registers for each core.
-M7_CORES_STAT_REGISTERS = {
-    M7_0: 0x40088148,
-    M7_1: 0x40088168,
-    M7_2: 0x40088188
-}
-
-# Sum of wfi flags values in the rolling window for each core.
-ROLLING_WFI_SUM = {
-    M7_0: 0,
-    M7_1: 0,
-    M7_2: 0
-}
-
-# Size of rolling windows for each core.
-WINDOW_SIZE = {
-    M7_0: 0,
-    M7_1: 0,
-    M7_2: 0
-}
-
-UPDATED = "updated"
-NEW_MAX_WINDOW_SIZE = "new_max_window_size"
-NEW_M7_STATUS_QUERY_TIME_INTERVAL = "new_m7_status_query_time_interval"
-
-# Dictionary of updated values
-MEASUREMENT_UPDATE = {
-    UPDATED: False,
-    NEW_MAX_WINDOW_SIZE: None,
-    NEW_M7_STATUS_QUERY_TIME_INTERVAL: None
-}
-
-TERMINATE_THREAD = False
 
 
 class M7CoreMovingAverage(threading.Thread):
@@ -69,6 +29,34 @@ class M7CoreMovingAverage(threading.Thread):
     This class stores a moving window of wfi values from which the core load
     is deduced.
     """
+    M7_CORES = config["M7_CORES_STAT_REGISTERS"].keys()
+
+    # Values of status registers of m7 cores.
+    CORE_INACTIVE = int(config["CORE_INACTIVE"], 16)
+    CORE_ACTIVE = int(config["CORE_ACTIVE"], 16)
+    CORE_WFI = int(config["CORE_WFI"], 16)
+
+    # Address of /dev/mem registers for each core.
+    M7_CORES_STAT_REGS = config["M7_CORES_STAT_REGISTERS"]
+
+    M7_0_STAT_ADDR = int(min(M7_CORES_STAT_REGS.values()), 16)
+
+    # Sum of wfi flags values in the rolling window for each core.
+    ROLLING_WFI_SUM = defaultdict(int)
+
+    # Size of rolling windows for each core.
+    WINDOW_SIZE = defaultdict(int)
+
+    WINDOW_VALUES = defaultdict(list)
+
+    # Dictionary of updated values
+    MEASUREMENT_UPDATE = {
+        "updated": False,
+        "new_max_window_size": '',
+        "new_m7_status_query_time_interval": ''
+    }
+
+    TERMINATE_THREAD = False
 
     def __init__(self, max_window_size, m7_status_query_time_interval):
         """
@@ -80,13 +68,6 @@ class M7CoreMovingAverage(threading.Thread):
         self.max_window_size = max_window_size
         self.m7_status_query_time_interval = m7_status_query_time_interval
 
-        # List of WFI values for each core in the moving window.
-        self.window_values = {
-            M7_0: [],
-            M7_1: [],
-            M7_2: []
-        }
-
         self.file = os.open("/dev/mem", os.O_RDONLY | os.O_SYNC)
 
         self.mfile = mmap.mmap(
@@ -94,7 +75,7 @@ class M7CoreMovingAverage(threading.Thread):
             mmap.PAGESIZE,
             mmap.MAP_SHARED,
             mmap.PROT_READ,
-            offset=M7_CORES_STAT_REGISTERS[M7_0] & ~(mmap.PAGESIZE - 1))
+            offset=M7CoreMovingAverage.M7_0_STAT_ADDR & ~(mmap.PAGESIZE - 1))
 
     def run(self):
         """
@@ -102,11 +83,11 @@ class M7CoreMovingAverage(threading.Thread):
         Runs in infinite loop and computes the moving window of wfi status values.
         """
         try:
-            while not TERMINATE_THREAD:
-                self._check_update()
+            while not self.TERMINATE_THREAD:
+                self.__check_update()
 
-                for core, addr in M7_CORES_STAT_REGISTERS.items():
-                    status = self._get_status(addr)
+                for core, addr in self.M7_CORES_STAT_REGS.items():
+                    status = self.__get_status(int(addr, 16))
 
                     if status == -1:
                         os.close(self.file)
@@ -116,17 +97,17 @@ class M7CoreMovingAverage(threading.Thread):
                     # pylint: disable=consider-using-with
                     LOCK.acquire()
                     # Add current WFI
-                    self.window_values[core].append(status)
-                    ROLLING_WFI_SUM[core] += status
-                    WINDOW_SIZE[core] += 1
+                    self.WINDOW_VALUES[core].append(status)
+                    self.ROLLING_WFI_SUM[core] += status
+                    self.WINDOW_SIZE[core] += 1
 
                     # Remove last item from list only if list is at max length
-                    if WINDOW_SIZE[core] > self.max_window_size:
-                        last_wfi = self.window_values[core].pop(0)
+                    if self.WINDOW_SIZE[core] > self.max_window_size:
+                        last_wfi = self.WINDOW_VALUES[core].pop(0)
 
                         # Discount last WFI
-                        ROLLING_WFI_SUM[core] -= last_wfi
-                        WINDOW_SIZE[core] -= 1
+                        self.ROLLING_WFI_SUM[core] -= last_wfi
+                        self.WINDOW_SIZE[core] -= 1
 
                     LOCK.release()
 
@@ -136,7 +117,7 @@ class M7CoreMovingAverage(threading.Thread):
             LOGGER.error("M7 core stat error: %s", exception)
             os.close(self.file)
 
-    def _get_status(self, core):
+    def __get_status(self, core):
         """
         Queries the state of a M7 core at a certain moment.
         :param core: core-specific wfi register address.
@@ -146,13 +127,13 @@ class M7CoreMovingAverage(threading.Thread):
         self.mfile.seek(core & (mmap.PAGESIZE - 1))
         status = int.from_bytes(self.mfile.read(4), byteorder='little')
 
-        if status == CORE_ACTIVE:
+        if status == self.CORE_ACTIVE:
             return 1
-        if status in [CORE_WFI, CORE_INACTIVE]:
+        if status in [self.CORE_WFI, self.CORE_INACTIVE]:
             return 0
         return -1
 
-    def _check_update(self):
+    def __check_update(self):
         """
         Check if update is signaled. If yes update the values of window size
         and frequency.
@@ -160,21 +141,22 @@ class M7CoreMovingAverage(threading.Thread):
         """
         # pylint: disable=consider-using-with
         LOCK.acquire()
-        if not MEASUREMENT_UPDATE[UPDATED]:
+        if not self.MEASUREMENT_UPDATE["updated"]:
             LOCK.release()
             return
 
-        self.max_window_size = MEASUREMENT_UPDATE[NEW_MAX_WINDOW_SIZE]
-        self.m7_status_query_time_interval = MEASUREMENT_UPDATE[NEW_M7_STATUS_QUERY_TIME_INTERVAL]
+        self.max_window_size = self.MEASUREMENT_UPDATE["new_max_window_size"]
+        self.m7_status_query_time_interval = \
+            self.MEASUREMENT_UPDATE["new_m7_status_query_time_interval"]
 
-        for core in [M7_0, M7_1, M7_2]:
-            WINDOW_SIZE[core] = 0
-            self.window_values[core].clear()
-            ROLLING_WFI_SUM[core] = 0
+        for core in self.M7_CORES:
+            self.WINDOW_SIZE[core] = 0
+            self.WINDOW_VALUES[core].clear()
+            self.ROLLING_WFI_SUM[core] = 0
 
-        MEASUREMENT_UPDATE[UPDATED] = False
-        MEASUREMENT_UPDATE[NEW_MAX_WINDOW_SIZE] = None
-        MEASUREMENT_UPDATE[NEW_M7_STATUS_QUERY_TIME_INTERVAL] = None
+        self.MEASUREMENT_UPDATE["updated"] = False
+        self.MEASUREMENT_UPDATE["new_max_window_size"] = None
+        self.MEASUREMENT_UPDATE["new_m7_status_query_time_interval"] = None
         LOCK.release()
         return
 
@@ -183,13 +165,13 @@ class M7CoreMovingAverage(threading.Thread):
         """
         Retrieves the core load for each M7 core.
         """
-        m7_cores_load = dict()
+        m7_cores_load = {}
 
         try:
             # pylint: disable=consider-using-with
             LOCK.acquire()
-            for core, wfi_sum in ROLLING_WFI_SUM.items():
-                m7_cores_load[core] = 100 * wfi_sum / WINDOW_SIZE[core]
+            for core, wfi_sum in M7CoreMovingAverage.ROLLING_WFI_SUM.items():
+                m7_cores_load[core] = 100 * wfi_sum / M7CoreMovingAverage.WINDOW_SIZE[core]
             LOCK.release()
         except ZeroDivisionError:
             return {}
@@ -211,19 +193,18 @@ class M7CoreMovingAverage(threading.Thread):
         # pylint: disable=consider-using-with
         LOCK.acquire()
 
-        MEASUREMENT_UPDATE[UPDATED] = True
-        MEASUREMENT_UPDATE[NEW_MAX_WINDOW_SIZE] = m7_window_size_multiplier * \
-            telemetry_interval / new_m7_status_query_time_interval
-        MEASUREMENT_UPDATE[NEW_M7_STATUS_QUERY_TIME_INTERVAL] = new_m7_status_query_time_interval
+        M7CoreMovingAverage.MEASUREMENT_UPDATE["updated"] = True
+        M7CoreMovingAverage.MEASUREMENT_UPDATE["new_max_window_size"] = \
+            m7_window_size_multiplier * telemetry_interval / new_m7_status_query_time_interval
+        M7CoreMovingAverage.MEASUREMENT_UPDATE["new_m7_status_query_time_interval"] = \
+            new_m7_status_query_time_interval
 
         LOCK.release()
 
-        LOGGER.info("Updated M7 window size, new size: %d",
-                    MEASUREMENT_UPDATE[NEW_MAX_WINDOW_SIZE])
+        LOGGER.info("Updated M7 window size, new size: %d", \
+            M7CoreMovingAverage.MEASUREMENT_UPDATE["new_max_window_size"])
 
     @staticmethod
     def terminate_thread():
         """Signal the termination of the run while loop."""
-        # pylint: disable=global-statement
-        global TERMINATE_THREAD
-        TERMINATE_THREAD = True
+        M7CoreMovingAverage.TERMINATE_THREAD = True

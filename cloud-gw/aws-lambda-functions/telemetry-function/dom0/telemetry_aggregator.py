@@ -8,18 +8,19 @@ Copyright 2021-2022 NXP
 
 import json
 import logging
-import os
 import platform
 import sys
 import threading
 
+from app_data_collector_server import AppDataCollectorServer
+from configuration import config
 from cpu_stats import CpuStats
 from dev_mem_uid import get_uid
 from mem_stats import MemStats
 from net_stats import NetStats
-from m7_stats import M7CoreMovingAverage
 from temperature_stats import TemperatureStats
-from app_data_collector_server import AppDataCollectorServer
+from telemetry import M7CoreMovingAverage
+
 
 # Telemetry parameters
 # time interval between MQTT packets
@@ -45,18 +46,14 @@ class TelemetryAggregator:
     Collects telemetry data from the system and puts data into a json format
     """
     def __init__(self):
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                               "config.json"), encoding='utf-8') as config_file:
-            self.__config = json.load(config_file)
-
         # Retrieve platform information
         self.__current_platform = platform.platform()
         # Get instances for telemetry data
         self.__cpu_stats = CpuStats()
         self.__net_stats = NetStats(["pfe2", "pfe0"])
         self.__m7_core_load = M7CoreMovingAverage(
-            max_window_size=self.__config[TELEMETRY_INTERVAL] / self.__config[M7_STAT_QUERY_TIME],
-            m7_status_query_time_interval=self.__config[M7_STAT_QUERY_TIME])
+            config[TELEMETRY_INTERVAL] / config[M7_STAT_QUERY_TIME],
+            config[M7_STAT_QUERY_TIME])
         self.__mem_stats = MemStats()
         self.__temperature_stats = TemperatureStats()
         self.__m7_core_load.start()
@@ -106,7 +103,7 @@ class TelemetryAggregator:
 
         with LOCK:
             # Set telemetry interval for next function call
-            telemetry_interval = self.__config[TELEMETRY_INTERVAL]
+            telemetry_interval = config[TELEMETRY_INTERVAL]
 
         threading.Timer(telemetry_interval, self.__calculate_stats).start()
 
@@ -159,20 +156,20 @@ class TelemetryAggregator:
 
         with LOCK:
             # get telemetry collector parameters
-            self.__config[TELEMETRY_INTERVAL] = \
+            config[TELEMETRY_INTERVAL] = \
                 self.__extract_parameter(event_dict, TELEMETRY_INTERVAL, int, 1,
-                                         self.__config[TELEMETRY_INTERVAL])
-            self.__config[M7_STAT_QUERY_TIME] = \
+                                         config[TELEMETRY_INTERVAL])
+            config[M7_STAT_QUERY_TIME] = \
                 self.__extract_parameter(event_dict, M7_STAT_QUERY_TIME, float, 0.0001,
-                                         self.__config[M7_STAT_QUERY_TIME])
-            self.__config[M7_WINDOW_SIZE_MULTIPLIER] = \
+                                         config[M7_STAT_QUERY_TIME])
+            config[M7_WINDOW_SIZE_MULTIPLIER] = \
                 self.__extract_parameter(event_dict, M7_WINDOW_SIZE_MULTIPLIER, int, 1,
-                                         self.__config[M7_WINDOW_SIZE_MULTIPLIER])
+                                         config[M7_WINDOW_SIZE_MULTIPLIER])
 
         M7CoreMovingAverage.update_measurement(
-            new_m7_status_query_time_interval=self.__config[M7_STAT_QUERY_TIME],
-            telemetry_interval=self.__config[TELEMETRY_INTERVAL],
-            m7_window_size_multiplier=self.__config[M7_WINDOW_SIZE_MULTIPLIER])
+            new_m7_status_query_time_interval=config[M7_STAT_QUERY_TIME],
+            telemetry_interval=config[TELEMETRY_INTERVAL],
+            m7_window_size_multiplier=config[M7_WINDOW_SIZE_MULTIPLIER])
 
     def get_stats(self):
         """

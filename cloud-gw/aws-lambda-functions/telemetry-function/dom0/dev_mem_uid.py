@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2020-2021 NXP
+Copyright 2020-2022 NXP
 """
 
 import logging
@@ -11,8 +11,15 @@ import os
 import sys
 import mmap
 
-ADDR = 0x400A4210
+from configuration import config
+
+# Address of device id register
+DEVICE_ID_REG_ADDR = int(config["DEVICE_ID_REG"], 16)
+
+# Read UID_SIZE byte from DEVICE_ID_REG_ADDR address
 UID_SIZE = 8
+
+# Bit-Masking
 MAP_MASK = mmap.PAGESIZE - 1
 
 UUID = {
@@ -40,9 +47,9 @@ def get_uid():
             mmap.PAGESIZE,
             mmap.MAP_SHARED,
             mmap.PROT_READ,
-            offset=ADDR & ~MAP_MASK)
+            offset=DEVICE_ID_REG_ADDR & ~MAP_MASK)
 
-        mfile.seek(ADDR & MAP_MASK)
+        mfile.seek(DEVICE_ID_REG_ADDR & MAP_MASK)
 
         uid = 0
         power = 0
@@ -65,5 +72,4 @@ def get_uid():
         logger = logging.getLogger(__name__)
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
         logger.error("Failed to read uuid: %s", repr(exception))
-
-    return None, None
+        return None, None

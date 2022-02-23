@@ -5,13 +5,36 @@
 """
 Functions to encode (and decode) a dictionary of ids into a string.
 
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
+import json
 
 class Utils:
     """
     Functions that transform a dictionary into a string, and vice versa.
     """
+    # Label to common configuration of all platforms
+    COMMON_CONFIG_LABEL = "common"
+
+    @staticmethod
+    def parse_sitewise_config(config_path, device_type):
+        """
+        Parse the Sitewise configuration
+
+        :param config_path: path to the Sitewise configuration file
+        :param device_type: Platform device
+        :return: Sitewise configuration
+        """
+
+        with open(config_path, 'r', encoding='utf-8') as config_file:
+            configs = json.load(config_file)
+
+        # Merge common configuration and specific device configuration
+        config = configs[Utils.COMMON_CONFIG_LABEL]
+        config.update(configs[device_type])
+
+        return config
+
     @staticmethod
     def encode_ids(ids_dict):
         """

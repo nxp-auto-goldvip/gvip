@@ -8,7 +8,7 @@ SJA application via sockets.
 Provisioning data implies: aws endpoint, sja thing name, sja thing
 certificates, mqtt topic, greengrass ip, greengrass certificate authority
 
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import json
@@ -32,6 +32,9 @@ class SjaProvisioningClient():
 
     # Port used for connection, must match that used by the server on the SJA side.
     SJA_PORT = 8080
+
+    # Certificate tarball name.
+    SJA_CERTIFICATE = "Sja_Certificate.tar.gz"
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -121,10 +124,10 @@ class SjaProvisioningClient():
         """
         s3_client = boto3.client('s3')
 
-        Utils.check_certificates_tarball(s3_client, self.s3_bucket_name, Utils.SJA_CERTIFICATE)
+        Utils.check_certificates_tarball(s3_client, self.s3_bucket_name, self.SJA_CERTIFICATE)
 
         gzip = BytesIO()
-        s3_client.download_fileobj(self.s3_bucket_name, Utils.SJA_CERTIFICATE, gzip)
+        s3_client.download_fileobj(self.s3_bucket_name, self.SJA_CERTIFICATE, gzip)
         gzip.seek(0)
 
         with tarfile.open(fileobj=gzip, mode='r:gz') as tar:

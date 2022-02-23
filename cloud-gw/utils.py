@@ -5,7 +5,7 @@
 """
 Auxiliary functions used for the provisioning scripts.
 
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import os
@@ -18,9 +18,6 @@ class Utils():
     """ Class containing general utility methods. """
     # Time in seconds used to wait for wpa_supplicant initialization.
     WPA_WAIT_TIME = 3
-
-    # Certificate tarball name.
-    SJA_CERTIFICATE = "Sja_Certificate.tar.gz"
 
     @staticmethod
     def execute_command(command, timeout=None):
