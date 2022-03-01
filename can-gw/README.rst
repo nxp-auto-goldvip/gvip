@@ -199,6 +199,9 @@ Running the measurements
 
         sudo ./eth-slow-path-host.sh -s 64 -g 10 <can> <eth>
 
+      **Note**: Due to the fact that CAN communication has a higher priority than ethernet communication
+      you will see a significant reduction in the number of outbound ethernet packets when the system
+      becomes overloaded by CAN frames (e.g., frames with size 4 and a gap between them of 0 ms).
 
       **Note**: run ``ip a`` command on your host PC to find out the exact name of the
       ethernet interface <eth> connected to the board.
