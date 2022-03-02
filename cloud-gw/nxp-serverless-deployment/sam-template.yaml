@@ -26,7 +26,6 @@ Metadata:
     Author: NXP
     SpdxLicenseId: BSD-3-Clause
     LicenseUrl: LICENSE
-    ReadmeUrl: ../README.rst
     Labels: ['nxp', 'goldvip', 's32g', 'goldbox']
     HomePageUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
     SemanticVersion: 1.0.0
