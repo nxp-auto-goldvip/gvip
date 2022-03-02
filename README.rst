@@ -23,19 +23,21 @@ Download GoldVIP binary images from `here <https://www.nxp.com/app-autopackagemg
 Deploy GoldVIP SD-card image
 ----------------------------
 
-1. Check the device name under which your SD-card is installed on PC so that you
-   won't overwrite another disk. Use `cat /proc/partitions` command before and 
-   after inserting SD-card, see which new sd* disk appears (e.g., /dev/sdb) and
-   use it's name in the next step command.
+1. Write the GoldVIP .sdcard image (*fsl-image-goldvip.sdcard*) on the SD-card:
 
-2. Write fsl-image-goldvip on SD-card plugged into the Linux host PC, e.g.::
+  - **On Linux host**:
+     - Check the device name under which your SD-card is installed on PC so that you
+       won't overwrite another disk. Use `cat /proc/partitions` command before and 
+       after inserting SD-card, see which new sd* disk appears (e.g., /dev/sdb) and
+       use its name in the next step command.
+     - Write fsl-image-goldvip on SD-card plugged into the Linux host PC, e.g.::
+         
+          sudo dd if=fsl-image-goldvip-s32g274ardb2.sdcard of=/dev/sdb bs=1M status=progress && sync
+  - **On Windows host**, one can use *Win32DiskImager* in order to write the .sdcard file to the SD-card.
 
-    sudo dd if=fsl-image-goldvip-s32g274ardb2.sdcard of=/dev/sdb bs=1M status=progress && sync
+2. Set the board to boot from SD (SW4.7 to ON, and SW10 to ON-OFF).  An image describing the DIP switches positions on the RDB board can be found in the appendix.
 
-At this point you can plug in the SD-card power on the board and it will boot
-u-boot + Linux from SD-card. For trying out Ethernet and cloud telemetry
-use cases you can skip the boot-loader deployment from next section. However,
-for CAN use cases you need to follow the steps from next section too.
+3. Plug in the SD-card, and power on the board and it will boot Arm Trusted Firmware and Linux from SD-card.
 
 .. _deploying_realtime_bootloader:
 
@@ -43,7 +45,7 @@ Deploy images to Flash
 ----------------------
 
 The real time bootloader runs on Cortex-M7-0 and is loaded from QSPI NOR flash.
-It's main function is to load u-boot on Cortex-A53 cores and the real-time
+It's main function is to load ARM Trusted Firmware on Cortex-A53 cores and the real-time
 applications on Cortex-M7 cores.
 
 To write boot-loader in NOR flash, first boot from SD-card using the above
@@ -59,9 +61,9 @@ individually:
 
     run write_bootloader
 
-2. Update U-Boot image::
+2. Update Arm Trusted Firmware image::
 
-    run write_uboot
+    run write_atf
 
 3. Update GoldVIP Gateway binary::
 
