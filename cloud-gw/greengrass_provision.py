@@ -228,7 +228,7 @@ def main():
     parser.add_argument('--https-port', dest='https_port', type=int, default=443,
                         choices=[8443, 443], help='HTTP port used by Greengrass.')
     parser.add_argument('--setup-sja', dest='setup_sja', default=False, action='store_true',
-                        help="Local ip address of the sja1110 interface.")
+                        help="Provision the SJA1110 with connection data.")
     parser.add_argument('--deployment-name', dest='deployment_name', type=str,
                         default='GoldVIP_Telemetry_Deployment',
                         help="Name of the Greengrass V2 continuous deployment.")
