@@ -1,0 +1,60 @@
+# Copyright 2022 NXP
+# OTAmatic Client pod - runs on a domU VM.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: otamatic-client-pod
+  labels:
+    app: otamatic-client-pod
+spec:
+  hostNetwork: true
+  nodeSelector:
+    vmtype: domU
+  # Start the container with a custom command to get the logs from the OTAmatic Client on the
+  # rootfs of the host system.
+  containers:
+  - name: otamatic-client-container
+    image: goldvip-ota-client:local
+    imagePullPolicy: Never
+    command: [
+      'sh',
+      '-c',
+      'otamatic_sample_app >> /var/log/otamatic 2>&1'
+    ]
+    volumeMounts:
+    - name: uptane-data-path
+      mountPath: /data
+    - name: vehif-state-path
+      mountPath: /home/root/ota/vehif_state
+    - name: varlog
+      mountPath: /var/log
+  # Prepare the workspace (ensure both vehicle_state and /data directories are present
+  # on the rootfs of the host system).
+  initContainers:
+  - name: init-otamatic-config-container
+    image: goldvip-ota-client:local
+    imagePullPolicy: Never
+    command: [
+      'sh',
+      '-c',
+      'cp -r /home/root/ota/vehif_state/* /mnt/host-vehif-state; if [ ! "$(ls -A /mnt/host-data)" ]; then cp -r /data/* /mnt/host-data; fi'
+    ]
+    volumeMounts:
+    - name: uptane-data-path
+      mountPath: /mnt/host-data
+    - name: vehif-state-path
+      mountPath: /mnt/host-vehif-state
+  volumes:
+  - name: uptane-data-path
+    hostPath:
+      path: /data
+      type: DirectoryOrCreate
+  - name: vehif-state-path
+    hostPath:
+      path: /home/root/ota/vehif_state
+      type: DirectoryOrCreate
+  - name: varlog
+    hostPath:
+      path: /var/log
+      type: Directory
+

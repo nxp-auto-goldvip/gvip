@@ -1,0 +1,27 @@
+# Copyright 2022 NXP
+# k3s server configuration file for dom0. Used when Xen is not enabled.
+# https://rancher.com/docs/k3s/latest/en/installation/install-options/#configuration-file
+
+# Authentication token used to accept connections from worker nodes.
+token: "goldvip"
+# Taint used to schedule specific pods on this node.
+node-label: "vmtype=dom0"
+
+# Cluster networking configuration.
+bind-address: "10.255.255.254"
+node-ip: "10.255.255.254"
+node-external-ip: "10.255.255.254"
+
+# The kubelet will start to delete the images when the used disk space exceeds 95%.
+kubelet-arg:
+  - "image-gc-high-threshold=95"
+
+# Disable the default packaged services in order to optimize the hardware resources
+# usage.
+disable:
+  - coredns
+  - servicelb
+  - traefik
+  - local-storage
+  - metrics-server
+

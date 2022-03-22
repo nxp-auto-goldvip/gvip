@@ -1,0 +1,18 @@
+# Copyright 2022 NXP
+# k3s agent configuration file for dom0.
+# https://rancher.com/docs/k3s/latest/en/installation/install-options/#configuration-file
+
+# Authentication token used to accept connections from worker nodes.
+token: "goldvip"
+# K3s server to connect to.
+server: "https://10.0.100.20:6443"
+# Taint used to schedule specific pods on this node.
+node-label: "vmtype=dom0"
+
+# Cluster networking configuration.
+node-ip: "10.0.100.10"
+node-external-ip: "10.0.100.10"
+
+# The kubelet will start to delete the images when the used disk space exceeds 95%.
+kubelet-arg:
+  - "image-gc-high-threshold=95"
