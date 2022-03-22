@@ -91,14 +91,6 @@ class SitewiseHandler:
     CLIENT = boto3.client('iotsitewise')
 
     @staticmethod
-    def __add_sitewise_header(request, **kwargs):  # pylint: disable=unused-argument
-        """
-        :param request:
-        :param kwargs: placeholder param
-        """
-        request.headers.add_header('Content-type', 'application/json')
-
-    @staticmethod
     def __create_sitewise(event, ids, response_data):  # pylint: disable=too-many-locals
         """
         Create a Model and an Asset.
@@ -391,11 +383,6 @@ class SitewiseHandler:
         except KeyError:
             LOGGER.info("Asset ID not found (__create_monitor)")
             return cfnresponse.FAILED
-
-        SitewiseHandler.CLIENT.meta.events.register_first(
-            'before-sign.iotsitewise.*',
-            SitewiseHandler.__add_sitewise_header
-        )
 
         LOGGER.info('Creating Portal...')
 
