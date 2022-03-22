@@ -232,6 +232,8 @@ def main():
     parser.add_argument('--deployment-name', dest='deployment_name', type=str,
                         default='GoldVIP_Telemetry_Deployment',
                         help="Name of the Greengrass V2 continuous deployment.")
+    parser.add_argument('--sja-hwaddr', dest='sja_hwaddr', type=str, default='00:04:9f:06:12:00',
+                        help='Hardware address of the sja1110 switch.')
 
     args = parser.parse_args()
 
@@ -278,7 +280,8 @@ def main():
             args.cfn_stack_name,
             args.aws_region_name,
             args.netif,
-            args.mqtt_port).execute()
+            args.mqtt_port,
+            args.sja_hwaddr).execute()
 
 # entry point
 if __name__ == '__main__':
