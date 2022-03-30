@@ -332,10 +332,10 @@ class SitewiseHandler:
                 # Create line charts to display throughput in packets.
                 widgets_params.append(
                     {
-                        "x": 0,
+                        "x": (widget_idx % 3)*2,
                         "y": widget_y,
                         "height": 3,
-                        "width": 6,
+                        "width": 2,
                         "title": f"Switch0 Port{port} Traffic (Pckts)",
                         "metrics": {
                             "Drop": {
@@ -357,10 +357,10 @@ class SitewiseHandler:
                 # Create PKI to display total count.
                 widgets_params.append(
                     {
-                        "x": 0,
+                        "x": (widget_idx % 3)*2,
                         "y": widget_y+3,
                         "height": 1,
-                        "width": 6,
+                        "width": 2,
                         "title": f"Switch0 Port{port} Counter (Pckts)",
                         "metrics": {
                             "Drop": {

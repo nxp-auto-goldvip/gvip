@@ -55,7 +55,7 @@
                 "x": 0,
                 "y": 3,
                 "height": 3,
-                "width": 6,
+                "width": 3,
                 "title": "PFE0 Traffic (Mbps)",
                 "metrics": {
                     "PFE0 RX": {
@@ -70,10 +70,10 @@
                 "type": "monitor-line-chart"
             },
             "PFE2 Traffic": {
-                "x": 0,
-                "y": 6,
+                "x": 3,
+                "y": 3,
                 "height": 3,
-                "width": 6,
+                "width": 3,
                 "title": "PFE2 Traffic (Mbps)",
                 "metrics": {
                     "PFE2 RX": {
@@ -91,7 +91,7 @@
                 "x": 0,
                 "y": 9,
                 "height": 3,
-                "width": 6,
+                "width": 3,
                 "title": "Dom0 Memory Load (MB)",
                 "metrics": {
                     "Dom0 Memory Load": {
@@ -102,10 +102,10 @@
                 "type": "monitor-line-chart"
             },
             "Immediate Temperature": {
-                "x": 0,
-                "y": 12,
+                "x": 3,
+                "y": 9,
                 "height": 3,
-                "width": 6,
+                "width": 3,
                 "title": "Immediate Temperature",
                 "metrics": {
                     "DDR SRAM Temperature": {
