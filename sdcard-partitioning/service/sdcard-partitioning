@@ -1,0 +1,212 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          sdcard-partitioning
+# Required-Start:
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:
+# Short-Description: Update the partition table in the GoldVIP image
+# Description:       Update the partition table during the runtime for the A53 GoldVIP image:
+#                      - increase the size of the v2xdomu rootfs partition
+#                      - create a extended partition
+#                      - create the OTA partition
+### END INIT INFO
+# Copyright 2022 NXP
+
+# Configuration defaults (e.g., flag that enable the v2xdomu rootfs resizing).
+SDCARD_PARTITIONING_CONFIG="/etc/default/sdcard-partitioning"
+# If the block device doesn't provide any preffered optimal I/O size, use a default one of 4MiB.
+DEFAULT_PARTITION_ALIGNMENT="4194304"
+
+# shellcheck disable=SC1090
+[ -f "${SDCARD_PARTITIONING_CONFIG}" ] && . "${SDCARD_PARTITIONING_CONFIG}"
+
+#######################################
+# Compute the optimal sector alignment for a given block device.
+# Globals:
+#   DEFAULT_PARTITION_ALIGNMENT
+# Arguments:
+#   The block device for which the alignment is computed
+# Outputs:
+#   The sector alignment
+#######################################
+get_io_size_alignment() {
+  blkname="$1"
+
+  # The number of bytes that the beginning of the Linux block device is offset
+  # from the underlying physical alignment.
+  alignment_offset="$(cat /sys/block/"${blkname}"/alignment_offset)"
+
+  # Some devices may report an optimal I/O size.
+  optimal_io_size="$(cat /sys/block/"${blkname}"/queue/optimal_io_size)"
+  if [ "${optimal_io_size}" -le 0 ]; then
+    optimal_io_size="${DEFAULT_PARTITION_ALIGNMENT}"
+  fi
+
+  # The smallest unit a physical storage device can write atomically.
+  physical_block_size="$(cat /sys/block/"${blkname}"/queue/physical_block_size)"
+
+  # Convert bytes to sectors.
+  sector_alignment=$(( (optimal_io_size + alignment_offset) / physical_block_size ))
+  echo "${sector_alignment}"
+}
+
+#######################################
+# Alter the partition table of a block device and add a custom partition.
+# Globals:
+#   N/A
+# Arguments:
+#   The block device
+#   Partition type (primary / logical)
+#   Filesystem type used when creating the partition (e.g., ext2, ext4)
+#   Partition size in sectors, without the unit (e.g., 13221888)
+# Outputs:
+#   N/A
+#######################################
+create_aligned_partition() {
+  block_dev="$1"
+  part_type="$2"
+  fs_type="$3"
+  part_size="$4"
+
+  sector_alignment="$(get_io_size_alignment "$(basename "${block_dev}")")"
+  free_space_info="$(parted -ms "${block_dev}" unit s p free | tail -n 1)"
+  free_space_start="$(echo "${free_space_info}" | cut -d: -f2 | tr -d 's')"
+  free_space_end="$(echo "${free_space_info}" | cut -d: -f3 | tr -d 's')"
+
+  aligned_start_sector=$(( ((free_space_start / sector_alignment) + 1) * sector_alignment ))
+  unaligned_end_sector=$(( aligned_start_sector + part_size ))
+  aligned_end_sector=$(( (unaligned_end_sector) / sector_alignment * sector_alignment - 1 ))
+
+  if [ "${aligned_end_sector}" -gt "${free_space_end}" ]; then
+    echo "[ERROR] There is not enough free space on $block_dev"
+    return 1
+  fi
+
+  parted -s "${block_dev}" unit s mkpart "${part_type}" "${fs_type}" \
+    "${aligned_start_sector}" "${aligned_end_sector}"
+}
+
+#######################################
+# Increase the size of a given partition from a block device. Fail if there is not enough available
+# space, unless the <best_effort> flag is set on "true".
+# Globals:
+#   N/A
+# Arguments:
+#   The block device
+#   Partition number in the table
+#   The new partition end in Bytes
+#   Flag for best-effort resize (use only the available free space if there is not enough space to
+#     satisfy the new partition layout)
+# Outputs:
+#   N/A
+#######################################
+extend_partition() {
+  block_dev="$1"
+  partno="$2"
+  new_partition_end="$3"
+  best_effort="${4:-false}"
+
+  curr_partition_end="$(parted -ms "${block_dev}" unit B print | grep "^${partno}:" | \
+                        cut -d: -f3 | tr -d 'Bb')"
+  if [ "${curr_partition_end}" -ge "${new_partition_end}" ]; then
+    echo "[ERROR] Don't know how to shrink the partition"
+    exit 1
+  fi
+
+  free_space_end="$(parted -ms "${block_dev}" unit B print free | grep "^${partno}:" -A 1 | \
+                    grep ":free;$" | cut -d: -f3 | tr -d 'Bb')"
+
+  if [ "${new_partition_end}" -gt "${free_space_end}" ]; then
+    if [ "${best_effort}" != true ]; then
+      echo "[ERROR] Can't resize the partition to the requested size"
+      exit 1
+    fi
+
+    echo "[INFO] Best effort resize is enabled - resizing until ${free_space_end}"
+    new_partition_end="${free_space_end}"
+  fi
+
+  # Per the implementation of disk_name() in the Linux kernel, the device for a specific partition
+  # is obtained in the following manner: $blkdev + (($blkdev.end().isdigit()) ? 'p` : '') + $partno;
+  # if the device name ends in a digit, append a `p` between the device name and the partition
+  # number.
+  partition_dev="${block_dev}"
+  if [[ "$block_dev" = *?[0-9] ]]; then
+    partition_dev+='p'
+  fi
+  partition_dev+="${partno}"
+
+  # Resize the partition and the filesystem.
+  parted -s "${block_dev}" resizepart "${partno}" "$(( new_partition_end - 1 ))B"
+  e2fsck -pf "${partition_dev}"
+  resize2fs "${partition_dev}"
+}
+
+#######################################
+# Update the partition table of the GoldVIP image based on the image configuration (Xen and/or
+# OTA update features are enabled). Automatically detect the device where the dom0 rootfs resides
+# and use it for the following steps. It assumes that the v2xdomu rootfs partition is the next after
+# the dom0 partition.
+# Globals:
+#   V2XDOMU_PARTITION_END
+# Arguments:
+#   N/A
+# Outputs:
+#   N/A
+#######################################
+update_goldvip_sdcard_partition_table() {
+  # The partition used for this image (dom0).
+  root_part="$(findmnt / -o source -n)"
+  root_partno="$(grep -o "[[:digit:]]*$" <<< "${root_part}")"
+  block_dev="/dev/$(lsblk -no pkname "${root_part}")"
+  v2xdomu_partno="$(( root_partno + 1 ))"
+
+  # Sanity check: check if there are less than 4 partitions.
+  if [ "$(partx -gl "${block_dev}" | wc -l)" -ge "4" ]; then
+    echo "[ERROR] Unexpected partition table"
+    exit 1
+  fi
+
+  if [ "${RESIZE_V2XDOMU}" = "true" ] ; then
+    if [ -z "${V2XDOMU_PARTITION_END+x}" ]; then
+      echo "[ERROR] The new v2xdomu partition end is not set"
+      exit 1
+    fi
+    extend_partition "${block_dev}" "${v2xdomu_partno}" "${V2XDOMU_PARTITION_END}" "true"
+  fi
+
+  free_space_info="$(parted -ms "${block_dev}" unit s p free | tail -n 1)"
+  extended_partition_start="$(cut -f 2 -d: <<< "${free_space_info}")"
+  extended_partition_end="$(cut -f 3 -d: <<< "${free_space_info}")"
+  # Create an extended partition that includes the rest of the space. The alignment can be ignored
+  # for this type of partition. Explicitly set the partition end offset instead of using '100%',
+  # because the latter can leave some unpartitioned space on some sdcards.
+  parted -s "${block_dev}" mkpart extended "${extended_partition_start}" "${extended_partition_end}"
+
+  if [ "${CREATE_OTA_PARTITION}" = "true" ]; then
+    v2xdomu_part_size="$(parted -ms "${block_dev}" unit s print | grep "^${v2xdomu_partno}:" |
+                         cut -d: -f4 | tr -d 'Ss')"
+    # This may err if there is not enough space for the OTA partition.
+    create_aligned_partition "${block_dev}" "logical" "ext4" "${v2xdomu_part_size}" || true
+  fi
+}
+
+# This is meant to run only once, after the first boot, before Xen boots any other VMs (the file
+# system of the v2xdomu machine may be corrupted if the resize of the partition happens after the
+# VM was started).
+case "$1" in
+start)
+        echo "Altering the partition table..."
+        update_goldvip_sdcard_partition_table && \
+          update-rc.d -f sdcard-partitioning remove && \
+          rm /etc/init.d/sdcard-partitioning && \
+          rm -f "${SDCARD_PARTITIONING_CONFIG}"
+        ;;
+*)
+        echo "Usage: /etc/init.d/sdcard-partitioning start"
+        exit 1
+        ;;
+esac
+
+exit 0

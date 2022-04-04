@@ -1,0 +1,15 @@
+# Copyright 2022 NXP
+# Configuration file sourced by the sdcard-partitioning script.
+
+# Un-comment this to resize the v2xdomu rootfs partition until the
+# V2XDOMU_PARTITION_END offset. V2XDOMU_PARTITION_END must be set
+# if this flag is enabled.
+#RESIZE_V2XDOMU="true"
+
+# Offset (in bytes) where the v2xdomu partition should end. Un-comment
+# this to expand the v2xdomu rootfs partition until 8GiB.
+#V2XDOMU_PARTITION_END=8589934592
+
+# Un-comment this to create an additional partition for the LinuxVM
+# OTA use-case, with the same size as the v2xdomu rootfs partition.
+#CREATE_OTA_PARTITION="true"
