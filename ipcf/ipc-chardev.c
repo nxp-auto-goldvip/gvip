@@ -19,6 +19,7 @@
 #include <linux/init.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
+#include <asm/io.h>
 #include <ipc-shm.h>
 #include <ipc-mem-cfg.h>
 
@@ -529,11 +530,25 @@ static int __init ipcf_module_init(void)
     dev_t dev;
     int inst_id = 0;
     int ch_id = 0;
+    uint32_t M7_0_stat = 0;
     struct device *pdev = NULL;
     struct ipc_shm_instances_cfg shm_instances_cfg = {
         .num_instances = IPC_NUM_INSTANCES,
         .shm_cfg = shm_cfg
     };
+    uint32_t *pM7_0_stat = ioremap(M7_0_CORE_STAT_REG, M7_0_CORE_STAT_REG_SIZE);
+    if (IS_ERR(pM7_0_stat)) {
+        printk (KERN_ALERT "Failed to map M7_0 core status register \n");
+        return -EFAULT;
+    }
+    M7_0_stat = ioread32(pM7_0_stat);
+    iounmap(pM7_0_stat);
+    /* Check if M7 is up */
+    if (M7_0_CORE_ACTIVE != (M7_0_stat & M7_0_CORE_ACTIVE)) {
+        printk(KERN_ALERT "M7_0 core is not started, %s module will not be inserted\n", 
+               MODULE_NAME);
+        return -EFAULT;
+    }
 
     err = alloc_chrdev_region(&dev, 0, IPC_NUM_CHANNELS, DEVICE_NAME);
     if (err) {
