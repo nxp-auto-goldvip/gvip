@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2021 NXP
+# Copyright 2021-2022 NXP
 #
 # This script implements the target machine logic for the L2/L3 forwarding
 # fast path scenario using the PFE interfaces of the board.
@@ -29,8 +29,8 @@ _setup_l2_switch() {
     libfci_cli bd-update --vlan "${vlan_id}" --ucast-hit 0 --ucast-miss 1 --mcast-hit 0 --mcast-miss 1
 
     # Update PHY configuration for EMAC0 and EMAC2.
-    libfci_cli phyif-update --i emac0 --mode BRIDGE --enable --promisc ON
-    libfci_cli phyif-update --i emac2 --mode BRIDGE --enable --promisc ON
+    libfci_cli phyif-update --i emac0 --mode VLAN_BRIDGE --enable --promisc ON
+    libfci_cli phyif-update --i emac2 --mode VLAN_BRIDGE --enable --promisc ON
 }
 
 # Set layer three routing for the two local PFE interfaces.
