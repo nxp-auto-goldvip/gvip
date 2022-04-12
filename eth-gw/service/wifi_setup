@@ -12,7 +12,7 @@
 ### END INIT INFO
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2021 NXP
+# Copyright 2021-2022 NXP
 
 # Enable bash strict mode (i.e. fail on any non-zero exit code,
 # undefined variable reference and prevent masked pipeline errors).
@@ -130,6 +130,8 @@ setup_network_domU() {
 clean_up() {
     del_bridge
     clean_forwarding_packet_rule
+    pkill wpa_supplicant || true
+    pkill wpa_cli || true
 }
 
 #Parsing config file to get network interface
@@ -162,7 +164,7 @@ do_stop() {
 
 do_restart() {
     do_stop
-    do_start
+    do_start &
 }
 
 # Main section
@@ -174,7 +176,7 @@ fi
 
 case "$1" in
     start)
-        do_start
+        do_start &
         ;;
     stop)
         do_stop
