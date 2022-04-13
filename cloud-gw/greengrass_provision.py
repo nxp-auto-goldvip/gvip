@@ -32,13 +32,13 @@ class Greengrassv2Deployment():
         :param deployment_name: A Name for the Greengrass v2 deployment.
         :param mqtt_port: Mqtt port used by greengrass.
         """
-        self.thing_name = None
-        self.thing_arn = None
-        self.stack_name = stack_name
-        self.region = region
-        self.deployment_name = deployment_name
-        self.mqtt_port = ports[0]
-        self.https_port = ports[1]
+        self.__thing_name = None
+        self.__thing_arn = None
+        self.__stack_name = stack_name
+        self.__region = region
+        self.__deployment_name = deployment_name
+        self.__mqtt_port = ports[0]
+        self.__https_port = ports[1]
 
     def get_thing_arn(self):
         """
@@ -49,16 +49,16 @@ class Greengrassv2Deployment():
 
         cfn_stack_outputs = Utils.pull_stack_outputs(
             cfn_client,
-            self.stack_name)
+            self.__stack_name)
 
-        self.thing_name = Utils.get_cfn_output_value(cfn_stack_outputs, 'CoreThingName')
+        self.__thing_name = Utils.get_cfn_output_value(cfn_stack_outputs, 'CoreThingName')
 
         for thing in iot_client.list_things()['things']:
-            if thing['thingName'] == self.thing_name:
-                self.thing_arn = thing['thingArn']
+            if thing['thingName'] == self.__thing_name:
+                self.__thing_arn = thing['thingArn']
                 break
 
-        if not self.thing_arn:
+        if not self.__thing_arn:
             raise Exception("Core Thing ARN not found.")
 
     def create_deployment(self):
@@ -68,39 +68,40 @@ class Greengrassv2Deployment():
         the greengrass nucleus, and four components required to connect to SJA1110's thing.
         """
         ggv2_client = boto3.client("greengrassv2")
-        sja_thing_name = self.stack_name + "_SjaThing"
+        sja_thing_name = self.__stack_name + "_SjaThing"
 
         with open("/home/root/cloud-gw/ggv2_deployment_configurations.json",
                   "r", encoding="utf-8") as config_file:
             configs = json.loads(config_file.read())
 
         ggv2_client.create_deployment(
-            targetArn=self.thing_arn,
-            deploymentName=self.deployment_name,
+            targetArn=self.__thing_arn,
+            deploymentName=self.__deployment_name,
             components={
                 'aws.greengrass.Nucleus': {
                     'componentVersion': '2.5.3',
                     'configurationUpdate': {
                         'merge': json.dumps(configs['nucleus']
-                                            ).replace("MQTT_PORT", str(self.mqtt_port)
-                                                      ).replace("HTTPS_PORT", str(self.https_port))
+                                            ).replace("MQTT_PORT", str(self.__mqtt_port)
+                                                      ).replace("HTTPS_PORT",
+                                                                str(self.__https_port))
                     }
                 },
                 'aws.greengrass.Cli' : {
                     'componentVersion': '2.5.3'
                 },
-                self.stack_name + ".GoldVIP.Telemetry" : {
+                self.__stack_name + ".GoldVIP.Telemetry" : {
                     'componentVersion': '1.0.0',
                     'configurationUpdate': {
                         'merge': json.dumps(configs['telemetry']
-                                            ).replace('STACK_NAME', self.stack_name),
+                                            ).replace('STACK_NAME', self.__stack_name),
                     }
                 },
                 'aws.greengrass.clientdevices.mqtt.Bridge' : {
                     'componentVersion': '2.1.0',
                     'configurationUpdate': {
                         'merge': json.dumps(configs['bridge']
-                                            ).replace('STACK_NAME', self.stack_name),
+                                            ).replace('STACK_NAME', self.__stack_name),
                     }
                 },
                 'aws.greengrass.clientdevices.mqtt.Moquette' : {
@@ -110,8 +111,8 @@ class Greengrassv2Deployment():
                     'componentVersion': '2.0.4',
                     'configurationUpdate': {
                         'merge': json.dumps(configs['auth']).replace(
-                            'STACK_NAME', self.stack_name).replace(
-                                'GG_THING_NAME', self.thing_name).replace(
+                            'STACK_NAME', self.__stack_name).replace(
+                                'GG_THING_NAME', self.__thing_name).replace(
                                     'SJA_THING_NAME', sja_thing_name),
                     }
                 },
@@ -133,8 +134,8 @@ class Greengrassv2Deployment():
         """
         installer_command = f"java -Droot='/greengrass/v2' -Dlog.store=FILE\
         -jar /greengrass/v2/alts/init/distro/lib/Greengrass.jar\
-        --aws-region {self.region} --component-default-user ggc_user:ggc_group\
-        --provision true --thing-name {self.thing_name}"
+        --aws-region {self.__region} --component-default-user ggc_user:ggc_group\
+        --provision true --thing-name {self.__thing_name}"
 
         Greengrassv2Deployment.stop_greengrass_nucleus()
 

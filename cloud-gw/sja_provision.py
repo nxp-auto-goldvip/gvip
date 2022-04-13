@@ -49,30 +49,29 @@ class SjaProvisioningClient():
         :param sja_hwaddr: Mac address of SJA1110, it must match the address
                            configured in the SJA application.
         """
-        self.region = aws_region_name
-        self.netif = netif
-        self.mqtt_port = mqtt_port
-        self.sja_hwaddr = sja_hwaddr
+        self.__region = aws_region_name
+        self.__netif = netif
+        self.__mqtt_port = mqtt_port
+        self.__sja_hwaddr = sja_hwaddr
 
-        self.aws_endpoint = None
-        self.greengrass_ca = None
-        self.greengrass_ip = None
-        self.greengrass_mask = None
-        self.sja_ip_addr = None
+        self.__aws_endpoint = None
+        self.__greengrass_ca = None
+        self.__greengrass_ip = None
+        self.__sja_ip_addr = None
 
-        self.certificates_keys = {
+        self.__certificates_keys = {
             'certs/certificate.private.key': None,
             'certs/certificate.pem': None,
         }
-        self.topic = "s32g/sja/switch/" + cfn_stack_name
-        self.thing_name = cfn_stack_name + "_SjaThing"
+        self.__topic = "s32g/sja/switch/" + cfn_stack_name
+        self.__thing_name = cfn_stack_name + "_SjaThing"
 
         cfn_stack_outputs = Utils.pull_stack_outputs(
             boto3.client('cloudformation'),
             cfn_stack_name)
 
-        self.ggv2_core_name = Utils.get_cfn_output_value(cfn_stack_outputs, 'CoreThingName')
-        self.s3_bucket_name = Utils.get_cfn_output_value(cfn_stack_outputs, 'CertificateBucket')
+        self.__ggv2_core_name = Utils.get_cfn_output_value(cfn_stack_outputs, 'CoreThingName')
+        self.__s3_bucket_name = Utils.get_cfn_output_value(cfn_stack_outputs, 'CertificateBucket')
 
     def __attach_sja_to_ggcore(self):
         ggv2_client = boto3.client('greengrassv2')
@@ -80,21 +79,21 @@ class SjaProvisioningClient():
         ggv2_client.batch_associate_client_device_with_core_device(
             entries=[
                 {
-                    'thingName': self.thing_name
+                    'thingName': self.__thing_name
                 }
             ],
-            coreDeviceThingName=self.ggv2_core_name
+            coreDeviceThingName=self.__ggv2_core_name
         )
 
     def __get_endpoint(self):
         """
         Retrieves the cloud endpoint.
         """
-        self.aws_endpoint = boto3.client('iot').describe_endpoint(
+        self.__aws_endpoint = boto3.client('iot').describe_endpoint(
             endpointType='iot:Data-ATS'
         )['endpointAddress']
 
-        print(f"Retrieved endpoint: {self.aws_endpoint}")
+        print(f"Retrieved endpoint: {self.__aws_endpoint}")
 
     def __update_connectivity_info(self):
         """
@@ -103,16 +102,16 @@ class SjaProvisioningClient():
         """
         connectivity_info = [
             {
-                'HostAddress': f'{self.greengrass_ip}',
-                'Id': f'{self.greengrass_ip}',
+                'HostAddress': f'{self.__greengrass_ip}',
+                'Id': f'{self.__greengrass_ip}',
                 'Metadata': '',
-                'PortNumber': self.mqtt_port
+                'PortNumber': self.__mqtt_port
             }
         ]
 
         boto3.client('greengrass').update_connectivity_info(
             ConnectivityInfo=connectivity_info,
-            ThingName=self.ggv2_core_name
+            ThingName=self.__ggv2_core_name
         )
 
         print("Updated Core connectivity information.")
@@ -124,18 +123,18 @@ class SjaProvisioningClient():
         """
         s3_client = boto3.client('s3')
 
-        Utils.check_certificates_tarball(s3_client, self.s3_bucket_name, self.SJA_CERTIFICATE)
+        Utils.check_certificates_tarball(s3_client, self.__s3_bucket_name, self.SJA_CERTIFICATE)
 
         gzip = BytesIO()
-        s3_client.download_fileobj(self.s3_bucket_name, self.SJA_CERTIFICATE, gzip)
+        s3_client.download_fileobj(self.__s3_bucket_name, self.SJA_CERTIFICATE, gzip)
         gzip.seek(0)
 
         with tarfile.open(fileobj=gzip, mode='r:gz') as tar:
             for member in tar.getmembers():
-                if member.name in self.certificates_keys:
-                    self.certificates_keys[member.name] = tar.extractfile(member).read()
+                if member.name in self.__certificates_keys:
+                    self.__certificates_keys[member.name] = tar.extractfile(member).read()
 
-        if not all(self.certificates_keys.values()):
+        if not all(self.__certificates_keys.values()):
             raise Exception("One or more certificates couldn't be found.")
 
         print("Retrieved certificates.")
@@ -151,15 +150,15 @@ class SjaProvisioningClient():
              tempfile.NamedTemporaryFile(mode="w+") as keypath:
 
             # Write the SJA thing's certificate to temporary files.
-            certpath.write(self.certificates_keys['certs/certificate.pem'].decode("utf-8"))
-            keypath.write(self.certificates_keys['certs/certificate.private.key'].decode("utf-8"))
+            certpath.write(self.__certificates_keys['certs/certificate.pem'].decode("utf-8"))
+            keypath.write(self.__certificates_keys['certs/certificate.private.key'].decode("utf-8"))
 
             certpath.flush()
             keypath.flush()
 
             # Create the request url.
-            url = f"https://greengrass-ats.iot.{self.region}.amazonaws.com:8443"\
-                  f"/greengrass/discover/thing/{self.thing_name}"
+            url = f"https://greengrass-ats.iot.{self.__region}.amazonaws.com:8443"\
+                  f"/greengrass/discover/thing/{self.__thing_name}"
 
             for i in range(nb_retries):
                 # Send the request with the certificate paths.
@@ -168,7 +167,7 @@ class SjaProvisioningClient():
                 # Save the Greengrass Certitficate Authority from the request.
                 response = json.loads(ret.text)
                 try:
-                    self.greengrass_ca = response["GGGroups"][0]["CAs"][0]
+                    self.__greengrass_ca = response["GGGroups"][0]["CAs"][0]
 
                     print("Greengrass certificate authority retrieved.")
                     return
@@ -180,39 +179,61 @@ class SjaProvisioningClient():
 
         raise Exception(f"Greengrass CA not found in request response: {response}")
 
-    def __get_greengrass_ip(self):
+    def __get_netif_ip(self, netif=None):
         """
         Get the local network ip.
+        :param netif: the network interface for which we get the ip.
         """
-        out = str(subprocess.check_output(['ip', '-o', '-f', 'inet', 'a', 's', self.netif]))
-        ip_and_mask = out.partition('inet')[2].strip().split()[0]
-        self.greengrass_ip, _, self.greengrass_mask = ip_and_mask.partition('/')
+        if not netif:
+            netif = self.__netif
 
-        print(f"Local network ip found: '{self.greengrass_ip}'")
+        out = str(subprocess.check_output(['ip', '-o', '-f', 'inet', 'a', 's', netif]))
+
+        try:
+            ip_and_mask = out.partition('inet')[2].strip().split()[0]
+            ip_addr, _, mask = ip_and_mask.partition('/')
+        except IndexError:
+            print(f"Interface {netif} has no ip.")
+            return None, None
+
+        print(f"Found ip '{ip_addr}' for interface '{netif}'")
+        return ip_addr, mask
 
     def __find_sja_ip(self, nb_tries=3):
         """
         Discovers SJA1110 knowing its mac address, and saves its ip address.
+        :param nb_tries: number of tries to get the sja1110 ip.
         """
 
         # pylint: disable=import-outside-toplevel
         from scapy.all import srp
         from scapy.layers.l2 import ARP, Ether
 
+        # List the network interfaces with their subnet ip and mask
+        netif_list = [(netif, *self.__get_netif_ip(netif)) for _, netif in socket.if_nameindex()]
+
         for i in range(nb_tries):
-            arp_request = ARP(pdst=f"{self.greengrass_ip}/{self.greengrass_mask}")
-            brodcast = Ether(dst="ff:ff:ff:ff:ff:ff")
-            arp = brodcast / arp_request
-            answered = srp(arp, iface=self.netif, timeout=20, verbose=True)[0]
+            for netif, ip_addr, mask in netif_list:
+                if netif == 'lo' or not ip_addr:
+                    continue
 
-            for element in answered:
-                if self.sja_hwaddr in element[1].hwsrc:
-                    self.sja_ip_addr = element[1].psrc
-                    print(f"Found sja1110 ip address: {self.sja_ip_addr}")
-                    return
+                try:
+                    arp_request = ARP(pdst=f"{ip_addr}/{mask}")
+                    brodcast = Ether(dst="ff:ff:ff:ff:ff:ff")
+                    arp = brodcast / arp_request
+                    answered = srp(arp, iface=netif, timeout=20, verbose=True)[0]
+                except OSError:
+                    print("Network is down")
+                    continue
 
-            if i < nb_tries - 1:
-                print("SJA1110 ip not found, retrying...")
+                for element in answered:
+                    if self.__sja_hwaddr in element[1].hwsrc:
+                        self.__sja_ip_addr = element[1].psrc
+                        print(f"Found sja1110 ip address: {self.__sja_ip_addr}")
+                        return
+
+                if i < nb_tries - 1:
+                    print("SJA1110 ip not found, retrying...")
 
         raise Exception("Could not find ip address of SJA1110.")
 
@@ -225,16 +246,16 @@ class SjaProvisioningClient():
         ack = "OK"
 
         # Connect to the SJA local server
-        sock.connect((self.sja_ip_addr, SjaProvisioningClient.SJA_PORT))
+        sock.connect((self.__sja_ip_addr, SjaProvisioningClient.SJA_PORT))
 
         outbound_data = [
-            bytes(self.aws_endpoint, 'utf-8'),
-            bytes(self.thing_name, 'utf-8'),
-            self.certificates_keys['certs/certificate.private.key'],
-            self.certificates_keys['certs/certificate.pem'],
-            bytes(self.topic, 'utf-8'),
-            bytes(self.greengrass_ca, 'utf-8'),
-            bytes(self.greengrass_ip, 'utf-8')
+            bytes(self.__aws_endpoint, 'utf-8'),
+            bytes(self.__thing_name, 'utf-8'),
+            self.__certificates_keys['certs/certificate.private.key'],
+            self.__certificates_keys['certs/certificate.pem'],
+            bytes(self.__topic, 'utf-8'),
+            bytes(self.__greengrass_ca, 'utf-8'),
+            bytes(self.__greengrass_ip, 'utf-8')
         ]
 
         for data in outbound_data:
@@ -262,7 +283,7 @@ class SjaProvisioningClient():
         Get and set the fields and then send them to the sja1110 application.
         """
         self.__attach_sja_to_ggcore()
-        self.__get_greengrass_ip()
+        self.__greengrass_ip, _ = self.__get_netif_ip()
         self.__update_connectivity_info()
         self.__find_sja_ip()
         self.__get_endpoint()
