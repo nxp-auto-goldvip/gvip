@@ -390,6 +390,25 @@ class SitewiseHandler:
             kwargs["ids"][f'dashboard{idx}_id'] = dashboard_id
             kwargs["response_data"][f'dashboard{idx}Id'] = dashboard_id
 
+    def __configure_idps_dashboards(self, **kwargs):
+        """
+        Create a dashboard with IDPS events widgets.
+        """
+        # Declare the widgets properties from which the dashboard will be created.
+        widgets = self.configs['IDPS_WIDGETS_PARAMS'].values()
+
+        widgets_params = SitewiseHandler.update_widgets_params(widgets, kwargs["property_ids"])
+
+        dashboard_id = SitewiseHandler.__create_dashboard(
+            self.configs['IDPS_DB'],
+            widgets_params,
+            kwargs["asset_id"],
+            kwargs["project_id"])
+
+        # Save the dashboard id in the database
+        kwargs["ids"][self.configs['IDPS_IDS_KEY']] = dashboard_id
+        kwargs["response_data"][self.configs['IDPS_RESPONSE_DATA_KEY']] = dashboard_id
+
     def __create_monitor(self, event, ids, property_ids, response_data):
         """
         Creates a SiteWise Portal, a project and multiple dashboards.
@@ -449,6 +468,13 @@ class SitewiseHandler:
             response_data=response_data,
             asset_id=asset_id, project_id=project['projectId'])
 
+        LOGGER.info('Creating the IDPS Dashboards')
+        # Creating IDPS Dashboards
+        self.__configure_idps_dashboards(
+            ids=ids, property_ids=property_ids,
+            response_data=response_data,
+            asset_id=asset_id, project_id=project['projectId'])
+
         LOGGER.info('Creating the SJA Dashboards')
         # Creating SJA Dashboards
         self.__configure_sja_dashboards(
@@ -466,6 +492,7 @@ class SitewiseHandler:
 
         return cfnresponse.SUCCESS
 
+    # pylint: disable=too-many-locals
     def __create_topic_rules(self, **kwargs):
         """
         Creates one or more SiteWise topic rules given a list of property values and
@@ -473,7 +500,7 @@ class SitewiseHandler:
         """
         # The MQTT message in json format.
         event = kwargs["event"]
-
+        use_cloud_timestamp = kwargs.get("use_cloud_timestamp", True)
         alias_prefix = f"/telemetry/{event['ResourceProperties']['StackName']}/"
         action_list = []
         property_entry_list = []
@@ -492,7 +519,9 @@ class SitewiseHandler:
                                 'doubleValue': '${' + property_value + '}',
                             },
                             'timestamp': {
-                                'timeInSeconds': '${floor(timestamp() / 1E3)}'
+                                'timeInSeconds':
+                                    '${floor(timestamp() / 1E3)}'
+                                    if use_cloud_timestamp else "${Timestamp}"
                             }
                         }
                     ]
@@ -542,10 +571,8 @@ class SitewiseHandler:
         sja_sql = "SELECT * FROM 's32g/sja/switch/" + stack_name + "'"
         main_sql = "SELECT * FROM '" + \
             event['ResourceProperties']['TelemetryTopic'] + "'"
-
-        # Properties of the SJA dashboards.
-        sja_properties = []
-        sja_aliases = []
+        idps_sql = "SELECT * FROM '" + \
+            event['ResourceProperties']['TelemetryTopic'] + "/idps'"
 
         # Properties of the main dashboard.
         main_properties = self.configs['MAIN_PROPERTIES']
@@ -560,25 +587,43 @@ class SitewiseHandler:
             main_properties.append(f"pfe{i}_rx_bps")
             main_properties.append(f"pfe{i}_tx_bps")
 
+        # Properties of the SJA dashboards.
+        sja_properties = []
+        sja_aliases = []
         # Update properties of the SJA dashboards.
         for port in range(self.configs['SJA_NB_PORTS']):
             for idx, property_value in enumerate(self.configs['SJA_PROPERTIES_SUFFIXES']):
                 sja_properties.append(f"s0.p{port}.{property_value}")
                 sja_aliases.append(f"{self.configs['SJA_ALIASES_SUFFIXES'][idx]}_s0_p{port}")
 
+        idps_properties = []
+        idps_aliases = []
+        for i in self.configs['IDPS_PROPERTIES']:
+            idps_properties.append(f"can_idps.global_stats.{i}")
+            idps_aliases.append(i)
+
         main_topic_rule_name = 'MainTopicRule_' + stack_name.replace('-', '_')
         sja_topic_rule_name = 'SJATopicRule_' + stack_name.replace('-', '_')
+        idps_topic_rule_name = 'IDPSTopicRule_' + stack_name.replace('-', '_')
 
         # Main properties coincide with their aliases.
         self.__create_topic_rules(
             event=event, sql_rule=main_sql,
             properties=main_properties, aliases=main_properties,
-            topic_rule_name=main_topic_rule_name)
+            topic_rule_name=main_topic_rule_name,
+            use_cloud_timestamp=False)
 
         self.__create_topic_rules(
             event=event, sql_rule=sja_sql,
             properties=sja_properties, aliases=sja_aliases,
-            topic_rule_name=sja_topic_rule_name)
+            topic_rule_name=sja_topic_rule_name,
+            use_cloud_timestamp=True)
+
+        self.__create_topic_rules(
+            event=event, sql_rule=idps_sql,
+            properties=idps_properties, aliases=idps_aliases,
+            topic_rule_name=idps_topic_rule_name,
+            use_cloud_timestamp=False)
 
     def delete_sitewise(self, ids):
         """

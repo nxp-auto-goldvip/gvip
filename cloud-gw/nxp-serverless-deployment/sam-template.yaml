@@ -35,7 +35,7 @@ Metadata:
     LicenseUrl: LICENSE
     Labels: ['nxp', 'goldvip', 's32g', 'goldbox']
     HomePageUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
-    SemanticVersion: 1.0.1
+    SemanticVersion: 1.1.0
     SourceCodeUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
 
 Conditions:

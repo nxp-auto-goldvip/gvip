@@ -106,10 +106,7 @@ def telemetry_run():
     call it sends an MQTT messages containing the host device's stats,
     a timestamp and the device name.
     """
-    stats = {}
-    system_telemetry = None
-    app_data = None
-
+    function_entry_time = time.time()
     with SOCKET_COM_LOCK:
         data = SOCKET.send_request(GET_STATS_COMMAND).decode()
 
@@ -117,20 +114,31 @@ def telemetry_run():
 
     system_telemetry = data.get('system_telemetry', None)
     app_data = data.get('app_data', None)
+    idps_data = data.get('idps_stats', None)
+
+    timestamp = time.time()
+    # Set timestamp for current telemetry packet
+    time_values = {"Timestamp": int(timestamp),
+                   "Datetime": str(datetime.datetime.fromtimestamp(timestamp))}
 
     if system_telemetry:
-        # Set timestamp for current telemetry packet
-        stats["Timestamp"] = int(time.time())
-        stats["Datetime"] = str(datetime.datetime.fromtimestamp(int(time.time())))
-
         try:
             # Send the telemetry statistics.
-            stats.update(system_telemetry)
+            system_telemetry.update(time_values)
             publish_to_topic(
                 topic=os.environ.get('telemetryTopic'),
-                payload=json.dumps(stats).encode())
+                payload=json.dumps(system_telemetry).encode())
         except ValueError:
             LOGGER.error("Malformed packet received from socket %s", system_telemetry)
+
+    if idps_data:
+        try:
+            idps_data.update(time_values)
+            publish_to_topic(
+                topic=f"{os.environ.get('telemetryTopic')}/idps",
+                payload=json.dumps(idps_data).encode())
+        except ValueError:
+            LOGGER.error("Malformed packet received from socket %s", idps_data)
 
     if app_data:
         for topic, data_list in app_data.items():
@@ -146,8 +154,18 @@ def telemetry_run():
     with LOCK:
         telemetry_interval = TELEMETRY_SEND_INTERVAL
 
-    # Asynchronously schedule this function to be run again.
-    threading.Timer(telemetry_interval, telemetry_run).start()
+    function_exec_time = time.time() - function_entry_time
+    next_thread_run = telemetry_interval - function_exec_time
+
+    # discard calculation in case the telemetry interval was spent
+    # while running the function
+    if next_thread_run < 0:
+        next_thread_run = telemetry_interval
+
+    # Asynchronously schedule this function to be run again, taking into account
+    # how much time has been spent while the function was executing
+    threading.Timer(next_thread_run, telemetry_run).start()
+
 
 class StreamHandler(client.SubscribeToIoTCoreStreamHandler):
     """A class for handling incoming MQTT events.

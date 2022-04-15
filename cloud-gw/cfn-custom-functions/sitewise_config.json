@@ -2,12 +2,15 @@
     "common": {
         "CORE_LOADS_DB": "Core Loads Dashboard",
         "SOC_DB":"SOC Dashboard",
+        "IDPS_DB": "IDPS Dashboard",
         "CORE_LOADS_IDS_KEY": "dashboard1_id",
         "CORE_LOADS_RESPONSE_DATA_KEY": "dashboard1Id",
         "SOC_IDS_KEY": "dashboard2_id",
         "SOC_RESPONSE_DATA_KEY": "dashboard2Id",
-        "SJA_DASHBOARD_IDX_START": 3,
+        "IDPS_IDS_KEY": "dashboard3_id",
+        "IDPS_RESPONSE_DATA_KEY": "dashboard3Id",
         "MAX_PROPERTIES_PER_ACTION": 10,
+        "SJA_DASHBOARD_IDX_START": 4,
         "MAX_ACTIONS_PER_TOPIC": 10,
         "MAX_WIDGETS_PER_SJA_DASHBOARD": 5,
         "WAITER_CONFIG": {
@@ -123,6 +126,40 @@
                 },
                 "type": "monitor-line-chart"
             }
+        },
+        "IDPS_PROPERTIES" :  [
+            "m7_anomalies",
+            "llce_anomalies"
+        ],
+        "IDPS_WIDGETS_PARAMS": {
+            "M7 CAN Events": {
+                "x": 0,
+                "y": 3,
+                "height": 3,
+                "width": 3,
+                "title": "M7 CAN Anomalies",
+                "metrics": {
+                    "M7 CAN IDPS": {
+                        "label": "IDPS Anomalies",
+                        "property_ids": "M7 Anomalies"
+                    }
+                },
+                "type": "sc-scatter-chart"
+            },
+            "LLCE CAN Events": {
+                "x": 3,
+                "y": 3,
+                "height": 3,
+                "width": 3,
+                "title": "LLCE CAN Anomalies",
+                "metrics": {
+                    "M7 CAN IDPS": {
+                        "label": "IDPS Anomalies",
+                        "property_ids": "LLCE Anomalies"
+                    }
+                },
+                "type": "sc-scatter-chart"
+            }
         }
     },
     "s32g2": {
@@ -144,7 +181,9 @@
             "m7_2": "%",
             "DDR SRAM Temperature": "C",
             "A53 cluster Temperature": "C",
-            "HSE LLCE Temperature": "C"
+            "HSE LLCE Temperature": "C",
+            "LLCE Anomalies": "anomalies",
+            "M7 Anomalies": "anomalies"
         },
         "TRANSFORMS": [
             [
@@ -337,7 +376,9 @@
             "m7_3": "%",
             "DDR SRAM Temperature": "C",
             "A53 cluster Temperature": "C",
-            "HSE LLCE Temperature": "C"
+            "HSE LLCE Temperature": "C",
+            "LLCE Anomalies": "anomalies",
+            "M7 Anomalies": "anomalies"
         },
         "TRANSFORMS": [
             [

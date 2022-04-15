@@ -16,6 +16,7 @@ from app_data_collector_server import AppDataCollectorServer
 from configuration import config
 from cpu_stats import CpuStats
 from dev_mem_uid import get_uid
+from idps_stats import IdpsStats
 from mem_stats import MemStats
 from net_stats import NetStats
 from temperature_stats import TemperatureStats
@@ -56,6 +57,7 @@ class TelemetryAggregator:
             config[M7_STAT_QUERY_TIME])
         self.__mem_stats = MemStats()
         self.__temperature_stats = TemperatureStats()
+        self.__idps_stats = IdpsStats()
         self.__m7_core_load.start()
         self.__stats = None
 
@@ -75,6 +77,7 @@ class TelemetryAggregator:
         mem_stats = self.__mem_stats.get_telemetry(verbose=False)
         net_stats = self.__net_stats.get_load()
         m7_stats = self.__m7_core_load.get_load()
+        idps_stats = self.__idps_stats.get_telemetry()
         temperature_stats = self.__temperature_stats.get_temperature()
 
         platform_name = {
@@ -95,6 +98,11 @@ class TelemetryAggregator:
         tot_stats = {
             "system_telemetry": telemetry_stats,
         }
+
+        # Add IDPS data
+        if idps_stats:
+            tot_stats.update({"idps_stats": {**idps_stats}})
+
         # Add the application data
         tot_stats.update(self.__app_data_collector.get_data())
 
