@@ -98,7 +98,7 @@ class Greengrassv2Handler:
                     'pinned': True,
                     'environmentVariables': {
                         'telemetryTopic': telemetry_topic,
-                        'AppDataTopic': telemetry_topic + "/app_data"
+                        'AppDataTopicSuffix': "/app_data"
                     },
                     'linuxProcessParams': {
                         'isolationMode': 'NoContainer',

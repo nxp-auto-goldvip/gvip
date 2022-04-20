@@ -58,7 +58,7 @@ class AppDataCollectorServer(RemoteServer):
                 if "app_data" in data:
                     # If no topic is specified the data will be sent to
                     # the application data mqtt topic.
-                    topic = data.get("mqtt_topic", None)
+                    topic = data.get("mqtt_topic_suffix", None)
 
                     # We keep a list of data payloads waiting to be
                     # transmitted for each unique topic.

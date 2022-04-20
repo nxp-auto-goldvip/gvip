@@ -409,6 +409,25 @@ class SitewiseHandler:
         kwargs["ids"][self.configs['IDPS_IDS_KEY']] = dashboard_id
         kwargs["response_data"][self.configs['IDPS_RESPONSE_DATA_KEY']] = dashboard_id
 
+    def __configure_ml_dashboards(self, **kwargs):
+        """
+        Create a dashboard with ML events widgets.
+        """
+        # Declare the widgets properties from which the dashboard will be created.
+        widgets = self.configs['ML_WIDGETS_PARAMS'].values()
+
+        widgets_params = SitewiseHandler.update_widgets_params(widgets, kwargs["property_ids"])
+
+        dashboard_id = SitewiseHandler.__create_dashboard(
+            self.configs['ML_DB'],
+            widgets_params,
+            kwargs["asset_id"],
+            kwargs["project_id"])
+
+        # Save the dashboard id in the database
+        kwargs["ids"][self.configs['ML_IDS_KEY']] = dashboard_id
+        kwargs["response_data"][self.configs['ML_RESPONSE_DATA_KEY']] = dashboard_id
+
     def __create_monitor(self, event, ids, property_ids, response_data):
         """
         Creates a SiteWise Portal, a project and multiple dashboards.
@@ -468,9 +487,16 @@ class SitewiseHandler:
             response_data=response_data,
             asset_id=asset_id, project_id=project['projectId'])
 
-        LOGGER.info('Creating the IDPS Dashboards')
+        LOGGER.info('Creating the IDPS Dashboard')
         # Creating IDPS Dashboards
         self.__configure_idps_dashboards(
+            ids=ids, property_ids=property_ids,
+            response_data=response_data,
+            asset_id=asset_id, project_id=project['projectId'])
+
+        LOGGER.info('Creating the ML Dashboard')
+        # Creating ML Dashboards
+        self.__configure_ml_dashboards(
             ids=ids, property_ids=property_ids,
             response_data=response_data,
             asset_id=asset_id, project_id=project['projectId'])
@@ -573,6 +599,8 @@ class SitewiseHandler:
             event['ResourceProperties']['TelemetryTopic'] + "'"
         idps_sql = "SELECT * FROM '" + \
             event['ResourceProperties']['TelemetryTopic'] + "/idps'"
+        ml_sql = "SELECT * FROM '" + \
+            event['ResourceProperties']['TelemetryTopic'] + "/eiqa/pd'"
 
         # Properties of the main dashboard.
         main_properties = self.configs['MAIN_PROPERTIES']
@@ -602,9 +630,16 @@ class SitewiseHandler:
             idps_properties.append(f"can_idps.global_stats.{i}")
             idps_aliases.append(i)
 
+        pd_properties = []
+        pd_aliases = []
+        for i in self.configs['PRED_MAINTAIN_PROPERTIES']:
+            pd_properties.append(i)
+            pd_aliases.append(i)
+
         main_topic_rule_name = 'MainTopicRule_' + stack_name.replace('-', '_')
         sja_topic_rule_name = 'SJATopicRule_' + stack_name.replace('-', '_')
         idps_topic_rule_name = 'IDPSTopicRule_' + stack_name.replace('-', '_')
+        ml_topic_rule_name = 'MLTopicRule_' + stack_name.replace('-', '_')
 
         # Main properties coincide with their aliases.
         self.__create_topic_rules(
@@ -624,6 +659,12 @@ class SitewiseHandler:
             properties=idps_properties, aliases=idps_aliases,
             topic_rule_name=idps_topic_rule_name,
             use_cloud_timestamp=False)
+
+        self.__create_topic_rules(
+            event=event, sql_rule=ml_sql,
+            properties=pd_properties, aliases=pd_aliases,
+            topic_rule_name=ml_topic_rule_name,
+            use_cloud_timestamp=True)
 
     def delete_sitewise(self, ids):
         """

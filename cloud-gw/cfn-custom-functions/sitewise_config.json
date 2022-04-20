@@ -1,16 +1,19 @@
 {
     "common": {
         "CORE_LOADS_DB": "Core Loads Dashboard",
-        "SOC_DB":"SOC Dashboard",
+        "SOC_DB": "SOC Dashboard",
         "IDPS_DB": "IDPS Dashboard",
+        "ML_DB": "Machine Learning Dashboard",
         "CORE_LOADS_IDS_KEY": "dashboard1_id",
         "CORE_LOADS_RESPONSE_DATA_KEY": "dashboard1Id",
         "SOC_IDS_KEY": "dashboard2_id",
         "SOC_RESPONSE_DATA_KEY": "dashboard2Id",
         "IDPS_IDS_KEY": "dashboard3_id",
         "IDPS_RESPONSE_DATA_KEY": "dashboard3Id",
+        "ML_IDS_KEY": "dashboard4_id",
+        "ML_RESPONSE_DATA_KEY": "dashboard4Id",
+        "SJA_DASHBOARD_IDX_START": 5,
         "MAX_PROPERTIES_PER_ACTION": 10,
-        "SJA_DASHBOARD_IDX_START": 4,
         "MAX_ACTIONS_PER_TOPIC": 10,
         "MAX_WIDGETS_PER_SJA_DASHBOARD": 5,
         "WAITER_CONFIG": {
@@ -127,6 +130,89 @@
                 "type": "monitor-line-chart"
             }
         },
+        "PRED_MAINTAIN_PROPERTIES" :  [
+            "lstm_onnx_prediction",
+            "lstm_glow_prediction",
+            "tcn_glow_prediction",
+            "tcn_onnx_prediction",
+            "lstm_onnx_time",
+            "lstm_glow_time",
+            "tcn_glow_time",
+            "tcn_onnx_time",
+            "real_rul"
+        ],
+        "ML_WIDGETS_PARAMS": {
+            "LSTM model prediction": {
+                "x": 0,
+                "y": 6,
+                "height": 3,
+                "width": 6,
+                "title": "LSTM model prediction",
+                "metrics": {
+                    "Real Remaining life time": {
+                        "label": "real RUL",
+                        "property_ids": "real rul"
+                    },
+                    "LSTM ONNX prediction": {
+                        "label": "LSTM ONNX prediction",
+                        "property_ids": "lstm onnx prediction"
+                    },
+                    "LSTM Glow prediction": {
+                        "label": "LSTM Glow prediction",
+                        "property_ids": "lstm glow prediction"
+                    }
+                },
+                "type": "sc-scatter-chart"
+            },
+            "TCN model prediction": {
+                "x": 3,
+                "y": 6,
+                "height": 3,
+                "width": 6,
+                "title": "TCN model prediction",
+                "metrics": {
+                    "Real Remaining life time": {
+                        "label": "real RUL",
+                        "property_ids": "real rul"
+                    },
+                    "TCN ONNX prediction": {
+                        "label": "TCN ONNX prediction",
+                        "property_ids": "tcn onnx prediction"
+                    },
+                    "TCN Glow prediction": {
+                        "label": "TCN Glow prediction",
+                        "property_ids": "tcn glow prediction"
+                    }
+                },
+                "type": "sc-scatter-chart"
+            },
+            "Model execution duration": {
+                "x": 6,
+                "y": 6,
+                "height": 3,
+                "width": 6,
+                "title": "Model execution duration",
+                "metrics": {
+                    "LSTM ONNX execution time": {
+                        "label": "LSTM ONNX time",
+                        "property_ids": "lstm onnx time"
+                    },
+                    "LSTM Glow execution time": {
+                        "label": "LSTM Glow time",
+                        "property_ids": "lstm glow time"
+                    },
+                    "TCN ONNX execution time": {
+                        "label": "TCN ONNX time",
+                        "property_ids": "tcn onnx time"
+                    },
+                    "TCN Glow execution time": {
+                        "label": "TCN Glow time",
+                        "property_ids": "tcn glow time"
+                    }
+                },
+                "type": "sc-scatter-chart"
+            }
+        },
         "IDPS_PROPERTIES" :  [
             "m7_anomalies",
             "llce_anomalies"
@@ -134,7 +220,7 @@
         "IDPS_WIDGETS_PARAMS": {
             "M7 CAN Events": {
                 "x": 0,
-                "y": 3,
+                "y": 0,
                 "height": 3,
                 "width": 3,
                 "title": "M7 CAN Anomalies",
@@ -148,7 +234,7 @@
             },
             "LLCE CAN Events": {
                 "x": 3,
-                "y": 3,
+                "y": 0,
                 "height": 3,
                 "width": 3,
                 "title": "LLCE CAN Anomalies",
@@ -183,7 +269,16 @@
             "A53 cluster Temperature": "C",
             "HSE LLCE Temperature": "C",
             "LLCE Anomalies": "anomalies",
-            "M7 Anomalies": "anomalies"
+            "M7 Anomalies": "anomalies",
+            "lstm onnx prediction": "remaining unit lifetime",
+            "lstm glow prediction": "remaining unit lifetime",
+            "tcn glow prediction": "remaining unit lifetime",
+            "tcn onnx prediction": "remaining unit lifetime",
+            "lstm onnx time": "nanoseconds",
+            "lstm glow time": "nanoseconds",
+            "tcn glow time": "nanoseconds",
+            "tcn onnx time": "nanoseconds",
+            "real rul": "remaining unit lifetime"
         },
         "TRANSFORMS": [
             [
@@ -378,7 +473,16 @@
             "A53 cluster Temperature": "C",
             "HSE LLCE Temperature": "C",
             "LLCE Anomalies": "anomalies",
-            "M7 Anomalies": "anomalies"
+            "M7 Anomalies": "anomalies",
+            "lstm onnx prediction": "remaining unit lifetime",
+            "lstm glow prediction": "remaining unit lifetime",
+            "tcn glow prediction": "remaining unit lifetime",
+            "tcn onnx prediction": "remaining unit lifetime",
+            "lstm onnx time": "nanoseconds",
+            "lstm glow time": "nanoseconds",
+            "tcn glow time": "nanoseconds",
+            "tcn onnx time": "nanoseconds",
+            "real rul": "remaining unit lifetime"
         },
         "TRANSFORMS": [
             [

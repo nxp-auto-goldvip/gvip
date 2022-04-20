@@ -141,14 +141,14 @@ def telemetry_run():
             LOGGER.error("Malformed packet received from socket %s", idps_data)
 
     if app_data:
-        for topic, data_list in app_data.items():
-            # If the topic is None use the generic application data topic
-            if not topic:
-                topic = os.environ.get('AppDataTopic')
+        for topic_suffix, data_list in app_data.items():
+            # If the topic suffix is None use the generic application data topic suffix
+            if not topic_suffix:
+                topic_suffix = os.environ.get('AppDataTopicSuffix')
 
             for data in data_list:
                 publish_to_topic(
-                    topic=topic,
+                    topic=f"{os.environ.get('telemetryTopic')}/{topic_suffix}",
                     payload=json.dumps(data).encode())
 
     with LOCK:
