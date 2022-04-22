@@ -164,7 +164,7 @@ do_stop() {
 
 do_restart() {
     do_stop
-    do_start &
+    do_start 2>&1 | tee /var/log/wifi.log | grep -E "connected|Exit" &
 }
 
 # Main section
@@ -176,7 +176,7 @@ fi
 
 case "$1" in
     start)
-        do_start &
+        do_start 2>&1 | tee /var/log/wifi.log | grep -E "connected|Exit" &
         ;;
     stop)
         do_stop
