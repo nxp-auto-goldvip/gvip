@@ -245,11 +245,10 @@ check_input() {
 
 # Bring CAN interfaces up
 setup_can() {
-        ip link set "${can_tx_interface}" down
-        ip link set "${can_tx_interface}" up type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on
+        ip a | grep -Eq ": ${can_tx_interface}:.*state UP" || service can restart "${can_tx_interface}"
+     
         if [[ "${use_rx_interface}" == "true" ]]; then
-                ip link set "${can_rx_interface}" down
-                ip link set "${can_rx_interface}" up type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on
+                ip a | grep -Eq ": ${can_rx_interface}:.*state UP" || service can restart "${can_rx_interface}"
         fi
 
         if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then

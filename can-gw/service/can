@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+### BEGIN INIT INFO
+# Provides:          can
+# Required-Start:    
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:      0 6
+# Short-Description: Open can service
+# Description:       Wrapper for starting / stopping GoldVIP can interfaces
+#                    Runs when domain 0 boots / shuts down on systems using init.
+### END INIT INFO
+# Copyright 2022 NXP
+
+CONFIG_PATH=/etc/can_config
+
+start_service() {
+    local target_interface="${1:-ALL}"
+    local interface_config
+    local can_interface
+    if [ "${target_interface}" = "ALL" ]; then
+        echo "Initializing all CAN interfaces"
+        while IFS="" read -r p || [ -n "$p" ]; do
+            can_interface=$(cut -d "#" -f1 <<< "${p}")
+            interface_config=$(cut -d "#" -f2 <<< "${p}" | xargs)
+            ip link set "${can_interface}" up ${interface_config}
+        done < "${CONFIG_PATH}"
+    else
+        echo "Initializing ${target_interface}"
+        interface_config=$(cat "${CONFIG_PATH}" | grep "${target_interface}" | cut -d "#" -f 2 | xargs)
+        if [ -z "${interface_config}" ]; then
+            echo "Interface configuration not found in ${CONFIG_PATH} for ${target_interface}"
+            exit 1
+        else 
+            ip link set "${target_interface}" up ${interface_config}
+        fi
+    fi 
+}
+
+stop_service() {
+    local target_interface="${1:-ALL}"
+    local interface_config
+    local can_interface
+    if [ "${target_interface}" = "ALL" ]; then
+        echo "De-initializing all CAN interfaces"
+        while IFS="" read -r p || [ -n "$p" ]; do
+            can_interface=$(cut -d "#" -f1 <<< "${p}")
+            ip link set "${can_interface}" down
+        done < "${CONFIG_PATH}"
+    else
+        echo "De-initializing ${target_interface}"
+        interface_config=$(cat "${CONFIG_PATH}" | grep "${target_interface}" | cut -d "#" -f 2)
+        if [ -z "${interface_config}" ]; then
+            echo "Interface configuration not found in ${CONFIG_PATH} for ${target_interface}"
+            exit 1
+        else 
+            ip link set dev "${target_interface}" down
+        fi 
+        
+    fi
+}
+
+case "$1" in
+start)
+    start_service "${2:-ALL}"
+    ;;
+stop)
+    stop_service "${2:-ALL}"
+    ;;
+restart)
+    stop_service "${2:-ALL}"
+    start_service "${2:-ALL}"
+    ;;
+*)
+    echo "Usage: /etc/init.d/can {start|stop|restart} {interface}"
+    exit 1
+    ;;
+esac
+
+exit 0
