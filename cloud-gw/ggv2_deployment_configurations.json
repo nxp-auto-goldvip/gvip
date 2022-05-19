@@ -20,7 +20,7 @@
       "formatVersion": "2021-03-05",
       "definitions": {
         "MyDeviceGroup": {
-          "selectionRule": "thingName: GG_THING_NAME OR thingName: SJA_THING_NAME",
+          "selectionRule": "SELECTION_RULE",
           "policyName": "MyClientDevicePolicy"
         }
       },
@@ -58,18 +58,21 @@
     }
   },
   "bridge": {
-    "mqttTopicMapping": {
-      "HelloWorldIotCoreMapping": {
-        "topic": "s32g/sja/switch/STACK_NAME",
-        "source": "LocalMqtt",
-        "target": "IotCore"
-      }
-    }
+    "mqttTopicMapping": {}
   },
   "nucleus": {
     "mqtt": {
       "port": "MQTT_PORT"
     },
     "greengrassDataPlanePort": "HTTPS_PORT"
+  },
+  "devices": {
+    "sja1110": {
+      "thing_name": "STACK_NAME_SjaThing",
+      "mqtt_topic": "TELEMETRY_TOPIC/sja1110",
+      "device_port": 8080,
+      "device_ip": null,
+      "device_hwaddr": "00:04:9f:06:12:00"
+    }
   }
 }

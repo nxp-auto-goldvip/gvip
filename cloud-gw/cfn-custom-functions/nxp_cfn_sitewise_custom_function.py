@@ -594,9 +594,10 @@ class SitewiseHandler:
         :param event: The MQTT message in json format.
         """
         stack_name = event['ResourceProperties']['StackName']
-        sja_sql = "SELECT * FROM 's32g/sja/switch/" + stack_name + "'"
         main_sql = "SELECT * FROM '" + \
             event['ResourceProperties']['TelemetryTopic'] + "'"
+        sja_sql = "SELECT * FROM '" + \
+            event['ResourceProperties']['TelemetryTopic'] + "/sja1110'"
         idps_sql = "SELECT * FROM '" + \
             event['ResourceProperties']['TelemetryTopic'] + "/idps'"
         ml_sql = "SELECT * FROM '" + \

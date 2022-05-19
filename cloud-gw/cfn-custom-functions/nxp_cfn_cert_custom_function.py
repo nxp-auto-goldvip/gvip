@@ -9,7 +9,7 @@ When create is invoked it generates a certificate for the sja thing,
 one for the greengrass thing, and packs them in a tar archive and stores it in a S3 bucket.
 When delete is invoked it empties the bucket and deletes the certificate from the account.
 
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import json
@@ -33,7 +33,7 @@ class CertificateHandler:
     CA_CERT_URL = "https://www.amazontrust.com/repository/AmazonRootCA1.pem"
 
     GOLDVIP_SETUP_ARCHIVE = "GoldVIP_setup.tar.gz"
-    SJA_CERTIFICATE = "Sja_Certificate.tar.gz"
+    DEVICE_CERTIFICATE = "Device_Certificate.tar.gz"
 
     CA_CERT = "root.ca.pem"
     CERT_PEM = "certificate.pem"
@@ -44,7 +44,7 @@ class CertificateHandler:
     S3_CLIENT = boto3.client('s3')
 
     @staticmethod
-    def _write_to_archive(file_content, archive, filename, path='certs'):
+    def __write_to_archive(file_content, archive, filename, path='certs'):
         """
         :param file_content: Content of the file to be added to the archive
         :param archive: The archive.
@@ -96,7 +96,7 @@ class CertificateHandler:
 
         with tarfile.open(f'/tmp/{archive_name}', 'w:gz') as archive:
             for key, value in certificates.items():
-                CertificateHandler._write_to_archive(
+                CertificateHandler.__write_to_archive(
                     value, archive, key)
 
         CertificateHandler.S3_CLIENT = boto3.client('s3')
@@ -130,7 +130,7 @@ class CertificateHandler:
                 'Objects': [
                     {'Key': cert} for cert in [
                         CertificateHandler.GOLDVIP_SETUP_ARCHIVE,
-                        CertificateHandler.SJA_CERTIFICATE]
+                        CertificateHandler.DEVICE_CERTIFICATE]
                 ]
             }
         )
@@ -148,15 +148,15 @@ class CertificateHandler:
             )
 
         gg_certificate_arn = event['PhysicalResourceId'].split("|")[0]
-        sja_certificate_arn = event['PhysicalResourceId'].split("|")[1]
+        device_certificate_arn = event['PhysicalResourceId'].split("|")[1]
 
         # Detach certificate from sja thing.
         CertificateHandler.IOT_CLIENT.detach_thing_principal(
             thingName=sja_thing_name,
-            principal=sja_certificate_arn
+            principal=device_certificate_arn
         )
 
-        for certificate_arn in [gg_certificate_arn, sja_certificate_arn]:
+        for certificate_arn in [gg_certificate_arn, device_certificate_arn]:
             certificate_id = certificate_arn.split('/')[1]
 
             # Detach policy from the certificate.
@@ -191,13 +191,13 @@ def lambda_handler(event, context):
             CertificateHandler.create(
                 event,
                 response_data,
-                CertificateHandler.SJA_CERTIFICATE,
+                CertificateHandler.DEVICE_CERTIFICATE,
                 event['ResourceProperties']['SjaThingName'],
-                "sja_")
+                "device_")
             cfnresponse.send(
                 event, context, cfnresponse.SUCCESS, response_data,
                 physical_resource_id=response_data['gg_certificateArn']\
-                    + "|" + response_data['sja_certificateArn'])
+                    + "|" + response_data['device_certificateArn'])
         elif event['RequestType'] == 'Update':
             cfnresponse.send(
                 event, context, cfnresponse.SUCCESS, response_data)

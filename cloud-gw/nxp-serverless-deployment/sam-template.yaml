@@ -420,3 +420,7 @@ Outputs:
     Value: !GetAtt SitewiseCustomResource.assetId
   SitewiseAssetModelId:
     Value: !GetAtt SitewiseCustomResource.assetModelId
+  DeviceCertificateArn:
+    Value: !GetAtt CertificateCustomResource.device_certificateArn
+  TelemetryTopic:
+    Value: !Ref TelemetryTopic
