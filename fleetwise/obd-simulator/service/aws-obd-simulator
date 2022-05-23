@@ -15,8 +15,8 @@ SERVER_PATH=/usr/bin/aws-obd-simulator
 
 # Service start function
 start_service() {
-	cd "${SERVER_PATH}"
-	python3 "cansim.py" --interface can1 -o > /tmp/cansim.log & 
+        cd "${SERVER_PATH}"
+        python3 "cansim.py" --interface can1 -o > /var/log/cansim.log 2>&1 &
 }
 
 # Service stop function
@@ -41,7 +41,7 @@ restart)
         ;;
 
 *)
-        echo "Usage: /etc/init.d/cansim {start|stop|restart}"
+        echo "Usage: /etc/init.d/aws-obd-simulator {start|stop|restart}"
         exit 1
         ;;
 esac
