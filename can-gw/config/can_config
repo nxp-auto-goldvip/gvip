@@ -1,2 +1,2 @@
-can0#type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on 
-can1#type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on 
+can0#txqueuelen 1000 type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on 
+can1#txqueuelen 1000 type can bitrate 1000000 sample-point 0.75 dbitrate 4000000 dsample-point 0.8 fd on 
