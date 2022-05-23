@@ -404,12 +404,16 @@ Outputs:
     Value: !GetAtt SitewiseCustomResource.dashboard1Id
   SitewiseSocDashboardId:
     Value: !GetAtt SitewiseCustomResource.dashboard2Id
-  SitewiseSJADashboard1Id:
+  SitewiseIDPSDashboardId:
     Value: !GetAtt SitewiseCustomResource.dashboard3Id
-  SitewiseSJADashboard2Id:
+  SitewiseMLDashboardId:
     Value: !GetAtt SitewiseCustomResource.dashboard4Id
-  SitewiseSJADashboard3Id:
+  SitewiseSJADashboard1Id:
     Value: !GetAtt SitewiseCustomResource.dashboard5Id
+  SitewiseSJADashboard2Id:
+    Value: !GetAtt SitewiseCustomResource.dashboard6Id
+  SitewiseSJADashboard3Id:
+    Value: !GetAtt SitewiseCustomResource.dashboard7Id
   SitewiseProjectId:
     Value: !GetAtt SitewiseCustomResource.projectId
   SitewiseAssetId:
