@@ -176,10 +176,12 @@ class Greengrassv2Deployment():
         keeping this Nucleus alive.
         :param timeout: Time in seconds to wait for the installer to report a succesfull launch.
         """
-        installer_command = f"java -Droot='/greengrass/v2' -Dlog.store=FILE\
-        -jar /greengrass/v2/alts/init/distro/lib/Greengrass.jar\
-        --aws-region {self.__region} --component-default-user ggc_user:ggc_group\
-        --provision true --thing-name {self.__thing_name}"
+        installer_command = f"java -Droot='/greengrass/v2' -Dlog.store=FILE "\
+                            f"-jar /greengrass/v2/alts/init/distro/lib/Greengrass.jar "\
+                            f"--aws-region {self.__region} "\
+                            f"--component-default-user ggc_user:ggc_group "\
+                            f"--provision true --thing-name {self.__thing_name} "\
+                            f"--thing-policy-name {self.__stack_name}_Cert_Policy"
 
         Greengrassv2Deployment.stop_greengrass_nucleus()
 

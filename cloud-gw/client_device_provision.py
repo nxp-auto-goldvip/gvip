@@ -42,8 +42,6 @@ class ClientDeviceProvisioningClient():
     ENDPOINT = "AWS endpoint"
     # Greengrass certificate authority
     GG_CA = "Greengrass Certificate Authority"
-    # IP address of the v2xdomu
-    GG_IP = "v2xdomu ip address"
 
     # We must provide either the client device's local ip or its
     # Hwaddr which we use to find its ip.
@@ -89,14 +87,13 @@ class ClientDeviceProvisioningClient():
         self.__certificate_arn = Utils.get_cfn_output_value(
             cfn_stack_outputs, 'DeviceCertificateArn')
 
+        self.data = {}
         self.client_device_data = {}
 
         if os.path.exists(self.DATA_FILE):
             with open(self.DATA_FILE, "r", encoding="utf-8") as data_file:
-                self.client_device_data = json.load(data_file)
-
-        if thing_name not in self.client_device_data:
-            self.client_device_data[thing_name] = {}
+                self.data = json.load(data_file)
+                self.client_device_data = self.data.get(thing_name, {})
 
         self.__thing_name = thing_name
         self.__mqtt_topic = mqtt_topic
@@ -106,11 +103,12 @@ class ClientDeviceProvisioningClient():
         self.__mqtt_port = mqtt_port
         self.__clean_provision = clean_provision
         self.__verbose = verbose
+        self.__gg_ip = None
 
         if device_ip:
-            self.client_device_data[self.__thing_name][self.DEVICE_IP] = device_ip
+            self.client_device_data[self.DEVICE_IP] = device_ip
         elif device_hwaddr:
-            self.client_device_data[self.__thing_name][self.DEVICE_MAC] = device_hwaddr
+            self.client_device_data[self.DEVICE_MAC] = device_hwaddr
         else:
             raise Exception("Must provide either Device ip or Device mac.")
 
@@ -166,8 +164,8 @@ class ClientDeviceProvisioningClient():
         """
         connectivity_info = [
             {
-                'HostAddress': f'{self.client_device_data[self.GG_IP]}',
-                'Id': f'{self.client_device_data[self.GG_IP]}',
+                'HostAddress': f'{self.__gg_ip}',
+                'Id': f'{self.__gg_ip}',
                 'Metadata': '',
                 'PortNumber': self.__mqtt_port
             }
@@ -187,7 +185,7 @@ class ClientDeviceProvisioningClient():
         :param nb_tries: number of tries to get the device ip.
         """
         # Check if the device ip was already found
-        if (self.client_device_data[self.__thing_name].get(self.DEVICE_IP, None)
+        if (self.client_device_data.get(self.DEVICE_IP, None)
                 and not self.__clean_provision):
             return
 
@@ -214,11 +212,11 @@ class ClientDeviceProvisioningClient():
                     continue
 
                 for element in answered:
-                    if (self.client_device_data[self.__thing_name][self.DEVICE_MAC]
+                    if (self.client_device_data[self.DEVICE_MAC]
                             in element[1].hwsrc):
-                        self.client_device_data[self.__thing_name][self.DEVICE_IP] = element[1].psrc
+                        self.client_device_data[self.DEVICE_IP] = element[1].psrc
                         print(f"Found ip address: " \
-                              f"{self.client_device_data[self.__thing_name][self.DEVICE_IP]} " \
+                              f"{self.client_device_data[self.DEVICE_IP]} " \
                               f"of device {self.__thing_name}")
                         return
 
@@ -232,16 +230,16 @@ class ClientDeviceProvisioningClient():
         Retrieves the cloud endpoint.
         """
         # Check if the endpoint has already been retrieved
-        if (self.client_device_data[self.__thing_name].get(self.ENDPOINT, None)
+        if (self.client_device_data.get(self.ENDPOINT, None)
                 and not self.__clean_provision):
             return
 
-        self.client_device_data[self.ENDPOINT] = boto3.client('iot').describe_endpoint(
-            endpointType='iot:Data-ATS'
-        )['endpointAddress']
+        self.client_device_data[self.ENDPOINT] = \
+            boto3.client('iot').describe_endpoint(endpointType='iot:Data-ATS')['endpointAddress']
 
         if self.__verbose:
-            print(f"Retrieved endpoint: {self.client_device_data[self.ENDPOINT]}")
+            print(f"Retrieved endpoint: "\
+                  f"{self.client_device_data[self.ENDPOINT]}")
 
     def __extract_certificate(self):
         """
@@ -308,7 +306,8 @@ class ClientDeviceProvisioningClient():
                 # Save the Greengrass Certitficate Authority from the request.
                 response = json.loads(ret.text)
                 try:
-                    self.client_device_data[self.GG_CA] = response["GGGroups"][0]["CAs"][0]
+                    self.client_device_data[self.GG_CA] \
+                        = response["GGGroups"][0]["CAs"][0]
 
                     if self.__verbose:
                         print("Greengrass certificate authority retrieved.")
@@ -331,7 +330,7 @@ class ClientDeviceProvisioningClient():
 
         # Connect to the Device
         sock.connect((
-            self.client_device_data[self.__thing_name][self.DEVICE_IP],
+            self.client_device_data[self.DEVICE_IP],
             self.__device_port))
 
         outbound_data = [
@@ -341,7 +340,7 @@ class ClientDeviceProvisioningClient():
             bytes(self.client_device_data[self.CERT][self.CERT_PEM], 'utf-8'),
             bytes(self.__mqtt_topic, 'utf-8'),
             bytes(self.client_device_data[self.GG_CA], 'utf-8'),
-            bytes(self.client_device_data[self.GG_IP], 'utf-8'),
+            bytes(self.__gg_ip, 'utf-8'),
         ]
 
         for data in outbound_data:
@@ -370,7 +369,8 @@ class ClientDeviceProvisioningClient():
         Saves the client data.
         """
         with open(self.DATA_FILE, "w+", encoding="utf-8") as data_file:
-            json.dump(self.client_device_data, data_file, indent=4)
+            self.data[self.__thing_name] = self.client_device_data
+            json.dump(self.data, data_file, indent=4)
 
     def execute(self):
         """
@@ -378,7 +378,7 @@ class ClientDeviceProvisioningClient():
         """
         self.__attach_thing_to_ggcore()
         self.__attach_device_to_certificate()
-        self.client_device_data[self.GG_IP], _ = self.__get_netif_ip(self.__netif, self.__verbose)
+        self.__gg_ip, _ = self.__get_netif_ip(self.__netif, self.__verbose)
         self.__update_connectivity_info()
         self.__find_device_ip()
         self.__get_endpoint()

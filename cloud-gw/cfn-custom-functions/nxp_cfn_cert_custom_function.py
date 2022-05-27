@@ -32,7 +32,6 @@ class CertificateHandler:
 
     CA_CERT_URL = "https://www.amazontrust.com/repository/AmazonRootCA1.pem"
 
-    GOLDVIP_SETUP_ARCHIVE = "GoldVIP_setup.tar.gz"
     DEVICE_CERTIFICATE = "Device_Certificate.tar.gz"
 
     CA_CERT = "root.ca.pem"
@@ -57,21 +56,20 @@ class CertificateHandler:
             archive.add(file.name, arcname=f'{path}/{filename}')
 
     @staticmethod
-    def create(event, response_data, archive_name, thing, prefix=""):
+    def create(event, response_data, archive_name, things):
         """
         Creates a certificate and associates it to a thing and a policy.
         :param event: The MQTT message in json format.
         :param response_data: Dictionary of resource ids to be returned.
         :param archive_name: Name of the archive in which the certificates will be stored.
-        :param thing: Name of the thing for which the certificate is created.
-        :param prefix: Prefix to distinguish response data keys.
+        :param things: Name of the things to attach to this certificate.
         """
-        LOGGER.info("Creating certificate for thing %s", thing)
+        LOGGER.info("Creating certificate for things %s", things)
 
         response = CertificateHandler.IOT_CLIENT.create_keys_and_certificate(setAsActive=True)
 
-        response_data[prefix + 'certificateArn'] = response.get('certificateArn')
-        response_data[prefix + 'certificateId'] = response.get('certificateId')
+        response_data['certificateArn'] = response.get('certificateArn')
+        response_data['certificateId'] = response.get('certificateId')
 
         # pylint: disable=consider-using-with
         certificates = {
@@ -83,10 +81,11 @@ class CertificateHandler:
         }
 
         # Attach thing
-        CertificateHandler.IOT_CLIENT.attach_thing_principal(
-            thingName=thing,
-            principal=response.get('certificateArn')
-        )
+        for thing in things:
+            CertificateHandler.IOT_CLIENT.attach_thing_principal(
+                thingName=thing,
+                principal=response.get('certificateArn')
+            )
 
         # Attach policy
         CertificateHandler.IOT_CLIENT.attach_principal_policy(
@@ -129,7 +128,6 @@ class CertificateHandler:
             Delete={
                 'Objects': [
                     {'Key': cert} for cert in [
-                        CertificateHandler.GOLDVIP_SETUP_ARCHIVE,
                         CertificateHandler.DEVICE_CERTIFICATE]
                 ]
             }
@@ -147,27 +145,25 @@ class CertificateHandler:
                 principal=certificate
             )
 
-        gg_certificate_arn = event['PhysicalResourceId'].split("|")[0]
-        device_certificate_arn = event['PhysicalResourceId'].split("|")[1]
+        certificate_arn = event['PhysicalResourceId']
 
         # Detach certificate from sja thing.
         CertificateHandler.IOT_CLIENT.detach_thing_principal(
             thingName=sja_thing_name,
-            principal=device_certificate_arn
+            principal=certificate_arn
         )
 
-        for certificate_arn in [gg_certificate_arn, device_certificate_arn]:
-            certificate_id = certificate_arn.split('/')[1]
+        certificate_id = certificate_arn.split('/')[1]
 
-            # Detach policy from the certificate.
-            CertificateHandler.IOT_CLIENT.detach_principal_policy(
-                policyName=policy_name,
-                principal=certificate_arn
-            )
-            # Delete the certificate.
-            CertificateHandler.IOT_CLIENT.update_certificate(
-                certificateId=certificate_id, newStatus='INACTIVE')
-            CertificateHandler.IOT_CLIENT.delete_certificate(certificateId=certificate_id)
+        # Detach policy from the certificate.
+        CertificateHandler.IOT_CLIENT.detach_principal_policy(
+            policyName=policy_name,
+            principal=certificate_arn
+        )
+        # Delete the certificate.
+        CertificateHandler.IOT_CLIENT.update_certificate(
+            certificateId=certificate_id, newStatus='INACTIVE')
+        CertificateHandler.IOT_CLIENT.delete_certificate(certificateId=certificate_id)
 
 
 def lambda_handler(event, context):
@@ -185,19 +181,11 @@ def lambda_handler(event, context):
             CertificateHandler.create(
                 event,
                 response_data,
-                CertificateHandler.GOLDVIP_SETUP_ARCHIVE,
-                event['ResourceProperties']['GGv2CoreName'],
-                "gg_")
-            CertificateHandler.create(
-                event,
-                response_data,
                 CertificateHandler.DEVICE_CERTIFICATE,
-                event['ResourceProperties']['SjaThingName'],
-                "device_")
+                [event['ResourceProperties']['SjaThingName']])
             cfnresponse.send(
                 event, context, cfnresponse.SUCCESS, response_data,
-                physical_resource_id=response_data['gg_certificateArn']\
-                    + "|" + response_data['device_certificateArn'])
+                physical_resource_id=response_data['certificateArn'])
         elif event['RequestType'] == 'Update':
             cfnresponse.send(
                 event, context, cfnresponse.SUCCESS, response_data)

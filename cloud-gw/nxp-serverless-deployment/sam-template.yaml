@@ -17,7 +17,7 @@ Parameters:
   CoreThingName:
     Default: DefaultName
     Type: String
-    Description: Name for the Greengrass Core Device Thing.
+    Description: Name for the Greengrass Core Device Thing. Must be unique. The default name is replaced with a unique name.
   DeviceType:
     Default: s32g2
     Type: String
@@ -48,7 +48,7 @@ Resources:
     Properties:
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        IgnorePublicAcls: false
+        IgnorePublicAcls: true
         BlockPublicPolicy: true
         RestrictPublicBuckets: true
 
@@ -62,6 +62,9 @@ Resources:
         - Effect: Allow
           Action: iot:Connect
           Resource: !Join [ ":", [ "arn:aws:iot", !Ref "AWS::Region", !Ref "AWS::AccountId", "client/*" ] ]
+        - Effect: Allow
+          Action: iot:AssumeRoleWithCertificate
+          Resource: !Join [ ":", [ "arn:aws:iot", !Ref "AWS::Region", !Ref "AWS::AccountId", "rolealias/*" ] ]
         - Effect: Allow
           Action:
             - iot:Publish
@@ -83,14 +86,18 @@ Resources:
               - !Join
                 - "/"
                 - - thing
-                  - !Join
-                   - ""
-                   - - !Ref 'AWS::StackName'
-                     - "*"
+                  - "*"
         - Effect: Allow
           Action:
             - greengrass:AssumeRoleForGroup
             - greengrass:CreateCertificate
+            - greengrass:PutCertificateAuthorities
+            - greengrass:VerifyClientDeviceIdentity
+            - greengrass:CreateDeployment
+            - greengrass:GetComponentVersionArtifact
+            - greengrass:ResolveComponentCandidates
+            - greengrass:GetDeploymentConfiguration
+            - greengrass:ListThingGroupsForCoreDevice
           Resource: "*"
         - Effect: Allow
           Action:
@@ -106,8 +113,6 @@ Resources:
         - Effect: Allow
           Action:
             - greengrass:Discover
-            - greengrass:PutCertificateAuthorities
-            - greengrass:VerifyClientDeviceIdentity
             - greengrass:VerifyClientDeviceIoTCertificateAssociation
             - greengrass:GetConnectivityInfo
             - greengrass:UpdateConnectivityInfo
@@ -421,6 +426,6 @@ Outputs:
   SitewiseAssetModelId:
     Value: !GetAtt SitewiseCustomResource.assetModelId
   DeviceCertificateArn:
-    Value: !GetAtt CertificateCustomResource.device_certificateArn
+    Value: !GetAtt CertificateCustomResource.certificateArn
   TelemetryTopic:
     Value: !Ref TelemetryTopic
