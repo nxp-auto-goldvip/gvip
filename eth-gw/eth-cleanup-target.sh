@@ -22,5 +22,11 @@ pkill -9 iperf3 || true
 dhcpcd -x pfe2 || true
 dhcpcd -x pfe0 || true
 
+for netif in "pfe0" "pfe2"; do
+    for iptables_chain in "INPUT" "FORWARD"; do
+        iptables -D "${iptables_chain}" -i "${netif}" -j ACCEPT > /dev/null 2>&1 || true
+    done
+done
+
 delete_log
 exit

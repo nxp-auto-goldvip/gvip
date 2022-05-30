@@ -41,7 +41,16 @@ _setup_l3_router() {
     # Set ip for each interface.
     _set_ip "pfe0" "10.0.1.2"
     _set_ip "pfe2" "192.168.100.2"
-    
+
+    # kube-proxy is inserting a rule that drop packets in "INVALID" state, affecting the L3
+    # router in TCP mode. Prepend rules to accept all the traffic that reside on
+    # pfe interfaces to avoid the iptables rules inserted by Kubernetes components.
+    for netif in "pfe0" "pfe2"; do
+        for iptables_chain in "INPUT" "FORWARD"; do
+            iptables -I "${iptables_chain}" 1 -i "${netif}" -j ACCEPT
+        done
+    done
+
     # Clear previous config.
     libfci_cli route-and-cntk-reset --all
 
