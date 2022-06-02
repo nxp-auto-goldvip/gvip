@@ -15,6 +15,7 @@ class Utils:
     """
     # Label to common configuration of all platforms
     COMMON_CONFIG_LABEL = "common"
+    DASHBOARD_LABEL = "dashboards"
 
     @staticmethod
     def parse_sitewise_config(config_path, device_type):
@@ -31,7 +32,7 @@ class Utils:
 
         # Merge common configuration and specific device configuration
         config = configs[Utils.COMMON_CONFIG_LABEL]
-        config.update(configs[device_type])
+        config[Utils.DASHBOARD_LABEL].update(configs[device_type][Utils.DASHBOARD_LABEL])
 
         return config
 

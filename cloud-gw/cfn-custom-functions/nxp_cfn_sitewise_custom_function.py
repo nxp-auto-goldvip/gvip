@@ -38,56 +38,144 @@ class SitewiseHandler:
         :param configs: sitewise configuration for each platform device
         """
         self.configs = configs
-        self.measurements = self.configs.get('MEASUREMENTS')
 
-        # Append measurements data to respective sja port items.
-        for i in range(0, self.configs['SJA_NB_PORTS']):
-            self.measurements.update(dict.fromkeys(
-                [
-                    f'Drop Delta s0 p{i}',
-                    f'Ingress Delta s0 p{i}',
-                    f'Egress Delta s0 p{i}',
-                    f'Drop Counter s0 p{i}',
-                    f'Ingress Counter s0 p{i}',
-                    f'Egress Counter s0 p{i}'
-                ], 'Packets')
-            )
-        self.transforms = [tuple(el) for el in self.configs.get('TRANSFORMS')]
+    @staticmethod
+    def __create_properties_from_template(templates, properties, p_type):
+        """
+        Parses templates and creates the asset properties
+        themselves by replacing the substitution patterns from the template
+        with the given values.
+        :param templates: The template for creating asset properties
+        :param properties: A dictionary containing the asset properties
+        :param p_type: The type of the properties
+        """
+        rule_property_list = []
 
-    def __create_asset(self, stack_name, model, ids, response_data):
-        """
-        Create asset from asset model
-        :param stack-name: The name of the deployed CloudFormation stack.
-        :param model: Asset model
-        :param ids: Dictionary of resource ids.
-        :param response_data: Dictionary of resource ids to be returned.
-        """
-        asset = self.SITEWISE_CLIENT.create_asset(
-            assetName=f"{stack_name}_Asset",
-            assetModelId=model['assetModelId'],
-        )
-        ids["asset_id"] = asset['assetId']
-        response_data["assetId"] = asset['assetId']
+        # Get the values for the substitution patterns
+        substitution_dict = {}
+        for _, subst in templates['substitutions'].items():
+            substitution_dict[subst['pattern']] = subst['val_list']
 
-        try:
-            self.SITEWISE_CLIENT.get_waiter(
-                'asset_active').wait(
-                    assetId=asset['assetId'],
-                    WaiterConfig=self.configs['WAITER_CONFIG'])
-            return asset
-        # pylint: disable=broad-except
-        except Exception as exception:
-            LOGGER.error(exception)
-            return cfnresponse.FAILED, {}
+        # Substitute the patterns with the values for each template
+        for t_id, template in templates['templates'].items():
+            # For each substitution pattern
+            for value in substitution_dict.get(template['pattern'], []):
+                p_name = template['name'].replace(template['pattern'], str(value))
 
-    def __create_asset_model(self, stack_name, ids, response_data, property_list):
+                properties[p_name] = {
+                    'property': {
+                        'name': p_name,
+                        'dataType': template.get('datatype', 'DOUBLE'),
+                        'unit': template['unit'].replace(template['pattern'], str(value))
+                    },
+                    'alias': t_id.replace(template['pattern'], str(value))
+                }
+
+                if p_type == 'measurement':
+                    # Set the property type as a measurement
+                    properties[p_name]['property']['type'] = {'measurement': {}}
+                    # Save the property for the routing rule
+                    rule_property_list.append(p_name)
+                elif p_type == 'transform':
+                    # Set the property type as a transform
+                    properties[p_name]['property']['type'] = {
+                        'transform': {
+                            'expression': template['expression'].replace(
+                                template['pattern'], str(value)),
+                            'variables': [
+                                {
+                                    'name': template['var'].replace(
+                                        template['pattern'], str(value)),
+                                    'value': {
+                                        'propertyId': template['var_id'].replace(
+                                            template['pattern'], str(value)),
+                                    }
+                                },
+                            ]
+                        }
+                    }
+
+        return rule_property_list
+
+    def __parse_properties(self, properties, topic_rules):
         """
-        Create asset model
-        :param stack-name: The name of the deployed CloudFormation stack.
-        :param ids: Dictionary of resource ids.
-        :param response_data: Dictionary of resource ids to be returned.
-        :param property_list: Asset properties (Measurements and Transforms)
+        Parses all of the sitewise dashboards and saves all of the
+        asset's properties in a dictionary.
+        :param properties: A dictionary containing the asset properties
+        :param topic_rules: A dictionary containing the routing rules
         """
+        for _, dashboard in self.configs['dashboards'].items():
+            # Create entry in the routing rule
+            if dashboard['mqtt_topic_suffix'] not in topic_rules:
+                topic_rules[dashboard['mqtt_topic_suffix']] = {
+                    'properties': [],
+                    'use_cloud_timestamp': dashboard.get('use_cloud_timestamp', True)
+                }
+
+            # Retrieve the Measurements
+            for m_id, measurement in dashboard.get('measurements', {}).items():
+                properties[measurement['name']] = {
+                    'property': {
+                        'name': measurement['name'],
+                        'dataType': measurement.get('datatype', 'DOUBLE'),
+                        'unit': measurement['unit'],
+                        'type': {'measurement': {}}
+                    },
+                    'alias': m_id
+                }
+                topic_rules[dashboard['mqtt_topic_suffix']]['properties'].append(
+                    measurement['name'])
+            # Create the measurements from the measurement templates
+            if 'measurements_templates' in dashboard:
+                rule_property_list = SitewiseHandler.__create_properties_from_template(
+                    templates=dashboard['measurements_templates'],
+                    properties=properties,
+                    p_type='measurement')
+
+                topic_rules[dashboard['mqtt_topic_suffix']]['properties'].extend(rule_property_list)
+
+            # Retrieve the Transforms
+            for t_id, transform in dashboard.get('transforms', {}).items():
+                properties[transform['name']] = {
+                    'property': {
+                        'name': transform['name'],
+                        'dataType': transform.get('datatype', 'DOUBLE'),
+                        'unit': transform['unit'],
+                        'type': {
+                            'transform': {
+                                'expression': transform['expression'],
+                                'variables': [
+                                    {
+                                        'name': transform['var'],
+                                        'value': {
+                                            'propertyId': transform['var_id'],
+                                        }
+                                    },
+                                ]
+                            }
+                        }
+                    },
+                    'alias': t_id
+                }
+            # Create the transforms from the measurement transforms
+            if 'transforms_templates' in dashboard:
+                SitewiseHandler.__create_properties_from_template(
+                    templates=dashboard['transforms_templates'],
+                    properties=properties,
+                    p_type='transform')
+
+    def __create_asset_model(self, stack_name, ids, response_data, properties):
+        """
+        Create the asset model.
+        :param stack-name: The name of the deployed CloudFormation stack
+        :param ids: Dictionary of resource ids
+        :param response_data: Dictionary of resource ids to be returned
+        :param properties: A dictionary containing the asset properties
+        :return: The asset model
+        """
+        property_list = []
+        for prop in properties.values():
+            property_list.append(prop['property'])
 
         model = self.SITEWISE_CLIENT.create_asset_model(
             assetModelName=f"{stack_name}_AssetModel",
@@ -96,79 +184,69 @@ class SitewiseHandler:
         ids["model_id"] = model['assetModelId']
         response_data["assetModelId"] = model['assetModelId']
 
+        # Check that the create operation was successful
         try:
             self.SITEWISE_CLIENT.get_waiter(
                 'asset_model_active').wait(
                     assetModelId=model['assetModelId'],
                     WaiterConfig=self.configs['WAITER_CONFIG'])
-            return model
         # pylint: disable=broad-except
         except Exception as exception:
             LOGGER.error(exception)
-            return cfnresponse.FAILED, {}
+            return None
 
-    def __create_property_list(self, property_list):
-        """
-        This wrapper method is used to generate the properties list
-        from sitewise configuration data
-        :param property_list: Asset properties (Measurements and Transforms)
-        """
-        for name, unit in self.measurements.items():
-            property_list.append({
-                'name': name,
-                'dataType': 'DOUBLE',
-                'unit': unit,
-                'type': {
-                    'measurement': {}
-                }
-            })
+        return model
 
-        for name, unit, expression, var, var_id in self.transforms:
-            property_list.append({
-                'name': name,
-                'dataType': 'DOUBLE',
-                'unit': unit,
-                'type': {
-                    'transform': {
-                        'expression': expression,
-                        'variables': [
-                            {
-                                'name': var,
-                                'value': {
-                                    'propertyId': var_id,
-                                }
-                            },
-                        ]
-                    }
-                }
-            })
-
-    def __update_asset_properties(self, stack_name, model, property_ids, asset):
+    def __create_asset(self, stack_name, model, ids, response_data):
         """
-        Update asset properties
-        :param stack-name: The name of the deployed CloudFormation stack.
-        :param model: The Sitewise model
-        :param property_ids: Dictionary of property ids
-        :param asset: The Sitewise asset
+        Create the asset from the asset model
+        :param stack_name: The name of the deployed CloudFormation stack
+        :param model: The assset model
+        :param ids: Dictionary of resource ids
+        :param response_data: Dictionary of resource ids to be returned
+        :return: The asset
         """
+        asset = self.SITEWISE_CLIENT.create_asset(
+            assetName=f"{stack_name}_Asset",
+            assetModelId=model['assetModelId'],
+        )
+        ids["asset_id"] = asset['assetId']
+        response_data["assetId"] = asset['assetId']
 
+        # Check that the create operation was successful
+        try:
+            self.SITEWISE_CLIENT.get_waiter(
+                'asset_active').wait(
+                    assetId=asset['assetId'],
+                    WaiterConfig=self.configs['WAITER_CONFIG'])
+        # pylint: disable=broad-except
+        except Exception as exception:
+            LOGGER.error(exception)
+            return None
+
+        return asset
+
+    def __update_asset_properties(self, stack_name, properties, model, asset):
+        """
+        Saves the asset property ids to be used when creating the dashboards.
+        Sets the alias for each measurement property.
+        :param stack_name: The name of the deployed CloudFormation stack.
+        :param model: The asset model
+        :param properties: A dictionary containing the asset properties
+        :param asset: The asset
+        """
         property_list = self.SITEWISE_CLIENT.describe_asset_model(
             assetModelId=model['assetModelId']
         )['assetModelProperties']
 
         for asset_property in property_list:
-            property_ids[asset_property['name']] = asset_property['id']
+            properties[asset_property['name']]['property_id'] = asset_property['id']
 
             if 'measurement' not in asset_property['type']:
                 continue
 
-            alias = asset_property['name'].lower().replace(' ', '_')
+            alias = properties[asset_property['name']]['alias'].lower().replace('.', '_')
             alias = f"/telemetry/{stack_name}/{alias}"
-
-            self.SITEWISE_CLIENT.get_waiter(
-                'asset_active').wait(
-                    assetId=asset['assetId'],
-                    WaiterConfig=self.configs['WAITER_CONFIG'])
 
             self.SITEWISE_CLIENT.update_asset_property(
                 assetId=asset['assetId'],
@@ -176,47 +254,34 @@ class SitewiseHandler:
                 propertyAlias=alias
             )
 
-    def __create_sitewise(self, event, ids, response_data):
+    @staticmethod
+    def __update_widgets_params(widgets, properties):
         """
-        Create a Model and an Asset.
-        :param event: The MQTT message in json format.
-        :param ids: Dictionary of resource ids.
-        :param response_data: Dictionary of resource ids to be returned.
+        The widgets are defined using the property names, but require the property ids.
+        Only after the asset model is created do we have the property ids.
+        Replaces the property names with the property ids.
+        :param widgets: List of widget parameter dictionaries.
+        :param property_ids: List of the asset's property ids.
+        :return: List of updated widget parameter dictionaries
         """
-        property_list = []
-        property_ids = {}
-        stack_name = event['ResourceProperties']['StackName']
+        for widget in widgets:
+            for metric in widget['metrics'].values():
+                # Add the property id to the widget metric
+                metric['property_ids'] = properties[metric['property_name']]['property_id']
+                # Remove the property name from the widget metric
+                metric.pop('property_name')
 
-        self.__create_property_list(property_list)
-
-        LOGGER.info('Creating Model...')
-
-        model = self.__create_asset_model(stack_name, ids, response_data, property_list)
-
-        LOGGER.info('Model Created; Creating Asset...')
-
-        asset = self.__create_asset(stack_name, model, ids, response_data)
-
-        LOGGER.info('Asset created; Updating Asset Properties...')
-
-        self.__update_asset_properties(stack_name, model, property_ids, asset)
-
-        LOGGER.info('Asset Properties Updated.')
-
-        return cfnresponse.SUCCESS, property_ids
+        return widgets
 
     @staticmethod
-    def __create_dashboard(
-            dashboard_name,
-            widgets_params,
-            asset_id,
-            project_id):
+    def __create_dashboard(dashboard_name, widgets_params, asset_id, project_id):
         """
         Created a SiteWise dashboard.
         :param dashboard_name: A name for the SiteWise dashboard.
         :param widgets_params: List of widget parameter tuples.
         :param asset_id: Id of the SiteWise asset.
         :param project_id: Id of the SiteWise project.
+        :return: The dashboard id
         """
         widgets = []
 
@@ -248,193 +313,14 @@ class SitewiseHandler:
 
         return dashboard['dashboardId']
 
-    @staticmethod
-    def update_widgets_params(widgets, property_ids):
+    def __create_monitor(self, event, properties, ids, response_data):
         """
-        Update property ids in widgets params
-        :param widgets: List of widget parameter dictionaries.
-        :param property_ids: List of the asset's property ids.
-
-        return: List of updated widget parameter dictionaries
-        """
-        for widget in widgets:
-            for item in widget['metrics'].values():
-                item['property_ids'] = property_ids.get(item['property_ids'])
-        return widgets
-
-    def __configure_soc_dashboard(self, **kwargs):
-        """
-        Create a dashboard with memory loads and pfe traffic widgets.
-        """
-        # Declare the widgets properties from which the dashboard will be created.
-        widgets = self.configs['SOC_WIDGETS_PARAMS'].values()
-
-        widgets_params = SitewiseHandler.update_widgets_params(widgets, kwargs["property_ids"])
-
-        dashboard_id = SitewiseHandler.__create_dashboard(
-            self.configs['SOC_DB'],
-            widgets_params,
-            kwargs["asset_id"],
-            kwargs["project_id"])
-
-        # Save the dashboard id in the database
-        kwargs["ids"][self.configs['SOC_IDS_KEY']] = dashboard_id
-        kwargs["response_data"][self.configs['SOC_RESPONSE_DATA_KEY']] = dashboard_id
-
-    def __configure_core_loads_dashboard(self, **kwargs):
-        """
-        Create a dashboard with dom0 vcpu and m7 core-load widgets.
-        """
-        # Declare the widgets properties from which the dashboard will be created.
-        widgets = self.configs['CORE_LOAD_WIDGETS_PARAMS'].values()
-
-        widgets_params = SitewiseHandler.update_widgets_params(widgets, kwargs["property_ids"])
-
-        dashboard_id = SitewiseHandler.__create_dashboard(
-            self.configs['CORE_LOADS_DB'],
-            widgets_params,
-            kwargs["asset_id"],
-            kwargs["project_id"])
-
-        # Save the dashboard id in the database
-        kwargs["ids"][self.configs['CORE_LOADS_IDS_KEY']] = dashboard_id
-        kwargs["response_data"][self.configs['CORE_LOADS_RESPONSE_DATA_KEY']] = dashboard_id
-
-    def __configure_sja_dashboards(self, **kwargs):
-        """
-        Create dashboards with SJA telemetry: drop, ingress and egress packets
-        for each switch and port.
-        Multiple dashboards need to be created because each one is limited
-        to a maximum of 10 widgets.
-        """
-
-        widget_y = None
-
-        # List of the asset's property ids.
-        property_ids = kwargs["property_ids"]
-
-        # Create multiple dashboards to contain all of the SJA switch ports.
-        for sja_dashboard_id in self.configs['SJA_DASHBOARD_IDS']:
-            # Create empty widget list.
-            widgets_params = []
-            for widget_idx in range(0, int(self.configs['MAX_WIDGETS_PER_SJA_DASHBOARD'])):
-                # Position on the Y axis of the widget.
-                widget_y = widget_idx * 3 + widget_idx
-
-                # Number of SJA switch port.
-                port = widget_idx + int(self.configs['MAX_WIDGETS_PER_SJA_DASHBOARD']) * \
-                           (sja_dashboard_id - 1)
-
-                # Stop at the last port
-                if port >= self.configs['SJA_NB_PORTS']:
-                    break
-
-                # Create line charts to display throughput in packets.
-                widgets_params.append(
-                    {
-                        "x": (widget_idx % 3)*2,
-                        "y": widget_y,
-                        "height": 3,
-                        "width": 2,
-                        "title": f"Switch0 Port{port} Traffic (Pckts)",
-                        "metrics": {
-                            "Drop": {
-                                "label": "Drop",
-                                "property_ids": property_ids[f"Drop Delta s0 p{port}"]
-                            },
-                            "Ingress": {
-                                "label": "Ingress",
-                                "property_ids": property_ids[f"Ingress Delta s0 p{port}"]
-                            },
-                            "Egress": {
-                                "label": "Egress",
-                                "property_ids": property_ids[f"Egress Delta s0 p{port}"]
-                            }
-                        },
-                        "type": "monitor-line-chart"
-                    })
-
-                # Create PKI to display total count.
-                widgets_params.append(
-                    {
-                        "x": (widget_idx % 3)*2,
-                        "y": widget_y+3,
-                        "height": 1,
-                        "width": 2,
-                        "title": f"Switch0 Port{port} Counter (Pckts)",
-                        "metrics": {
-                            "Drop": {
-                                "label": "Drop",
-                                "property_ids": property_ids[f"Drop Counter s0 p{port}"]
-                            },
-                            "Ingress": {
-                                "label": "Ingress",
-                                "property_ids": property_ids[f"Ingress Counter s0 p{port}"]
-                            },
-                            "Egress": {
-                                "label": "Egress",
-                                "property_ids": property_ids[f"Egress Counter s0 p{port}"]
-                            }
-                        },
-                        "type": "monitor-kpi"
-                    })
-
-            dashboard_id = SitewiseHandler.__create_dashboard(
-                f'SJA1110 Dashboard {sja_dashboard_id}',
-                widgets_params,
-                kwargs["asset_id"],
-                kwargs["project_id"])
-
-            # Save the dashboard id in the database
-            idx = sja_dashboard_id - 1 + self.configs['SJA_DASHBOARD_IDX_START']
-            kwargs["ids"][f'dashboard{idx}_id'] = dashboard_id
-            kwargs["response_data"][f'dashboard{idx}Id'] = dashboard_id
-
-    def __configure_idps_dashboards(self, **kwargs):
-        """
-        Create a dashboard with IDPS events widgets.
-        """
-        # Declare the widgets properties from which the dashboard will be created.
-        widgets = self.configs['IDPS_WIDGETS_PARAMS'].values()
-
-        widgets_params = SitewiseHandler.update_widgets_params(widgets, kwargs["property_ids"])
-
-        dashboard_id = SitewiseHandler.__create_dashboard(
-            self.configs['IDPS_DB'],
-            widgets_params,
-            kwargs["asset_id"],
-            kwargs["project_id"])
-
-        # Save the dashboard id in the database
-        kwargs["ids"][self.configs['IDPS_IDS_KEY']] = dashboard_id
-        kwargs["response_data"][self.configs['IDPS_RESPONSE_DATA_KEY']] = dashboard_id
-
-    def __configure_ml_dashboards(self, **kwargs):
-        """
-        Create a dashboard with ML events widgets.
-        """
-        # Declare the widgets properties from which the dashboard will be created.
-        widgets = self.configs['ML_WIDGETS_PARAMS'].values()
-
-        widgets_params = SitewiseHandler.update_widgets_params(widgets, kwargs["property_ids"])
-
-        dashboard_id = SitewiseHandler.__create_dashboard(
-            self.configs['ML_DB'],
-            widgets_params,
-            kwargs["asset_id"],
-            kwargs["project_id"])
-
-        # Save the dashboard id in the database
-        kwargs["ids"][self.configs['ML_IDS_KEY']] = dashboard_id
-        kwargs["response_data"][self.configs['ML_RESPONSE_DATA_KEY']] = dashboard_id
-
-    def __create_monitor(self, event, ids, property_ids, response_data):
-        """
-        Creates a SiteWise Portal, a project and multiple dashboards.
-        :param event: The MQTT message in json format.
-        :param ids: Dictionary of resource ids.
-        :param property_id_list: List of asset property ids.
-        :param response_data: Dictionary of resource ids to be returned.
+        Creates the SiteWise portal, project and all of the dashboards described
+        in the configuration  file. Associates the asset to the project.
+        :param event: The MQTT message in json format
+        :param properties: A dictionary containing the asset properties
+        :param ids: Dictionary of resource ids
+        :param response_data: Dictionary of resource ids to be returned
         """
         try:
             asset_id = ids["asset_id"]
@@ -473,40 +359,23 @@ class SitewiseHandler:
         ids["project_id"] = project['projectId']
         response_data['projectId'] = project['projectId']
 
-        LOGGER.info('Creating the Core Loads Dashboard')
-        # Creating Core Loads Dashboard
-        self.__configure_core_loads_dashboard(
-            ids=ids, property_ids=property_ids,
-            response_data=response_data,
-            asset_id=asset_id, project_id=project['projectId'])
+        LOGGER.info('Project created. Creating Dashboards...')
 
-        LOGGER.info('Creating the SOC Dashboard')
-        # Creating SOC Dashboard
-        self.__configure_soc_dashboard(
-            ids=ids, property_ids=property_ids,
-            response_data=response_data,
-            asset_id=asset_id, project_id=project['projectId'])
+        for d_id, dashboard in self.configs['dashboards'].items():
+            widgets_params = SitewiseHandler.__update_widgets_params(
+                dashboard['widgets'],
+                properties)
 
-        LOGGER.info('Creating the IDPS Dashboard')
-        # Creating IDPS Dashboards
-        self.__configure_idps_dashboards(
-            ids=ids, property_ids=property_ids,
-            response_data=response_data,
-            asset_id=asset_id, project_id=project['projectId'])
+            dashboard_id = SitewiseHandler.__create_dashboard(
+                dashboard['name'],
+                widgets_params,
+                asset_id,
+                ids["project_id"])
 
-        LOGGER.info('Creating the ML Dashboard')
-        # Creating ML Dashboards
-        self.__configure_ml_dashboards(
-            ids=ids, property_ids=property_ids,
-            response_data=response_data,
-            asset_id=asset_id, project_id=project['projectId'])
+            ids[f"dashboard_{d_id}"] = dashboard_id
+            response_data[d_id] = dashboard_id
 
-        LOGGER.info('Creating the SJA Dashboards')
-        # Creating SJA Dashboards
-        self.__configure_sja_dashboards(
-            ids=ids, property_ids=property_ids,
-            response_data=response_data,
-            asset_id=asset_id, project_id=project['projectId'])
+        LOGGER.info('Dashboards created.')
 
         # Associate asset to project
         self.SITEWISE_CLIENT.batch_associate_project_assets(
@@ -514,15 +383,16 @@ class SitewiseHandler:
             assetIds=[asset_id]
         )
 
-        LOGGER.info('Dashboards Created.')
-
         return cfnresponse.SUCCESS
 
     # pylint: disable=too-many-locals
-    def __create_topic_rules(self, **kwargs):
+    def __create_topic_rule(self, **kwargs):
         """
-        Creates one or more SiteWise topic rules given a list of property values and
-        their aliases. A rule is limited to a maximum of one hundred properties.
+        Creates a SiteWise topic rule given a list of property values and
+        their aliases.
+        A rule is limited to a maximum of one hundred properties. If more
+        than one hundred properties are given the function will create
+        multiple rules accordingly.
         """
         # The MQTT message in json format.
         event = kwargs["event"]
@@ -532,17 +402,15 @@ class SitewiseHandler:
         property_entry_list = []
         topic_rule_idx = 0
 
-        for idx, property_value in enumerate(kwargs["properties"]):
-            alias_suffix = kwargs["aliases"][idx]
-
+        for idx, alias_suffix in enumerate(kwargs["aliases"]):
             # Append to property list
             property_entry_list.append(
                 {
-                    'propertyAlias': alias_prefix + alias_suffix,
+                    'propertyAlias': alias_prefix + alias_suffix.lower().replace('.', '_'),
                     'propertyValues': [
                         {
                             'value': {
-                                'doubleValue': '${' + property_value + '}',
+                                'doubleValue': '${' + alias_suffix + '}',
                             },
                             'timestamp': {
                                 'timeInSeconds':
@@ -556,7 +424,7 @@ class SitewiseHandler:
 
             # When the property entry list is full or if this is the last property
             if (len(property_entry_list) == self.configs['MAX_PROPERTIES_PER_ACTION']
-                    or idx == len(kwargs["properties"]) - 1):
+                    or idx == len(kwargs["aliases"]) - 1):
                 # Create an action with the property entries
                 action_list.append(
                     {
@@ -572,12 +440,12 @@ class SitewiseHandler:
 
             # When the action list is full or if this is the last property
             if (len(action_list) == self.configs['MAX_ACTIONS_PER_TOPIC']
-                    or idx == len(kwargs["properties"]) - 1):
+                    or idx == len(kwargs["aliases"]) - 1):
                 topic_rule_idx += 1
 
                 # Create a topic rule with the actions
                 self.IOT_CLIENT.create_topic_rule(
-                    ruleName=kwargs["topic_rule_name"] + str(topic_rule_idx),
+                    ruleName=f"{kwargs['topic_rule_name']}_{topic_rule_idx}",
                     topicRulePayload={
                         'sql': kwargs["sql_rule"],
                         'actions': action_list
@@ -587,118 +455,73 @@ class SitewiseHandler:
                 # Clear the action list
                 action_list = []
 
-    def __create_sitewise_rule(self, event):
+    def __create_topic_rules(self, event, properties, topic_rules):
         """
-        Declares all the property values and aliases used in the SiteWise dashboards,
-        and invokes the creation of topic rules with them.
-        :param event: The MQTT message in json format.
+        Creates the topic rules which will route the incoming data from the
+        MQTT client to the SiteWise Asset's measurement properties.
+        Creates a rule for each unique topic.
+        :param event: The MQTT message in json format
+        :param properties: A dictionary containing the asset properties
+        :param topic_rules: A dictionary containing the routing rules
         """
         stack_name = event['ResourceProperties']['StackName']
-        main_sql = "SELECT * FROM '" + \
-            event['ResourceProperties']['TelemetryTopic'] + "'"
-        sja_sql = "SELECT * FROM '" + \
-            event['ResourceProperties']['TelemetryTopic'] + "/sja1110'"
-        idps_sql = "SELECT * FROM '" + \
-            event['ResourceProperties']['TelemetryTopic'] + "/idps'"
-        ml_sql = "SELECT * FROM '" + \
-            event['ResourceProperties']['TelemetryTopic'] + "/eiqa/pd'"
+        topic = event['ResourceProperties']['TelemetryTopic']
 
-        # Properties of the main dashboard.
-        main_properties = self.configs['MAIN_PROPERTIES']
+        for suffix, rule in topic_rules.items():
+            rule_sql = f"SELECT * FROM '{topic}{suffix}'"
+            rule_name = f"{stack_name.replace('-', '_')}_{suffix.replace('/', '')}"
 
-        for i in range(self.configs['CPU_CORES_NUM']):
-            main_properties.append(f"dom0_vcpu{i}_idle")
+            alias_list = []
 
-        for i in range(self.configs['M7_CORES_NUM']):
-            main_properties.append(f"m7_{i}")
+            for asset_property in rule['properties']:
+                alias_list.append(properties[asset_property]['alias'])
 
-        for i in self.configs['PFE_PORTS']:
-            main_properties.append(f"pfe{i}_rx_bps")
-            main_properties.append(f"pfe{i}_tx_bps")
+            self.__create_topic_rule(
+                event=event, sql_rule=rule_sql,
+                aliases=alias_list,
+                topic_rule_name=rule_name,
+                use_cloud_timestamp=rule['use_cloud_timestamp'])
 
-        # Properties of the SJA dashboards.
-        sja_properties = []
-        sja_aliases = []
-        # Update properties of the SJA dashboards.
-        for port in range(self.configs['SJA_NB_PORTS']):
-            for idx, property_value in enumerate(self.configs['SJA_PROPERTIES_SUFFIXES']):
-                sja_properties.append(f"s0.p{port}.{property_value}")
-                sja_aliases.append(f"{self.configs['SJA_ALIASES_SUFFIXES'][idx]}_s0_p{port}")
 
-        idps_properties = []
-        idps_aliases = []
-        for i in self.configs['IDPS_PROPERTIES']:
-            idps_properties.append(f"can_idps.global_stats.{i}")
-            idps_aliases.append(i)
-
-        pd_properties = []
-        pd_aliases = []
-        for i in self.configs['PRED_MAINTAIN_PROPERTIES']:
-            pd_properties.append(i)
-            pd_aliases.append(i)
-
-        main_topic_rule_name = 'MainTopicRule_' + stack_name.replace('-', '_')
-        sja_topic_rule_name = 'SJATopicRule_' + stack_name.replace('-', '_')
-        idps_topic_rule_name = 'IDPSTopicRule_' + stack_name.replace('-', '_')
-        ml_topic_rule_name = 'MLTopicRule_' + stack_name.replace('-', '_')
-
-        # Main properties coincide with their aliases.
-        self.__create_topic_rules(
-            event=event, sql_rule=main_sql,
-            properties=main_properties, aliases=main_properties,
-            topic_rule_name=main_topic_rule_name,
-            use_cloud_timestamp=False)
-
-        self.__create_topic_rules(
-            event=event, sql_rule=sja_sql,
-            properties=sja_properties, aliases=sja_aliases,
-            topic_rule_name=sja_topic_rule_name,
-            use_cloud_timestamp=True)
-
-        self.__create_topic_rules(
-            event=event, sql_rule=idps_sql,
-            properties=idps_properties, aliases=idps_aliases,
-            topic_rule_name=idps_topic_rule_name,
-            use_cloud_timestamp=False)
-
-        self.__create_topic_rules(
-            event=event, sql_rule=ml_sql,
-            properties=pd_properties, aliases=pd_aliases,
-            topic_rule_name=ml_topic_rule_name,
-            use_cloud_timestamp=True)
-
-    def delete_sitewise(self, ids):
+    def create(self, event, response_data):
         """
-        Deletes the asset then the model.
-        :param ids: Dictionary of resource ids.
+        Initiates the creation of the SiteWise resources.
+        :param event: The MQTT message in json format.
+        :param response_data: Dictionary of resource ids to be returned.
         """
-        model_id = None
-        asset_id = None
+        ids = {'stack_name': event['ResourceProperties']['StackName']}
 
-        try:
-            model_id = ids["model_id"]
-            asset_id = ids["asset_id"]
-        except KeyError as exception:
-            LOGGER.error("Sitewise resources not found in delete_sitewise: %s", exception)
+        properties = {}
+        topic_rules = {}
 
-        if asset_id:
-            LOGGER.info('Deleting Asset...')
-            self.SITEWISE_CLIENT.delete_asset(
-                assetId=asset_id
-            )
+        self.__parse_properties(properties, topic_rules)
 
-            self.SITEWISE_CLIENT.get_waiter(
-                'asset_not_exists').wait(
-                    assetId=asset_id,
-                    WaiterConfig=self.configs['WAITER_CONFIG'])
+        model = self.__create_asset_model(
+            event['ResourceProperties']['StackName'],
+            ids, response_data, properties
+        )
 
-            LOGGER.info('Asset deleted.')
+        if not model:
+            return cfnresponse.FAILED, {}
 
-        if model_id:
-            LOGGER.info('Deleting Model.')
-            self.SITEWISE_CLIENT.delete_asset_model(
-                assetModelId=model_id
-            )
+        asset = self.__create_asset(
+            event['ResourceProperties']['StackName'],
+            model, ids, response_data
+        )
+
+        if not asset:
+            return cfnresponse.FAILED, {}
+
+        self.__update_asset_properties(
+            event['ResourceProperties']['StackName'],
+            properties, model, asset
+        )
+
+        self.__create_monitor(event, properties, ids, response_data)
+
+        self.__create_topic_rules(event, properties, topic_rules)
+
+        return cfnresponse.SUCCESS, ids
 
     @staticmethod
     def delete_monitor(ids):
@@ -753,6 +576,39 @@ class SitewiseHandler:
                 portalId=portal_id
             )
 
+    def delete_sitewise_asset(self, ids):
+        """
+        Deletes the asset then the asset model.
+        :param ids: Dictionary of resource ids.
+        """
+        model_id = None
+        asset_id = None
+
+        try:
+            model_id = ids["model_id"]
+            asset_id = ids["asset_id"]
+        except KeyError as exception:
+            LOGGER.error("Sitewise resources not found in delete_sitewise_asset: %s", exception)
+
+        if asset_id:
+            LOGGER.info('Deleting Asset...')
+            self.SITEWISE_CLIENT.delete_asset(
+                assetId=asset_id
+            )
+
+            self.SITEWISE_CLIENT.get_waiter(
+                'asset_not_exists').wait(
+                    assetId=asset_id,
+                    WaiterConfig=self.configs['WAITER_CONFIG'])
+
+            LOGGER.info('Asset deleted.')
+
+        if model_id:
+            LOGGER.info('Deleting Model.')
+            self.SITEWISE_CLIENT.delete_asset_model(
+                assetModelId=model_id
+            )
+
     @staticmethod
     def delete_topic_rules(ids):
         """
@@ -770,32 +626,13 @@ class SitewiseHandler:
                         ruleName=rule['ruleName']
                     )
 
-    def create(self, event, response_data):
-        """
-        Initiates the creation of the SiteWise resources.
-        :param event: The MQTT message in json dictionary format.
-        :param response_data: Dictionary of resource ids to be returned.
-        """
-        ids = {'stack_name': event['ResourceProperties']['StackName']}
-
-        self.__create_sitewise_rule(event)
-
-        status, property_ids = self.__create_sitewise(event, ids, response_data)
-
-        if status == cfnresponse.FAILED:
-            return status
-
-        status = self.__create_monitor(event, ids, property_ids, response_data)
-
-        return status, ids
-
     def delete(self, ids):
         """
         Initiates the deletion of the SiteWise resources.
         :param ids: dictionary of resource ids.
         """
         SitewiseHandler.delete_monitor(ids)
-        self.delete_sitewise(ids)
+        self.delete_sitewise_asset(ids)
         SitewiseHandler.delete_topic_rules(ids)
 
 

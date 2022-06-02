@@ -218,18 +218,77 @@ Resources:
             Statement:
             - Effect: Allow
               Action:
-                - 'iotsitewise:*'
+                - 'iotsitewise:DescribePortal'
+                - 'iotsitewise:CreateProject'
+                - 'iotsitewise:DescribeProject'
+                - 'iotsitewise:UpdateProject'
+                - 'iotsitewise:DeleteProject'
+                - 'iotsitewise:ListProjects'
+                - 'iotsitewise:BatchAssociateProjectAssets'
+                - 'iotsitewise:BatchDisassociateProjectAssets'
+                - 'iotsitewise:ListProjectAssets'
+                - 'iotsitewise:CreateDashboard'
+                - 'iotsitewise:DescribeDashboard'
+                - 'iotsitewise:UpdateDashboard'
+                - 'iotsitewise:DeleteDashboard'
+                - 'iotsitewise:ListDashboards'
+                - 'iotsitewise:CreateAccessPolicy'
+                - 'iotsitewise:DescribeAccessPolicy'
+                - 'iotsitewise:UpdateAccessPolicy'
+                - 'iotsitewise:DeleteAccessPolicy'
+                - 'iotsitewise:ListAccessPolicies'
+                - 'iotsitewise:DescribeAsset'
+                - 'iotsitewise:ListAssets'
+                - 'iotsitewise:ListAssociatedAssets'
+                - 'iotsitewise:DescribeAssetProperty'
+                - 'iotsitewise:GetAssetPropertyValue'
+                - 'iotsitewise:GetAssetPropertyValueHistory'
+                - 'iotsitewise:GetAssetPropertyAggregates'
+                - 'iotsitewise:BatchPutAssetPropertyValue'
+                - 'iotsitewise:ListAssetRelationships'
+                - 'iotsitewise:DescribeAssetModel'
+                - 'iotsitewise:ListAssetModels'
+                - 'iotsitewise:UpdateAssetModel'
+                - 'iotsitewise:UpdateAssetModelPropertyRouting'
                 - 'sso-directory:DescribeUsers'
+                - 'sso-directory:DescribeUser'
                 - 'iotevents:DescribeAlarmModel'
+                - 'iotevents:ListTagsForResource'
               Resource: '*'
             - Effect: Allow
               Action:
                 - 'iotevents:BatchAcknowledgeAlarm'
                 - 'iotevents:BatchSnoozeAlarm'
+                - 'iotevents:BatchEnableAlarm'
+                - 'iotevents:BatchDisableAlarm'
               Resource: '*'
               Condition:
                 'Null':
                   'iotevents:keyValue': 'false'
+            - Effect: Allow
+              Action:
+                - 'iotevents:CreateAlarmModel'
+                - 'iotevents:TagResource'
+              Resource: '*'
+              Condition:
+                'Null':
+                  'aws:RequestTag/iotsitewisemonitor': 'false'
+            - Effect: Allow
+              Action:
+                - 'iotevents:UpdateAlarmModel'
+                - 'iotevents:DeleteAlarmModel'
+              Resource: '*'
+              Condition:
+                'Null':
+                  'aws:ResourceTag/iotsitewisemonitor': 'false'
+            - Effect: Allow
+              Action:
+                - 'iam:PassRole'
+              Resource: '*'
+              Condition:
+                'StringEquals':
+                  'iam:PassedToService':
+                    - 'iotevents.amazonaws.com'
 
   GreengrassServiceRole:
     Type: 'AWS::IAM::Role'
@@ -406,19 +465,19 @@ Outputs:
   SitewisePortalUrl:
     Value: !GetAtt SitewiseCustomResource.portalUrl
   SitewiseCoreLoadDashboardId:
-    Value: !GetAtt SitewiseCustomResource.dashboard1Id
+    Value: !GetAtt SitewiseCustomResource.core_loads_db
   SitewiseSocDashboardId:
-    Value: !GetAtt SitewiseCustomResource.dashboard2Id
+    Value: !GetAtt SitewiseCustomResource.soc_db
   SitewiseIDPSDashboardId:
-    Value: !GetAtt SitewiseCustomResource.dashboard3Id
+    Value: !GetAtt SitewiseCustomResource.idps_db
   SitewiseMLDashboardId:
-    Value: !GetAtt SitewiseCustomResource.dashboard4Id
+    Value: !GetAtt SitewiseCustomResource.ml_db
   SitewiseSJADashboard1Id:
-    Value: !GetAtt SitewiseCustomResource.dashboard5Id
+    Value: !GetAtt SitewiseCustomResource.sja1110_db_1
   SitewiseSJADashboard2Id:
-    Value: !GetAtt SitewiseCustomResource.dashboard6Id
+    Value: !GetAtt SitewiseCustomResource.sja1110_db_2
   SitewiseSJADashboard3Id:
-    Value: !GetAtt SitewiseCustomResource.dashboard7Id
+    Value: !GetAtt SitewiseCustomResource.sja1110_db_3
   SitewiseProjectId:
     Value: !GetAtt SitewiseCustomResource.projectId
   SitewiseAssetId:
