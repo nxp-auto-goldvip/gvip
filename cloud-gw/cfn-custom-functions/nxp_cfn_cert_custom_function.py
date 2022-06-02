@@ -153,13 +153,17 @@ class CertificateHandler:
             principal=certificate_arn
         )
 
-        certificate_id = certificate_arn.split('/')[1]
+        certificates = CertificateHandler.IOT_CLIENT.list_targets_for_policy(
+            policyName=policy_name
+        )['targets']
+        # Detach all of the certificates from the policy
+        for certificate in certificates:
+            CertificateHandler.IOT_CLIENT.detach_principal_policy(
+                policyName=policy_name,
+                principal=certificate
+            )
 
-        # Detach policy from the certificate.
-        CertificateHandler.IOT_CLIENT.detach_principal_policy(
-            policyName=policy_name,
-            principal=certificate_arn
-        )
+        certificate_id = certificate_arn.split('/')[1]
         # Delete the certificate.
         CertificateHandler.IOT_CLIENT.update_certificate(
             certificateId=certificate_id, newStatus='INACTIVE')
