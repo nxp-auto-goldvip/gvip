@@ -364,6 +364,7 @@ display_report() {
                         rx_bytes=0
                         echo "No frames have been received. Please check the connections or reset the board."
                 fi
+                frames_lost=$((tx_frames_count - rx_frames_count))
 
                 echo "#############################################################"
                 echo "Tx frames:                ${tx_frames_count}"
@@ -374,7 +375,8 @@ display_report() {
                 echo "Rx frames/s:              $((rx_frames_count * 1000 / time_gen))"
                 echo "Tx throughput:            $((tx_bytes * 8 / time_gen)) Kbit/s"
                 echo "Rx throughput:            $((rx_bytes * 8 / time_gen)) Kbit/s"
-                echo "Lost frames:              $((tx_frames_count - rx_frames_count))"
+                echo "Lost frames:              ${frames_lost}"
+                echo "Lost frames (%):          $((frames_lost * 100 / tx_frames_count)).$(((frames_lost * 100 - (frames_lost * 100 / tx_frames_count) * tx_frames_count) * 100 / tx_frames_count))%"
                 echo "M7_0 core load:           ${M7_0_LOAD}%"
                 echo "M7_1 core load:           ${M7_1_LOAD}%"
 
