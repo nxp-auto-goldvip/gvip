@@ -326,28 +326,28 @@
             [
                 "PFE0 RX Mbps",
                 "Mbps",
-                "pfe0rx / 1024",
+                "pfe0rx / 1000000",
                 "pfe0rx",
                 "PFE0 RX bps"
             ],
             [
                 "PFE0 TX Mbps",
                 "Mbps",
-                "pfe0tx / 1024",
+                "pfe0tx / 1000000",
                 "pfe0tx",
                 "PFE0 TX bps"
             ],
             [
                 "PFE2 RX Mbps",
                 "Mbps",
-                "pfe2rx / 1024",
+                "pfe2rx / 1000000",
                 "pfe2rx",
                 "PFE2 RX bps"
             ],
             [
                 "PFE2 TX Mbps",
                 "Mbps",
-                "pfe2tx / 1024",
+                "pfe2tx / 1000000",
                 "pfe2tx",
                 "PFE2 TX bps"
             ]
@@ -558,28 +558,28 @@
             [
                 "PFE0 RX Mbps",
                 "Mbps",
-                "pfe0rx / 1024",
+                "pfe0rx / 1000000",
                 "pfe0rx",
                 "PFE0 RX bps"
             ],
             [
                 "PFE0 TX Mbps",
                 "Mbps",
-                "pfe0tx / 1024",
+                "pfe0tx / 1000000",
                 "pfe0tx",
                 "PFE0 TX bps"
             ],
             [
                 "PFE2 RX Mbps",
                 "Mbps",
-                "pfe2rx / 1024",
+                "pfe2rx / 1000000",
                 "pfe2rx",
                 "PFE2 RX bps"
             ],
             [
                 "PFE2 TX Mbps",
                 "Mbps",
-                "pfe2tx / 1024",
+                "pfe2tx / 1000000",
                 "pfe2tx",
                 "PFE2 TX bps"
             ]
