@@ -5,7 +5,7 @@
 """
 Collects the data required for the telemetry server charts.
 
-Copyright 2022 NXP
+Copyright 2022-2023 NXP
 """
 
 import json
@@ -13,7 +13,7 @@ import threading
 from time import time, sleep
 from datetime import datetime
 
-from remote_client import RemoteClient
+from dds_telemetry_sub import DDSTelemetrySubscriber
 
 class SystemTelemetryCollector():
     """ Collects the telemetry data from the dom0 via a socket connection and compiles it in the
@@ -36,9 +36,9 @@ class SystemTelemetryCollector():
     RAW_DATA = {}
     # Lock for handling the RAW_DATA variable on the two threads.
     DATA_LOCK = threading.Lock()
-    # Class which handles the socket communication.
-    SOCKET = RemoteClient()
-    GET_STATS_COMMAND = "GET_STATS"
+    # Class which handles the dds communication.
+    DDS_SUB = DDSTelemetrySubscriber(
+        dds_domain_participant="TelemetryParticipantLibrary::TelemetryServerParticipant")
 
     def __init__(self, chart_window_size=60):
         """
@@ -92,16 +92,13 @@ class SystemTelemetryCollector():
     def data_retriever():
         """ Gets the latest system telemetry data every second. """
         while True:
-            data = SystemTelemetryCollector.SOCKET.send_request(
-                SystemTelemetryCollector.GET_STATS_COMMAND)
-
             try:
-                data = json.loads(data.decode())
+                dds_messages = SystemTelemetryCollector.DDS_SUB.receive()
                 with SystemTelemetryCollector.DATA_LOCK:
-                    SystemTelemetryCollector.RAW_DATA = data
+                    SystemTelemetryCollector.RAW_DATA = json.loads(dds_messages[0])
             # pylint: disable=broad-except
             except Exception as exception:
-                print(f'Failed to get telemetry data: {exception}\nData received: {data}')
+                print(f'Failed to get telemetry data: {exception}\nData received: {dds_messages}')
 
             sleep(1)
 

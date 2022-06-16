@@ -4,12 +4,13 @@
 # Client used for fetching data from the remote server
 
 """
-Copyright 2021-2022 NXP
+Copyright 2021-2023 NXP
 """
 
 import datetime
 import json
 import logging
+import numbers
 import os
 import sys
 import threading
@@ -19,32 +20,21 @@ import awsiot.greengrasscoreipc
 from awsiot.greengrasscoreipc import client
 from awsiot.greengrasscoreipc import model
 
-from remote_client import RemoteClient
+from dds_telemetry_sub import DDSTelemetrySubscriber
 
 # Telemetry parameters
 # time interval between MQTT packets
 TELEMETRY_INTERVAL = "telemetry_interval"
+
 # Verbosity flag
 VERBOSE_FLAG = "verbose"
 VERBOSE = False
-
-# M7 core status query time
-M7_STAT_QUERY_TIME = "m7_status_query_time_interval"
-
-# M7 core status window size multiplier
-# Used for getting M7 core load
-M7_WINDOW_SIZE_MULTIPLIER = "m7_window_size_multiplier"
-
-# server commands
-GET_STATS_COMMAND = "GET_STATS"
-SET_PARAMS_COMMAND = "SET_PARAMS"
 
 # default gap between telemetry packets
 TELEMETRY_SEND_INTERVAL = 1
 
 # Locks for telemetry variable and socket
 LOCK = threading.Lock()
-SOCKET_COM_LOCK = threading.Lock()
 
 # Setup logging to stdout
 LOGGER = logging.getLogger(__name__)
@@ -62,8 +52,8 @@ def extract_parameter(message, parameter_name, parameter_type, default, min_valu
     message dictionary
     :param parameter_type: Parameter type (int, float, bool)
     :param default: Parameter default (in case the event does not contain
-    :param min_value: Minimum accepted value
     the desired parameter, this value will be returned
+    :param min_value: Minimum accepted value
     :return: updated parameter value/default
     """
     updated_param_value = message.get(parameter_name, default)
@@ -102,7 +92,64 @@ def publish_to_topic(topic, payload, qos=model.QOS.AT_LEAST_ONCE):
     except Exception as exception:
         LOGGER.error("Failed to publish message: %s", repr(exception))
 
-# pylint: disable=too-many-branches
+#pylint: disable=too-many-locals
+def aggregate_telemetry(telemetry_data):
+    """
+    This function parses multiple instances of the telemetry dict and aggregates the data in a single dict
+    :param telemetry_data: List that contains the telemetry data to be aggregated.
+    """
+
+    # We must "merge" all the instance of the statistics received
+    # Initialize the CAN IDPS and APP Data dicts with default values
+    can_idps_data = {"global_stats": {"m7_anomalies": 0, "llce_anomalies": 0}, "idps_data": []}
+    app_data = {}
+    # It will collect all the system telemetry data that represent an average value (e.g. CPU Load)
+    avg_dict = {}
+    # It will collect all the system telemetry data that are supposed to be summed over an interval (e.g. PFE
+    # packets)
+    count_dict = {}
+    # Iterate through all the received DDS messages
+    for msg in telemetry_data:
+        stats = json.loads(msg)
+        idps_stats = stats.get('idps_stats', None)
+        try:
+            # Append the new IDPS statistics
+            can_idps = idps_stats["can_idps"]
+            can_idps_data["global_stats"]["m7_anomalies"] += can_idps["global_stats"]["m7_anomalies"]
+            can_idps_data["global_stats"]["llce_anomalies"] += can_idps["global_stats"]["llce_anomalies"]
+            can_idps_data["idps_data"].extend(can_idps["idps_data"])
+        except (KeyError, TypeError):
+            # Nothing to add if idps_stats is not in the message
+            pass
+
+        # Append the APP Data
+        app = json.loads(msg).get('app_data', None)
+        if app:
+            for topic in app:
+                if topic in app_data:
+                    app_data[topic].extend(app[topic])
+                else:
+                    app_data[topic] = app[topic]
+        # Add the system stats from the telemetry
+        system_stats = stats.get('system_telemetry')
+        for k, stat in system_stats.items():
+            # If it's a number than it is a statistic
+            if isinstance(stat, numbers.Number):
+                # Currently only the PFE stats that don't end with 'ps' (per second) are values that represent
+                # an average
+                if k.startswith('pfe') and not k.endswith('ps'):
+                    count_dict[k] = count_dict.get(k, 0) + stat
+                else:
+                    avg_dict[k] = avg_dict.get(k, 0) + stat
+    for k in avg_dict:
+        avg_dict[k] /= len(telemetry_data)
+    idps_data = {"can_idps": can_idps_data}
+    data = json.loads(telemetry_data[0])
+    data = data.get('system_telemetry')
+    system_telemetry = {**data, **count_dict, **avg_dict}
+    return system_telemetry, app_data, idps_data
+
+#pylint: disable=too-many-locals
 def telemetry_collect_and_publish(verbose=False):
     """
     :param verbose: Verbosity flag
@@ -110,45 +157,39 @@ def telemetry_collect_and_publish(verbose=False):
     In each call it publishes MQTT messages for the system telemetry,
     idps data, and app data (if applicable).
     """
-    with SOCKET_COM_LOCK:
-        data = SOCKET.send_request(GET_STATS_COMMAND)
+    telemetry_data = DDS_Sub.receive()
 
+    # It should be empty only if a timeout occured
     try:
-        data = json.loads(data.decode())
-
-        system_telemetry = data.get('system_telemetry', None)
-        app_data = data.get('app_data', None)
-        idps_data = data.get('idps_stats', None)
+        system_telemetry, app_data, idps_data = aggregate_telemetry(telemetry_data)
 
         timestamp = time.time()
         # Set timestamp for current telemetry packet
         time_values = {"Timestamp": int(timestamp),
                        "Datetime": str(datetime.datetime.fromtimestamp(timestamp))}
 
-        if system_telemetry:
-            try:
-                # Send the telemetry statistics.
-                system_telemetry.update(time_values)
-                publish_to_topic(
-                    topic=os.environ.get('telemetryTopic'),
-                    payload=json.dumps(system_telemetry).encode())
-                if verbose:
-                    LOGGER.info("Sent system telemetry to topic: %s data: %s",
-                        os.environ.get('telemetryTopic'), system_telemetry)
-            except ValueError:
-                LOGGER.error("Malformed packet received from socket %s", system_telemetry)
+        try:
+            # Send the telemetry statistics.
+            system_telemetry.update(time_values)
+            publish_to_topic(
+                topic=os.environ.get('telemetryTopic'),
+                payload=json.dumps(system_telemetry).encode())
+            if verbose:
+                LOGGER.info("Sent system telemetry to topic: %s data: %s",
+                    os.environ.get('telemetryTopic'), system_telemetry)
+        except ValueError:
+            LOGGER.error("Malformed packet received: %s", system_telemetry)
 
-        if idps_data:
-            try:
-                topic = f"{os.environ.get('telemetryTopic')}/idps"
-                idps_data.update(time_values)
-                publish_to_topic(
-                    topic=topic,
-                    payload=json.dumps(idps_data).encode())
-                if verbose:
-                    LOGGER.info("Sent IDSP data to topic: %s data: %s", topic, idps_data)
-            except ValueError:
-                LOGGER.error("Malformed packet received from socket %s", idps_data)
+        try:
+            topic = f"{os.environ.get('telemetryTopic')}/idps"
+            idps_data.update(time_values)
+            publish_to_topic(
+                topic=topic,
+                payload=json.dumps(idps_data).encode())
+            if verbose:
+                LOGGER.info("Sent IDSP data to topic: %s data: %s", topic, idps_data)
+        except ValueError:
+            LOGGER.error("Malformed packet received: %s", idps_data)
 
         if app_data:
             for topic_suffix, data_list in app_data.items():
@@ -161,16 +202,15 @@ def telemetry_collect_and_publish(verbose=False):
                 for data in data_list:
                     # Add the timestamp to the data.
                     data["Timestamp"] = int(timestamp)
+
                     publish_to_topic(
                         topic=topic,
                         payload=json.dumps(data).encode())
                     if verbose:
                         LOGGER.info("Sent app data to topic: %s data: %s", topic, data)
-
     # pylint: disable=broad-except
     except Exception as exception:
         LOGGER.error("Failed to get telemetry: %s \nData received from dom0: %s", exception, data)
-
 
 def telemetry_run():
     """
@@ -198,7 +238,6 @@ def telemetry_run():
         # how much time has been spent while the function was executing
         time.sleep(next_run)
 
-
 class StreamHandler(client.SubscribeToIoTCoreStreamHandler):
     """A class for handling incoming MQTT events.
     """
@@ -221,14 +260,7 @@ class StreamHandler(client.SubscribeToIoTCoreStreamHandler):
                                       min_value=1)
                 VERBOSE = \
                     extract_parameter(message=message, parameter_name=VERBOSE_FLAG,
-                                      parameter_type=bool, default=VERBOSE)
-
-            # Check if one or more config values have been updated.
-            if set(message.keys()).intersection(
-                    set({TELEMETRY_INTERVAL, VERBOSE_FLAG, M7_STAT_QUERY_TIME, M7_WINDOW_SIZE_MULTIPLIER})):
-                LOGGER.info("Got update message.")
-                with SOCKET_COM_LOCK:
-                    SOCKET.send_fire_and_forget(SET_PARAMS_COMMAND + json.dumps(message))
+                                      parameter_type=bool, default=VERBOSE) # TODO, send verbosity flag to dom0 with dds
         # pylint: disable=broad-except
         except Exception as exception:
             LOGGER.error(exception)
@@ -267,7 +299,8 @@ def function_handler(event, _):
     """
 
 # Connect with the telemetry agregator service on dom0.
-SOCKET = RemoteClient()
+DDS_Sub = DDSTelemetrySubscriber(
+    dds_domain_participant="TelemetryParticipantLibrary::TelemetryGGComponentParticipant")
 
 # Start executing the function above.
 # It will be executed every telemetry_interval seconds indefinitely.

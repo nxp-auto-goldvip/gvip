@@ -10,7 +10,7 @@
 #                    Runs when domain 0 boots / shuts down on systems using init.
 ### END INIT INFO
 
-SERVER_PATH=/home/root/cloud-gw/telemetry-collector/collector_server.py
+SERVER_PATH=/home/root/cloud-gw/telemetry-collector/dds_telemetry_pub.py
 LOG_PATH="/var/log/collector_server.log"
 
 case "$1" in
@@ -20,11 +20,11 @@ start)
         ;;
 stop)
         echo "Stopping telemetry service"
-        kill -9 $(ps aux | grep '[c]ollector_server.py' | awk '{print $2}') 2> /dev/null
+        kill -9 $(ps aux | grep '[d]ds_telemetry_pub.py' | awk '{print $2}') 2> /dev/null
         ;;
 restart)
         echo "Restarting telemetry service"
-        kill -9 $(ps aux | grep '[c]ollector_server.py' | awk '{print $2}') 2> /dev/null
+        kill -9 $(ps aux | grep '[d]ds_telemetry_pub.py' | awk '{print $2}') 2> /dev/null
         python3 ${SERVER_PATH} > ${LOG_PATH} 2>&1 &
         ;;
 *)

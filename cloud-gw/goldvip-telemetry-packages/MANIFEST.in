@@ -4,3 +4,4 @@
 # About this file, please visit: https://packaging.python.org/guides/using-manifest-in/ for more information.
 #
 include configuration/*.json
+include dds_telemetry_sub/*.xml

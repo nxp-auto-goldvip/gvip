@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2021 NXP
+Copyright 2021-2023 NXP
 """
 import re
 import os
@@ -70,7 +70,7 @@ class TemperatureStats:
 
                 temperature_key = f"{label_values[0].lower()}_temperature_{label_values[-1]}"
                 temperature_tag = TemperatureStats.TAGS[temperature_key]
-                temperature_value = str(int(temperature_value)/1000)
+                temperature_value = int(temperature_value)/1000
                 temperature_data[temperature_tag] = temperature_value
 
         return temperature_data

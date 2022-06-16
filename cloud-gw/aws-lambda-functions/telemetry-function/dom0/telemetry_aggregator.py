@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2021-2022 NXP
+Copyright 2021-2023 NXP
 """
 
 import json
@@ -31,15 +31,9 @@ TELEMETRY_INTERVAL = "telemetry_interval"
 # M7 core status query time
 M7_STAT_QUERY_TIME = "m7_status_query_time_interval"
 
-# M7 core status window size multiplier
-# Used for getting M7 core load
-M7_WINDOW_SIZE_MULTIPLIER = "m7_window_size_multiplier"
-
 # Logger verbosity falg
 VERBOSE_FLAG = "verbose"
 
-# A lock for accessing the config variable.
-CONFIG_LOCK = threading.Lock()
 # A lock for accessing the stats dict.
 STATS_LOCK = threading.Lock()
 
@@ -53,13 +47,14 @@ class TelemetryAggregator:
     Collects telemetry data from the system and puts data into a json format
     """
     def __init__(self):
+        self.__telemetry_interval = config[TELEMETRY_INTERVAL]
         # Retrieve platform information
         self.__current_platform = platform.platform()
         # Get instances for telemetry data
         self.__cpu_stats = CpuStats()
         self.__net_stats = NetStats(["pfe2", "pfe0"])
         self.__m7_core_load = M7CoreMovingAverage(
-            config[TELEMETRY_INTERVAL] / config[M7_STAT_QUERY_TIME],
+            self.__telemetry_interval / config[M7_STAT_QUERY_TIME],
             config[M7_STAT_QUERY_TIME])
         self.__mem_stats = MemStats()
         self.__temperature_stats = TemperatureStats()
@@ -122,10 +117,6 @@ class TelemetryAggregator:
                 with STATS_LOCK:
                     self.__stats = json.dumps(tot_stats)
 
-                with CONFIG_LOCK:
-                    # Set telemetry interval for next function call
-                    telemetry_interval = config[TELEMETRY_INTERVAL]
-
                 if config.get(VERBOSE_FLAG, False):
                     LOGGER.info("Updated system telemetry: %s\n", tot_stats)
             # pylint: disable=broad-except
@@ -133,77 +124,10 @@ class TelemetryAggregator:
                 LOGGER.error("Failed to retrieve telemetry data: %s", exception)
 
             loop_exec_time = time.time() - loop_entry_time
-            next_run = telemetry_interval - loop_exec_time
+            next_run = self.__telemetry_interval - loop_exec_time
 
             if next_run > 0:
                 time.sleep(next_run)
-
-    @staticmethod
-    def __extract_parameter(event, parameter_name, parameter_type, default, min_value=None):
-        """
-        Extracts parameters from an event dictionary. If the event does not
-        contain the desired value, the default is returned
-        :param event: Event in json format
-        :param parameter_name: Parameter name which shall be a key in the
-        event dictionary
-        :param parameter_type: Parameter type (int, float, bool)
-        :param default: Parameter default (in case the event does not contain
-        :param min_value: Minimum accepted value
-        the desired parameter, this value will be returned
-        :return: updated parameter value/default
-        """
-        # get new parameter value from the event
-        updated_param_value = event.get(parameter_name, default)
-
-        # if the type is not correct, cast the parameter
-        if not isinstance(updated_param_value, parameter_type):
-            try:
-                # cast to the expected format
-                updated_param_value = parameter_type(updated_param_value)
-            except ValueError:
-                updated_param_value = default
-
-        if min_value and updated_param_value != default:
-            if updated_param_value < min_value:
-                # new value is not valid
-                updated_param_value = default
-            else:
-                # Log the updated value
-                LOGGER.info("Updated %s, new value %s",
-                            parameter_name.replace("_", " "), updated_param_value)
-        return updated_param_value
-
-    def update_configuration_parameters(self, event):
-        """
-        Checks if the event contains new values for the configuration,
-        and updates them accordingly.
-        :param event: The MQTT message in json string  format.
-        """
-        try:
-            event_dict = json.loads(event)
-        except ValueError:
-            # Malformed event, discard value
-            return
-
-        with CONFIG_LOCK:
-            # get telemetry collector parameters
-            config[TELEMETRY_INTERVAL] = \
-                self.__extract_parameter(event_dict, TELEMETRY_INTERVAL, int,
-                                         config[TELEMETRY_INTERVAL], 1)
-            config[M7_STAT_QUERY_TIME] = \
-                self.__extract_parameter(event_dict, M7_STAT_QUERY_TIME, float,
-                                         config[M7_STAT_QUERY_TIME], 0.0001)
-            config[M7_WINDOW_SIZE_MULTIPLIER] = \
-                self.__extract_parameter(event_dict, M7_WINDOW_SIZE_MULTIPLIER, int,
-                                         config[M7_WINDOW_SIZE_MULTIPLIER], 1)
-            config[VERBOSE_FLAG] = \
-                self.__extract_parameter(event_dict, VERBOSE_FLAG, bool,
-                                         config.get(VERBOSE_FLAG, False))
-
-        M7CoreMovingAverage.update_measurement(
-            new_m7_status_query_time_interval=config[M7_STAT_QUERY_TIME],
-            telemetry_interval=config[TELEMETRY_INTERVAL],
-            m7_window_size_multiplier=config[M7_WINDOW_SIZE_MULTIPLIER])
 
     def get_stats(self):
         """
