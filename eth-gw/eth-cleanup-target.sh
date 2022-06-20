@@ -15,8 +15,10 @@ delete_bridge
 delete_pfe_fast_path
 
 # Stop the strongSwan IPsec process.
-ipsec stop
+ipsec stop 2> /dev/null || true
 pkill -9 iperf3 || true
+# Re-add the HSE module.
+modprobe hse
 
 # Stop any DHCP client that runs on pfe0 and pfe2 interfaces.
 dhcpcd -x pfe2 || true
