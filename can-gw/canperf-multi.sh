@@ -507,17 +507,17 @@ display_individual_ipdu_report() {
         if [[ "${use_rx_interface}" == "true" ]]; then
                 echo "Rx IPDUs:                 ${ipdu_rx_count}"
         fi
-        echo "Tx data transfer:         ${ipdu_tx_bytes} bytes"
+        echo "Tx IPDU data transfer:    ${ipdu_tx_bytes} bytes"
         if [[ "${use_rx_interface}" == "true" ]]; then
-                echo "Rx data transfer:         ${ipdu_rx_bytes} bytes"
+                echo "Rx IPDU data transfer:    ${ipdu_rx_bytes} bytes"
         fi
         echo "Tx IPDUs/s:               $((ipdu_tx_count * 1000 / time_gen))"
         if [[ "${use_rx_interface}" == "true" ]]; then
                 echo "Rx IPDUs/s:               $((ipdu_rx_count * 1000 / time_gen))"
         fi
-        echo "Tx throughput:            $((ipdu_tx_bytes * 8 / time_gen)) Kbit/s"
+        echo "Tx IPDU throughput:       $((ipdu_tx_bytes * 8 / time_gen)) Kbit/s"
         if [[ "${use_rx_interface}" == "true" ]]; then
-                echo "Rx throughput:            $((ipdu_rx_bytes * 8 / time_gen)) Kbit/s"
+                echo "Rx IPDU throughput:       $((ipdu_rx_bytes * 8 / time_gen)) Kbit/s"
                 echo "Lost IPDUs:               $((ipdu_tx_count-ipdu_rx_count))"
         fi
 }
