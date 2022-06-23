@@ -118,7 +118,6 @@ class CertificateHandler:
         """
         bucket_name = event['ResourceProperties']['BucketName']
         core_thing_name = event['ResourceProperties']['GGv2CoreName']
-        sja_thing_name = event['ResourceProperties']['SjaThingName']
         policy_name = event['ResourceProperties']['PolicyName']
 
         LOGGER.info("Initiated certificate deletion")
@@ -138,8 +137,8 @@ class CertificateHandler:
         # Detach all certificates from the greengrass thing.
         certificates = CertificateHandler.IOT_CLIENT.list_thing_principals(
             thingName=core_thing_name
-        )
-        for certificate in certificates['principals']:
+        )['principals']
+        for certificate in certificates:
             CertificateHandler.IOT_CLIENT.detach_thing_principal(
                 thingName=core_thing_name,
                 principal=certificate
@@ -147,11 +146,15 @@ class CertificateHandler:
 
         certificate_arn = event['PhysicalResourceId']
 
-        # Detach certificate from sja thing.
-        CertificateHandler.IOT_CLIENT.detach_thing_principal(
-            thingName=sja_thing_name,
+        # Detach all of the things from the certificate
+        things = CertificateHandler.IOT_CLIENT.list_principal_things(
             principal=certificate_arn
-        )
+        )['things']
+        for thing in things:
+            CertificateHandler.IOT_CLIENT.detach_thing_principal(
+                thingName=thing,
+                principal=certificate_arn
+            )
 
         certificates = CertificateHandler.IOT_CLIENT.list_targets_for_policy(
             policyName=policy_name
