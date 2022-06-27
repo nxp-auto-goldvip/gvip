@@ -216,10 +216,13 @@ class Greengrassv2Deployment():
         """
         Execute the steps required to deploy the Greengrass v2 Nucleus.
         """
-        if not self.__no_deploy or self.__setup_devices:
-            self.__load_configurations()
+        self.__load_configurations()
 
-        if not self.__no_deploy:
+        if self.__no_deploy:
+            # Just restart the nucleus
+            Greengrassv2Deployment.restart_greengrass_nucleus()
+        else:
+            # Create the deployment
             self.__get_thing_arn()
             self.__create_deployment()
             self.__run_installer()
@@ -333,7 +336,6 @@ def main():
     # Ensure that the clock is synchronized with the ntp servers
     Utils.sync_system_datetime()
 
-    # Check for AWS credentials
     if not args.no_deploy or args.setup_devices:
         # Check if the AWS credentials were provided
         if boto3.session.Session().get_credentials() is None:
@@ -344,10 +346,6 @@ def main():
         if args.aws_region_name:
             boto3.setup_default_session(region_name=args.aws_region_name)
 
-    if args.no_deploy:
-        # Start the Greengrass V2 Nucleus.
-        Greengrassv2Deployment.restart_greengrass_nucleus()
-    else:
         # Deploy Greengrass V2
         Greengrassv2Deployment(
             args.aws_region_name,
@@ -360,6 +358,8 @@ def main():
             args.no_deploy,
             args.clean_device_provision,
             args.verbose).execute()
+    else:
+        Greengrassv2Deployment.restart_greengrass_nucleus()
 
 # entry point
 if __name__ == '__main__':
