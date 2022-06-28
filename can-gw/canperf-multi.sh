@@ -449,7 +449,7 @@ get_ipdu_data_from_log() {
                                         line_pdu_count+=(["${id}"]=1)
                                 else
                                         # We already have the key inside the dictionary so we just need to increase the stored value
-                                        ((line_pdu_count["${id}"]+=dlc))
+                                        ((line_pdu_bytes["${id}"]+=dlc))
                                         ((line_pdu_count["${id}"]+=1))
                                 fi
                                 # The start of the next pdu = length of id,dlc + payload (4 bytes + dlc bytes) , each byte is 2 characters
