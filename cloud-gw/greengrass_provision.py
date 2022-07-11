@@ -318,8 +318,8 @@ def main():
                         help='If set it will force the device provisioning client to '\
                         'retrieve the provisioning data instead of using the data stored '\
                         'after previous runs.')
-    parser.add_argument('--verbose', dest='verbose', default=True, action='store_false',
-                        help="Verbosity flag.")
+    parser.add_argument('--quiet', dest='verbose', default=True, action='store_false',
+                        help="Quiet mode. Causes most diagnostic messages to be suppressed.")
 
     args = parser.parse_args()
 
