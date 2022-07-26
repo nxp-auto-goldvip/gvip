@@ -542,11 +542,11 @@
         "mqtt_topic_suffix": "/idps",
         "use_cloud_timestamp": false,
         "measurements": {
-          "llce_anomalies": {
+          "can_idps.global_stats.llce_anomalies": {
             "name": "LLCE Anomalies",
             "unit": "anomalies"
           },
-          "m7_anomalies": {
+          "can_idps.global_stats.m7_anomalies": {
             "name": "M7 Anomalies",
             "unit": "anomalies"
           }
