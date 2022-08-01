@@ -92,8 +92,15 @@ class ClientDeviceProvisioningClient():
 
         if os.path.exists(self.DATA_FILE):
             with open(self.DATA_FILE, "r", encoding="utf-8") as data_file:
-                self.data = json.load(data_file)
-                self.client_device_data = self.data.get(thing_name, {})
+                try:
+                    self.data = json.load(data_file)
+                except json.decoder.JSONDecodeError:
+                    print("Invalid JSON string in client device configuration "
+                          "data file. Re-creating the configuration.")
+                    data_file.close()
+                    os.remove(self.DATA_FILE)
+                else:
+                    self.client_device_data = self.data.get(thing_name, {})
 
         self.__thing_name = thing_name
         self.__mqtt_topic = mqtt_topic
@@ -300,8 +307,14 @@ class ClientDeviceProvisioningClient():
                   f"/greengrass/discover/thing/{self.__thing_name}"
 
             for i in range(nb_retries):
-                # Send the request with the certificate paths.
-                ret = requests.get(url, cert=(certpath.name, keypath.name))
+                try:
+                    # Send the request with the certificate paths.
+                    ret = requests.get(url, cert=(certpath.name, keypath.name), timeout=10)
+                    ret.raise_for_status()
+                except requests.exceptions.RequestException as err:
+                    if self.__verbose:
+                        print(f"The request for thing discovery failed (reason: {err}). "
+                               "Retrying...")
 
                 # Save the Greengrass Certitficate Authority from the request.
                 response = json.loads(ret.text)

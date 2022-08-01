@@ -15,6 +15,7 @@ import json
 import tempfile
 import time
 import subprocess
+import traceback
 
 import boto3
 
@@ -247,9 +248,10 @@ class Greengrassv2Deployment():
                         clean_provision=self.__clean_device_provision,
                         verbose=self.__verbose).execute()
                 # pylint: disable=broad-except
-                except Exception as exception:
-                    print(f"Provision failed for device {device_data['thing_name']}. "\
-                          f"Exception message: {exception}")
+                except Exception:
+                    print(f"Provision failed for device {device_data['thing_name']}.")
+                    # Printing full traceback
+                    traceback.print_exc()
                     provision_failed = True
             if provision_failed:
                 raise Exception("Client Device Provisioning failed.")
