@@ -336,7 +336,7 @@ def main():
     Utils.setup_network_interface(args.netif, args.netip, args.wlan_ssid, ssid_password)
 
     # Ensure that the clock is synchronized with the ntp servers
-    Utils.sync_system_datetime()
+    Utils.sync_system_datetime(args.netif)
 
     if not args.no_deploy or args.setup_devices:
         # Check if the AWS credentials were provided

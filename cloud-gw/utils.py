@@ -176,15 +176,25 @@ class Utils():
         Utils.execute_command(f'ifmetric {netif} 0')
 
     @staticmethod
-    def sync_system_datetime():
+    def sync_system_datetime(sync_iface=None, ip_ver='v4'):
         """
         Force a system datetime update by restarting the ntp daemon.
+        :param sync_iface: the network interface which is used to synchronize the NTP timedate.
+        :param ip_ver: IP version (v4/v6/all).
         """
         ntpd_path = os.path.join('/usr', 'sbin', 'ntpd')
         ntpd_pid_filename = os.path.join('/var', 'run', 'ntpd.pid')
 
         restart_ntp_service = f'{ntpd_path} -u ntp:ntp -p {ntpd_pid_filename} -g'
         sync_system_timedate = f'{ntpd_path} -gq'
+
+        if sync_iface and isinstance(sync_iface, str):
+            sync_system_timedate += f" -I {sync_iface}"
+
+        if ip_ver in ('v4', 'v6'):
+            sync_system_timedate += " -4" if ip_ver == 'v4' else " -6"
+        elif ip_ver != 'all':
+            raise ValueError(f'Unrecognized IP version value: {ip_ver}')
 
         try:
             # Stop the ntp daemon, if it is running.
