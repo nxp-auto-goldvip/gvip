@@ -417,19 +417,27 @@ get_ipdu_data_from_log() {
                 # Non human readable "log format" log files use ## as a separator between the id and payload and do not have spaces between bytes
                 processed_log="$( awk -F'##' '{print substr($2,2)}' "${log_file}")"
         fi
+        # Get each unique line from the log together with the line count
+        processed_log=$(echo "${processed_log}" | sort | uniq -c)
 
-        # Each line is one word long so we can use wc -w to prevent counting whitespaces
-        number_of_lines=$(wc -w <<< "$processed_log")
-        # While there are lines to process
-        while [[ number_of_lines -gt 0 ]]; do
+        # The first row contains the line count
+        line_occurrences=$(awk '{print $1}' <<< "$processed_log")
+        # Split number of lines into array
+        readarray -t line_occurrences <<<"$line_occurrences"
+        # The second row contains the unique lines
+        processed_log=$(awk '{print $2}' <<< "$processed_log")
+        # Split unique lines into array
+        readarray -t processed_log <<<"$processed_log"
+        
+        # Iterate over unique lines
+        for index in "${!processed_log[@]}"; do
                 # Associative array for storing the number of transmitted bytes for each pdu id
                 local  -A line_pdu_bytes=()
                 # Associative array for storing the number of transmitted pdu's
                 local -A line_pdu_count=()
-
                 # Get first line from processed log
-                line=$(awk 'NR==1{print $1}' <<< "$processed_log")
-                working_line="${line}"
+                working_line="${processed_log[$index]}"
+
                 # Shorten the working line after reading a complete pdu
                 # If the working line is shorter then the size of a pdu id + dlc then stop
                 while [[ "${#working_line}" -gt 8 ]]; do
@@ -439,7 +447,6 @@ get_ipdu_data_from_log() {
                         dlc=${working_line:6:2}
                         # Convert dlc to decimal
                         dlc=$(("16#${dlc}"))
-
                         # The associative arrays contain an entry for each id
                         # A valid id is greater than 0 
                         if [[ "${id}" != "000000" ]] ; then
@@ -467,8 +474,8 @@ get_ipdu_data_from_log() {
                                 working_line=""
                         fi
                 done
-                # Calculate how often was this frame transmitted/received
-                line_occurrence=$(awk '/'"${line}"'/ {count++} END{print count}' <<< "$processed_log")
+                
+                line_occurrence="${line_occurrences[$index]}"
 
                 for id in "${!line_pdu_bytes[@]}"; do
                         # Compute total number of received/transmitted bytes for that frame
@@ -487,10 +494,6 @@ get_ipdu_data_from_log() {
                                 ((pdu_count["${id}"]+="${count}"))
                         fi
                 done
-                # Remove processed line from remaining log
-                processed_log=$(awk '!/'"${line}"'/' <<< "$processed_log")
-                # Each line is one word long so we can use wc -w to prevent counting whitespace
-                number_of_lines=$(wc -w <<< "$processed_log")
         done
 }
 
