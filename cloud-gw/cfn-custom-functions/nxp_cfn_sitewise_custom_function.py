@@ -105,34 +105,35 @@ class SitewiseHandler:
         :param topic_rules: A dictionary containing the routing rules
         """
         for _, dashboard in self.configs['dashboards'].items():
-            # Create entry in the routing rule
-            if dashboard['mqtt_topic_suffix'] not in topic_rules:
-                topic_rules[dashboard['mqtt_topic_suffix']] = {
-                    'properties': [],
-                    'use_cloud_timestamp': dashboard.get('use_cloud_timestamp', True)
-                }
+            for dashboard_topic_rule in dashboard['topic_rules']:
+                # Create entry in the routing rule
+                if dashboard_topic_rule['mqtt_topic_suffix'] not in topic_rules:
+                    topic_rules[dashboard_topic_rule['mqtt_topic_suffix']] = {
+                        'properties': [],
+                        'use_cloud_timestamp': dashboard_topic_rule.get('use_cloud_timestamp', True)
+                    }
 
-            # Retrieve the Measurements
-            for m_id, measurement in dashboard.get('measurements', {}).items():
-                properties[measurement['name']] = {
-                    'property': {
-                        'name': measurement['name'],
-                        'dataType': measurement.get('datatype', 'DOUBLE'),
-                        'unit': measurement['unit'],
-                        'type': {'measurement': {}}
-                    },
-                    'alias': m_id
-                }
-                topic_rules[dashboard['mqtt_topic_suffix']]['properties'].append(
-                    measurement['name'])
-            # Create the measurements from the measurement templates
-            if 'measurements_templates' in dashboard:
-                rule_property_list = SitewiseHandler.__create_properties_from_template(
-                    templates=dashboard['measurements_templates'],
-                    properties=properties,
-                    p_type='measurement')
+                # Retrieve the Measurements
+                for m_id, measurement in dashboard_topic_rule.get('measurements', {}).items():
+                    properties[measurement['name']] = {
+                        'property': {
+                            'name': measurement['name'],
+                            'dataType': measurement.get('datatype', 'DOUBLE'),
+                            'unit': measurement['unit'],
+                            'type': {'measurement': {}}
+                        },
+                        'alias': m_id
+                    }
+                    topic_rules[dashboard_topic_rule['mqtt_topic_suffix']]['properties'].append(
+                        measurement['name'])
+                # Create the measurements from the measurement templates
+                if 'measurements_templates' in dashboard_topic_rule:
+                    rule_property_list = SitewiseHandler.__create_properties_from_template(
+                        templates=dashboard_topic_rule['measurements_templates'],
+                        properties=properties,
+                        p_type='measurement')
 
-                topic_rules[dashboard['mqtt_topic_suffix']]['properties'].extend(rule_property_list)
+                    topic_rules[dashboard_topic_rule['mqtt_topic_suffix']]['properties'].extend(rule_property_list)
 
             # Retrieve the Transforms
             for t_id, transform in dashboard.get('transforms', {}).items():
@@ -672,5 +673,6 @@ def lambda_handler(event, context):
     # pylint: disable=broad-except
     except Exception as err:
         LOGGER.error("Sitewise custom function handler error: %s", err)
+
         response_data = {"Data": str(err)}
         cfnresponse.send(event, context, cfnresponse.FAILED, response_data)

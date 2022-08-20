@@ -3,38 +3,51 @@
     "dashboards": {
       "core_loads_db": {
         "name": "Core Loads Dashboard",
-        "mqtt_topic_suffix": "",
-        "use_cloud_timestamp": false,
-        "measurements": {
-          "dom0_vcpu_idle": {
-            "name": "Dom0 vCPU idle",
-            "unit": "%"
-          }
-        },
-        "measurements_templates": {
-          "substitutions": {
-            "X": {
-              "pattern": "X",
-              "val_list": [0, 1, 2, 3]
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "",
+            "use_cloud_timestamp": false,
+            "measurements": {
+              "dom0_vcpu_idle": {
+                "name": "Dom0 vCPU idle",
+                "unit": "%"
+              }
             },
-            "Y": {
-              "pattern": "Y",
-              "val_list": [0, 1, 2]
-            }
-          },
-          "templates": {
-            "dom0_vcpuX_idle": {
-              "pattern": "X",
-              "name": "Dom0 vCPUX idle",
-              "unit": "%"
-            },
-            "m7_Y": {
-              "pattern": "Y",
-              "name": "m7_Y",
-              "unit": "%"
+            "measurements_templates": {
+              "substitutions": {
+                "X": {
+                  "pattern": "X",
+                  "val_list": [
+                    0,
+                    1,
+                    2,
+                    3
+                  ]
+                },
+                "Y": {
+                  "pattern": "Y",
+                  "val_list": [
+                    0,
+                    1,
+                    2
+                  ]
+                }
+              },
+              "templates": {
+                "dom0_vcpuX_idle": {
+                  "pattern": "X",
+                  "name": "Dom0 vCPUX idle",
+                  "unit": "%"
+                },
+                "m7_Y": {
+                  "pattern": "Y",
+                  "name": "m7_Y",
+                  "unit": "%"
+                }
+              }
             }
           }
-        },
+        ],
         "transforms": {
           "dom0_vcpu_load": {
             "name": "Dom0 vCPU Load",
@@ -48,7 +61,12 @@
           "substitutions": {
             "X": {
               "pattern": "X",
-              "val_list": [0, 1, 2, 3]
+              "val_list": [
+                0,
+                1,
+                2,
+                3
+              ]
             }
           },
           "templates": {
@@ -163,38 +181,56 @@
     "dashboards": {
       "core_loads_db": {
         "name": "Core Loads Dashboard",
-        "mqtt_topic_suffix": "",
-        "use_cloud_timestamp": false,
-        "measurements": {
-          "dom0_vcpu_idle": {
-            "name": "Dom0 vCPU idle",
-            "unit": "%"
-          }
-        },
-        "measurements_templates": {
-          "substitutions": {
-            "X": {
-              "pattern": "X",
-              "val_list": [0, 1, 2, 3, 4, 5, 6, 7]
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "",
+            "use_cloud_timestamp": false,
+            "measurements": {
+              "dom0_vcpu_idle": {
+                "name": "Dom0 vCPU idle",
+                "unit": "%"
+              }
             },
-            "Y": {
-              "pattern": "Y",
-              "val_list": [0, 1, 2, 3]
-            }
-          },
-          "templates": {
-            "dom0_vcpuX_idle": {
-              "pattern": "X",
-              "name": "Dom0 vCPUX idle",
-              "unit": "%"
-            },
-            "m7_Y": {
-              "pattern": "Y",
-              "name": "m7_Y",
-              "unit": "%"
+            "measurements_templates": {
+              "substitutions": {
+                "X": {
+                  "pattern": "X",
+                  "val_list": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7
+                  ]
+                },
+                "Y": {
+                  "pattern": "Y",
+                  "val_list": [
+                    0,
+                    1,
+                    2,
+                    3
+                  ]
+                }
+              },
+              "templates": {
+                "dom0_vcpuX_idle": {
+                  "pattern": "X",
+                  "name": "Dom0 vCPUX idle",
+                  "unit": "%"
+                },
+                "m7_Y": {
+                  "pattern": "Y",
+                  "name": "m7_Y",
+                  "unit": "%"
+                }
+              }
             }
           }
-        },
+        ],
         "transforms": {
           "dom0_vcpu_load": {
             "name": "Dom0 vCPU Load",
@@ -208,7 +244,16 @@
           "substitutions": {
             "X": {
               "pattern": "X",
-              "val_list": [0, 1, 2, 3, 4, 5, 6, 7]
+              "val_list": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7
+              ]
             }
           },
           "templates": {
@@ -381,50 +426,54 @@
   },
   "common": {
     "WAITER_CONFIG": {
-        "Delay": 3,
-        "MaxAttempts": 200
+      "Delay": 3,
+      "MaxAttempts": 200
     },
     "MAX_PROPERTIES_PER_ACTION": 10,
     "MAX_ACTIONS_PER_TOPIC": 10,
     "dashboards": {
       "soc_db": {
         "name": "SOC Dashboard",
-        "mqtt_topic_suffix": "",
-        "use_cloud_timestamp": false,
-        "measurements": {
-          "mem_load": {
-            "name": "Mem Load",
-            "unit": "kb"
-          },
-          "pfe0_rx_bps": {
-            "name": "PFE0 RX bps",
-            "unit": "bps"
-          },
-          "pfe0_tx_bps": {
-            "name": "PFE0 TX bps",
-            "unit": "bps"
-          },
-          "pfe2_rx_bps": {
-            "name": "PFE2 RX bps",
-            "unit": "bps"
-          },
-          "pfe2_tx_bps": {
-            "name": "PFE2 TX bps",
-            "unit": "bps"
-          },
-          "ddr_sram_temperature": {
-            "name": "DDR SRAM Temperature",
-            "unit": "C"
-          },
-          "a53_cluster_temperature": {
-            "name": "A53 cluster Temperature",
-            "unit": "C"
-          },
-          "hse_llce_temperature": {
-            "name": "HSE LLCE Temperature",
-            "unit": "C"
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "",
+            "use_cloud_timestamp": false,
+            "measurements": {
+              "mem_load": {
+                "name": "Mem Load",
+                "unit": "kb"
+              },
+              "pfe0_rx_bps": {
+                "name": "PFE0 RX bps",
+                "unit": "bps"
+              },
+              "pfe0_tx_bps": {
+                "name": "PFE0 TX bps",
+                "unit": "bps"
+              },
+              "pfe2_rx_bps": {
+                "name": "PFE2 RX bps",
+                "unit": "bps"
+              },
+              "pfe2_tx_bps": {
+                "name": "PFE2 TX bps",
+                "unit": "bps"
+              },
+              "ddr_sram_temperature": {
+                "name": "DDR SRAM Temperature",
+                "unit": "C"
+              },
+              "a53_cluster_temperature": {
+                "name": "A53 cluster Temperature",
+                "unit": "C"
+              },
+              "hse_llce_temperature": {
+                "name": "HSE LLCE Temperature",
+                "unit": "C"
+              }
+            }
           }
-        },
+        ],
         "transforms": {
           "dom0_mem_load": {
             "name": "Dom0 Memory Load (MB)",
@@ -539,18 +588,22 @@
       },
       "idps_db": {
         "name": "IDPS Dashboard",
-        "mqtt_topic_suffix": "/idps",
-        "use_cloud_timestamp": false,
-        "measurements": {
-          "can_idps.global_stats.llce_anomalies": {
-            "name": "LLCE Anomalies",
-            "unit": "anomalies"
-          },
-          "can_idps.global_stats.m7_anomalies": {
-            "name": "M7 Anomalies",
-            "unit": "anomalies"
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "/idps",
+            "use_cloud_timestamp": false,
+            "measurements": {
+              "can_idps.global_stats.llce_anomalies": {
+                "name": "LLCE Anomalies",
+                "unit": "anomalies"
+              },
+              "can_idps.global_stats.m7_anomalies": {
+                "name": "M7 Anomalies",
+                "unit": "anomalies"
+              }
+            }
           }
-        },
+        ],
         "widgets": [
           {
             "x": 0,
@@ -584,114 +637,246 @@
       },
       "ml_db": {
         "name": "Machine Learning Dashboard",
-        "mqtt_topic_suffix": "/eiqa/pd",
-        "use_cloud_timestamp": false,
-        "measurements": {
-          "lstm_onnx_prediction": {
-            "name": "lstm onnx prediction",
-            "unit": "remaining unit lifetime"
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "/eiqa/pd",
+            "use_cloud_timestamp": false,
+            "measurements": {
+              "pd_lstm_onnx_prediction": {
+                "name": "pd lstm onnx prediction",
+                "unit": "remaining unit lifetime"
+              },
+              "pd_lstm_glow_prediction": {
+                "name": "pd lstm glow prediction",
+                "unit": "remaining unit lifetime"
+              },
+              "pd_tcn_glow_prediction": {
+                "name": "pd tcn glow prediction",
+                "unit": "remaining unit lifetime"
+              },
+              "pd_tcn_onnx_prediction": {
+                "name": "pd tcn onnx prediction",
+                "unit": "remaining unit lifetime"
+              },
+              "pd_lstm_onnx_time": {
+                "name": "pd lstm onnx time",
+                "unit": "nanoseconds"
+              },
+              "pd_lstm_glow_time": {
+                "name": "pd lstm glow time",
+                "unit": "nanoseconds"
+              },
+              "pd_tcn_onnx_time": {
+                "name": "pd tcn onnx time",
+                "unit": "nanoseconds"
+              },
+              "pd_tcn_glow_time": {
+                "name": "pd tcn glow time",
+                "unit": "nanoseconds"
+              },
+              "pd_real_rul": {
+                "name": "pd real rul",
+                "unit": "remaining unit lifetime"
+              }
+            }
           },
-          "lstm_glow_prediction": {
-            "name": "lstm glow prediction",
-            "unit": "remaining unit lifetime"
-          },
-          "tcn_glow_prediction": {
-            "name": "tcn glow prediction",
-            "unit": "remaining unit lifetime"
-          },
-          "tcn_onnx_prediction": {
-            "name": "tcn onnx prediction",
-            "unit": "remaining unit lifetime"
-          },
-          "lstm_onnx_time": {
-            "name": "lstm onnx time",
-            "unit": "nanoseconds"
-          },
-          "lstm_glow_time": {
-            "name": "lstm glow time",
-            "unit": "nanoseconds"
-          },
-          "tcn_onnx_time": {
-            "name": "tcn onnx time",
-            "unit": "nanoseconds"
-          },
-          "tcn_glow_time": {
-            "name": "tcn glow time",
-            "unit": "nanoseconds"
-          },
-          "real_rul": {
-            "name": "real rul",
-            "unit": "remaining unit lifetime"
+          {
+            "mqtt_topic_suffix": "/eiqa/bms",
+            "use_cloud_timestamp": false,
+            "measurements": {
+              "bms_lstm_keras_onnx_prediction": {
+                "name": "bms lstm keras onnx prediction",
+                "unit": "state of charge"
+              },
+              "bms_lstm_pytorch_onnx_prediction": {
+                "name": "bms lstm pytorch onnx prediction",
+                "unit": "state of charge"
+              },
+              "bms_lstm_keras_glow_prediction": {
+                "name": "bms lstm keras glow prediction",
+                "unit": "state of charge"
+              },
+              "bms_lstm_pytorch_glow_prediction": {
+                "name": "bms lstm pytorch glow prediction",
+                "unit": "state of charge"
+              },
+              "bms_transformer_pytorch_onnx_prediction": {
+                "name": "bms transformer pytorch onnx prediction",
+                "unit": "state of charge"
+              },
+              "bms_lstm_keras_onnx_time": {
+                "name": "bms lstm keras onnx time",
+                "unit": "nanoseconds"
+              },
+              "bms_lstm_pytorch_onnx_time": {
+                "name": "bms lstm pytorch onnx time",
+                "unit": "nanoseconds"
+              },
+              "bms_lstm_keras_glow_time": {
+                "name": "bms lstm keras glow time",
+                "unit": "nanoseconds"
+              },
+              "bms_lstm_pytorch_glow_time": {
+                "name": "bms lstm pytorch glow time",
+                "unit": "nanoseconds"
+              },
+              "bms_transformer_pytorch_onnx_time": {
+                "name": "bms transformer pytorch onnx time",
+                "unit": "nanoseconds"
+              },
+              "bms_real_soc": {
+                "name": "bms real soc",
+                "unit": "state of charge"
+              }
+            }
           }
-        },
+        ],
         "widgets": [
+          {
+            "x": 0,
+            "y": 0,
+            "height": 3,
+            "width": 6,
+            "title": "Predictive Maintenence - LSTM model prediction",
+            "type": "sc-scatter-chart",
+            "metrics": {
+              "Real Remaining life time": {
+                "label": "real RUL",
+                "property_name": "pd real rul"
+              },
+              "LSTM ONNX prediction": {
+                "label": "LSTM ONNX prediction",
+                "property_name": "pd lstm onnx prediction"
+              },
+              "LSTM Glow prediction": {
+                "label": "LSTM Glow prediction",
+                "property_name": "pd lstm glow prediction"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 3,
+            "height": 3,
+            "width": 6,
+            "title": "Predictive Maintenence - TCN model prediction",
+            "type": "sc-scatter-chart",
+            "metrics": {
+              "Real Remaining life time": {
+                "label": "real RUL",
+                "property_name": "pd real rul"
+              },
+              "TCN ONNX prediction": {
+                "label": "TCN ONNX prediction",
+                "property_name": "pd tcn onnx prediction"
+              },
+              "TCN Glow prediction": {
+                "label": "TCN Glow prediction",
+                "property_name": "pd tcn glow prediction"
+              }
+            }
+          },
           {
             "x": 0,
             "y": 6,
             "height": 3,
             "width": 6,
-            "title": "LSTM model prediction",
-            "type": "sc-scatter-chart",
-            "metrics": {
-              "Real Remaining life time": {
-                "label": "real RUL",
-                "property_name": "real rul"
-              },
-              "LSTM ONNX prediction": {
-                "label": "LSTM ONNX prediction",
-                "property_name": "lstm onnx prediction"
-              },
-              "LSTM Glow prediction": {
-                "label": "LSTM Glow prediction",
-                "property_name": "lstm glow prediction"
-              }
-            }
-          },
-          {
-            "x": 3,
-            "y": 6,
-            "height": 3,
-            "width": 6,
-            "title": "TCN model prediction",
-            "type": "sc-scatter-chart",
-            "metrics": {
-              "Real Remaining life time": {
-                "label": "real RUL",
-                "property_name": "real rul"
-              },
-              "TCN ONNX prediction": {
-                "label": "TCN ONNX prediction",
-                "property_name": "tcn onnx prediction"
-              },
-              "TCN Glow prediction": {
-                "label": "TCN Glow prediction",
-                "property_name": "tcn glow prediction"
-              }
-            }
-          },
-          {
-            "x": 6,
-            "y": 6,
-            "height": 3,
-            "width": 6,
-            "title": "Model execution duration",
+            "title": "Predictive Maintenence - Model execution duration",
             "type": "sc-scatter-chart",
             "metrics": {
               "LSTM ONNX execution time": {
                 "label": "LSTM ONNX time",
-                "property_name": "lstm onnx time"
+                "property_name": "pd lstm onnx time"
               },
               "LSTM Glow execution time": {
                 "label": "LSTM Glow time",
-                "property_name": "lstm glow time"
+                "property_name": "pd lstm glow time"
               },
               "TCN ONNX execution time": {
                 "label": "TCN ONNX time",
-                "property_name": "tcn onnx time"
+                "property_name": "pd tcn onnx time"
               },
               "TCN Glow execution time": {
                 "label": "TCN Glow time",
-                "property_name": "tcn glow time"
+                "property_name": "pd tcn glow time"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 9,
+            "height": 3,
+            "width": 6,
+            "title": "Battery Management System - PyTorch model prediction",
+            "type": "sc-scatter-chart",
+            "metrics": {
+              "Real State of Charge": {
+                "label": "real State of Charge",
+                "property_name": "bms real soc"
+              },
+              "LSTM ONNX prediction": {
+                "label": "LSTM ONNX prediction",
+                "property_name": "bms lstm pytorch onnx prediction"
+              },
+              "LSTM Glow prediction": {
+                "label": "LSTM Glow prediction",
+                "property_name": "bms lstm pytorch glow prediction"
+              },
+              "Tranformer ONNX prediction": {
+                "label": "Transformer ONNX prediction",
+                "property_name": "bms transformer pytorch onnx prediction"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 12,
+            "height": 3,
+            "width": 6,
+            "title": "Battery Management System - Keras model prediction",
+            "type": "sc-scatter-chart",
+            "metrics": {
+              "Real State of Charge": {
+                "label": "real State of Charge",
+                "property_name": "bms real soc"
+              },
+              "LSTM ONNX prediction": {
+                "label": "LSTM ONNX prediction",
+                "property_name": "bms lstm keras onnx prediction"
+              },
+              "LSTM Glow prediction": {
+                "label": "LSTM Glow prediction",
+                "property_name": "bms lstm keras glow prediction"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 15,
+            "height": 3,
+            "width": 6,
+            "title": "Battery Management System - Model execution duration",
+            "type": "sc-scatter-chart",
+            "metrics": {
+              "LSTM ONNX for PyTorch execution time": {
+                "label": "LSTM PyTorch ONNX time",
+                "property_name": "bms lstm pytorch onnx time"
+              },
+              "LSTM Glow for PyTorch execution time": {
+                "label": "LSTM PyTorch Glow time",
+                "property_name": "bms lstm pytorch glow time"
+              },
+              "LSTM ONNX for Keras execution time": {
+                "label": "LSTM Keras ONNX time",
+                "property_name": "bms lstm keras onnx time"
+              },
+              "LSTM Glow for Keras execution time": {
+                "label": "LSTM Keras Glow time",
+                "property_name": "bms lstm keras glow time"
+              },
+              "Transformer ONNX for PyTorch execution time": {
+                "label": "Transformer PyTorch ONNX time",
+                "property_name": "bms transformer pytorch onnx time"
               }
             }
           }
@@ -699,47 +884,57 @@
       },
       "sja1110_db_1": {
         "name": "SJA1110 Dashboard 1",
-        "mqtt_topic_suffix": "/sja1110",
-        "measurements_templates": {
-          "substitutions": {
-            "X": {
-              "pattern": "X",
-              "val_list": [0, 1, 2, 3, 4]
-            }
-          },
-          "templates": {
-            "s0.pX.DropEventsCounter": {
-              "pattern": "X",
-              "name": "Drop Counter switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.IngressPktsCounter": {
-              "pattern": "X",
-              "name": "Ingress Counter switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.EgressPktsCounter": {
-              "pattern": "X",
-              "name": "Egress Counter switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.DropEventsDelta": {
-              "pattern": "X",
-              "name": "Drop Delta switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.IngressPktsDelta": {
-              "pattern": "X",
-              "name": "Ingress Delta switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.EgressPktsDelta": {
-              "pattern": "X",
-              "name": "Egress Delta switch 0 port X",
-              "unit": "Packets"
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "/sja1110",
+            "measurements_templates": {
+              "substitutions": {
+                "X": {
+                  "pattern": "X",
+                  "val_list": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4
+                  ]
+                }
+              },
+              "templates": {
+                "s0.pX.DropEventsCounter": {
+                  "pattern": "X",
+                  "name": "Drop Counter switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.IngressPktsCounter": {
+                  "pattern": "X",
+                  "name": "Ingress Counter switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.EgressPktsCounter": {
+                  "pattern": "X",
+                  "name": "Egress Counter switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.DropEventsDelta": {
+                  "pattern": "X",
+                  "name": "Drop Delta switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.IngressPktsDelta": {
+                  "pattern": "X",
+                  "name": "Ingress Delta switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.EgressPktsDelta": {
+                  "pattern": "X",
+                  "name": "Egress Delta switch 0 port X",
+                  "unit": "Packets"
+                }
+              }
             }
           }
-        },
+        ],
         "widgets": [
           {
             "x": 0,
@@ -965,47 +1160,57 @@
       },
       "sja1110_db_2": {
         "name": "SJA1110 Dashboard 2",
-        "mqtt_topic_suffix": "/sja1110",
-        "measurements_templates": {
-          "substitutions": {
-            "X": {
-              "pattern": "X",
-              "val_list": [5, 6, 7, 8, 9]
-            }
-          },
-          "templates": {
-            "s0.pX.DropEventsCounter": {
-              "pattern": "X",
-              "name": "Drop Counter switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.IngressPktsCounter": {
-              "pattern": "X",
-              "name": "Ingress Counter switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.EgressPktsCounter": {
-              "pattern": "X",
-              "name": "Egress Counter switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.DropEventsDelta": {
-              "pattern": "X",
-              "name": "Drop Delta switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.IngressPktsDelta": {
-              "pattern": "X",
-              "name": "Ingress Delta switch 0 port X",
-              "unit": "Packets"
-            },
-            "s0.pX.EgressPktsDelta": {
-              "pattern": "X",
-              "name": "Egress Delta switch 0 port X",
-              "unit": "Packets"
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "/sja1110",
+            "measurements_templates": {
+              "substitutions": {
+                "X": {
+                  "pattern": "X",
+                  "val_list": [
+                    5,
+                    6,
+                    7,
+                    8,
+                    9
+                  ]
+                }
+              },
+              "templates": {
+                "s0.pX.DropEventsCounter": {
+                  "pattern": "X",
+                  "name": "Drop Counter switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.IngressPktsCounter": {
+                  "pattern": "X",
+                  "name": "Ingress Counter switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.EgressPktsCounter": {
+                  "pattern": "X",
+                  "name": "Egress Counter switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.DropEventsDelta": {
+                  "pattern": "X",
+                  "name": "Drop Delta switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.IngressPktsDelta": {
+                  "pattern": "X",
+                  "name": "Ingress Delta switch 0 port X",
+                  "unit": "Packets"
+                },
+                "s0.pX.EgressPktsDelta": {
+                  "pattern": "X",
+                  "name": "Egress Delta switch 0 port X",
+                  "unit": "Packets"
+                }
+              }
             }
           }
-        },
+        ],
         "widgets": [
           {
             "x": 0,
@@ -1231,33 +1436,37 @@
       },
       "sja1110_db_3": {
         "name": "SJA1110 Dashboard 3",
-        "mqtt_topic_suffix": "/sja1110",
-        "measurements": {
-          "s0.p10.DropEventsCounter": {
-            "name": "Drop Counter switch 0 port 10",
-            "unit": "Packets"
-          },
-          "s0.p10.IngressPktsCounter": {
-            "name": "Ingress Counter switch 0 port 10",
-            "unit": "Packets"
-          },
-          "s0.p10.EgressPktsCounter": {
-            "name": "Egress Counter switch 0 port 10",
-            "unit": "Packets"
-          },
-          "s0.p10.DropEventsDelta": {
-            "name": "Drop Delta switch 0 port 10",
-            "unit": "Packets"
-          },
-          "s0.p10.IngressPktsDelta": {
-            "name": "Ingress Delta switch 0 port 10",
-            "unit": "Packets"
-          },
-          "s0.p10.EgressPktsDelta": {
-            "name": "Egress Delta switch 0 port 10",
-            "unit": "Packets"
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "/sja1110",
+            "measurements": {
+              "s0.p10.DropEventsCounter": {
+                "name": "Drop Counter switch 0 port 10",
+                "unit": "Packets"
+              },
+              "s0.p10.IngressPktsCounter": {
+                "name": "Ingress Counter switch 0 port 10",
+                "unit": "Packets"
+              },
+              "s0.p10.EgressPktsCounter": {
+                "name": "Egress Counter switch 0 port 10",
+                "unit": "Packets"
+              },
+              "s0.p10.DropEventsDelta": {
+                "name": "Drop Delta switch 0 port 10",
+                "unit": "Packets"
+              },
+              "s0.p10.IngressPktsDelta": {
+                "name": "Ingress Delta switch 0 port 10",
+                "unit": "Packets"
+              },
+              "s0.p10.EgressPktsDelta": {
+                "name": "Egress Delta switch 0 port 10",
+                "unit": "Packets"
+              }
+            }
           }
-        },
+        ],
         "widgets": [
           {
             "x": 0,
