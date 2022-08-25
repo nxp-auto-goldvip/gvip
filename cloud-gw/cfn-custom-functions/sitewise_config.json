@@ -585,6 +585,7 @@
       "ml_db": {
         "name": "Machine Learning Dashboard",
         "mqtt_topic_suffix": "/eiqa/pd",
+        "use_cloud_timestamp": false,
         "measurements": {
           "lstm_onnx_prediction": {
             "name": "lstm onnx prediction",
