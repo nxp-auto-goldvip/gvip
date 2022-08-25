@@ -15,16 +15,6 @@
 
 #if defined(S32G74A)
 
-/* Local core shared memory address */
-#ifndef LOCAL_SHM_ADDR
-#define LOCAL_SHM_ADDR              0x34080000
-#endif /* LOCAL_SHM_ADDR */
-
-/* Remote core shared memory address */
-#ifndef REMOTE_SHM_ADDR
-#define REMOTE_SHM_ADDR             0x34000000
-#endif /* REMOTE_SHM_ADDR */
-
 /* Shared memory size, half for local, half for remote */
 #ifndef IPC_SHM_SIZE
 #define IPC_SHM_SIZE                0x80000

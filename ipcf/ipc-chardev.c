@@ -19,6 +19,11 @@
 #include <linux/init.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/kern_levels.h>
+#include <linux/ioport.h>
+#include <linux/mod_devicetable.h>
 #include <asm/io.h>
 #include <ipc-shm.h>
 #include <ipc-mem-cfg.h>
@@ -171,11 +176,15 @@ static struct ipc_shm_channel_cfg instance_0_channels[IPC_INST_0_CHAN_NUM] = {
     data_chan_cfg
 };
 
+/* IPCF SHM compatible values */
+static const struct of_device_id ipcf_res_no_map_name[] = {
+    { .compatible = "fsl,ipcf-shm"}
+};
+
 /* IPCF shared memory configuration */
 static struct ipc_shm_cfg shm_cfg[IPC_NUM_INSTANCES] = {
     {
-        .local_shm_addr = LOCAL_SHM_ADDR,
-        .remote_shm_addr = REMOTE_SHM_ADDR,
+        /* IPCF shared memory address will be used by init function. */
         .shm_size = IPC_SHM_SIZE,
         .inter_core_tx_irq = IPC_IRQ_NONE,
         .inter_core_rx_irq = INTER_CORE_RX_IRQ,
@@ -532,10 +541,31 @@ static int __init ipcf_module_init(void)
     int ch_id = 0;
     uint32_t M7_0_stat = 0;
     struct device *pdev = NULL;
+    struct resource res;
+    struct device_node *np;
     struct ipc_shm_instances_cfg shm_instances_cfg = {
         .num_instances = IPC_NUM_INSTANCES,
         .shm_cfg = shm_cfg
     };
+
+    /* Find a node by its "compatible" property */
+    for (inst_id = 0; inst_id < IPC_NUM_INSTANCES; inst_id++) {
+        np = of_find_compatible_node(NULL, NULL, ipcf_res_no_map_name[inst_id].compatible);
+        if (!np) {
+            printk(KERN_ERR "The node was not found by its compatible: %s\n", ipcf_res_no_map_name[inst_id].compatible);
+            return -ENODEV;
+        }
+         /* Translate device tree address and return as resource */
+        err = of_address_to_resource(np, 0, &res);
+        /* Check if reg property is available */
+        if (err < 0) {
+            printk(KERN_ERR "The node has invalid reg property\n");
+            return err;
+        }
+        shm_instances_cfg.shm_cfg[inst_id].remote_shm_addr = res.start;
+        shm_instances_cfg.shm_cfg[inst_id].local_shm_addr = res.start + IPC_SHM_SIZE;
+    }
+
     uint32_t *pM7_0_stat = ioremap(M7_0_CORE_STAT_REG, M7_0_CORE_STAT_REG_SIZE);
     if (IS_ERR(pM7_0_stat)) {
         printk (KERN_ALERT "Failed to map M7_0 core status register \n");
