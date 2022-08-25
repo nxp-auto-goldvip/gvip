@@ -81,7 +81,8 @@ class TelemetryAggregator:
         temperature_stats = self.__temperature_stats.get_temperature()
 
         platform_name = {
-            "Device" : self.__current_platform,
+            "platform" : self.__current_platform,
+            "device" : config["device"],
             "board_uuid_high" : get_uid()[0],
             "board_uuid_low" : get_uid()[1],
         }

@@ -22,3 +22,4 @@ with open(config_path, 'r', encoding='utf-8') as config_file:
 # Merge common configuration and specific device configuration
 config = configs[COMMON_CONFIG_LABEL]
 config.update(configs[device_type])
+config["device"] = device_type

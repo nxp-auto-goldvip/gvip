@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+### BEGIN INIT INFO
+# Provides:          telemetry-server
+# Required-Start:    networking
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:      0 6
+# Short-Description: Start telemetry server service
+# Description:       Wrapper for starting / stopping a telemetry http local server
+### END INIT INFO
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright 2022 NXP
+
+SERVER_PATH=/home/root/telemetry-server/telemetry_server.py
+LOG_PATH=/var/log/telemetry-server-log.txt
+
+case "$1" in
+start)
+        echo ""
+        nohup ${SERVER_PATH} > ${LOG_PATH} 2>&1 &
+        ;;
+stop)
+        echo ""
+        kill -9 $(ps aux | grep '[t]elemetry_server.py' | awk '{print $2}') 2> /dev/null || true
+        ;;
+restart)
+        kill -9 $(ps aux | grep '[t]elemetry_server.py' | awk '{print $2}') 2> /dev/null || true
+        nohup ${SERVER_PATH} > ${LOG_PATH} 2>&1 &
+        ;;
+*)
+        echo "Usage: /etc/init.d/telemetry-server {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0

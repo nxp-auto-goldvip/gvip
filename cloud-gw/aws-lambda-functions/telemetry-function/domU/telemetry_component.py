@@ -108,53 +108,54 @@ def telemetry_run():
     """
     function_entry_time = time.time()
     with SOCKET_COM_LOCK:
-        data = SOCKET.send_request(GET_STATS_COMMAND).decode()
+        data = SOCKET.send_request(GET_STATS_COMMAND)
 
-    data = json.loads(data)
+    if data:
+        data = json.loads(data.decode())
 
-    system_telemetry = data.get('system_telemetry', None)
-    app_data = data.get('app_data', None)
-    idps_data = data.get('idps_stats', None)
+        system_telemetry = data.get('system_telemetry', None)
+        app_data = data.get('app_data', None)
+        idps_data = data.get('idps_stats', None)
 
-    timestamp = time.time()
-    # Set timestamp for current telemetry packet
-    time_values = {"Timestamp": int(timestamp),
-                   "Datetime": str(datetime.datetime.fromtimestamp(timestamp))}
+        timestamp = time.time()
+        # Set timestamp for current telemetry packet
+        time_values = {"Timestamp": int(timestamp),
+                       "Datetime": str(datetime.datetime.fromtimestamp(timestamp))}
 
-    if system_telemetry:
-        try:
-            # Send the telemetry statistics.
-            system_telemetry.update(time_values)
-            publish_to_topic(
-                topic=os.environ.get('telemetryTopic'),
-                payload=json.dumps(system_telemetry).encode())
-        except ValueError:
-            LOGGER.error("Malformed packet received from socket %s", system_telemetry)
-
-    if idps_data:
-        try:
-            idps_data.update(time_values)
-            publish_to_topic(
-                topic=f"{os.environ.get('telemetryTopic')}/idps",
-                payload=json.dumps(idps_data).encode())
-        except ValueError:
-            LOGGER.error("Malformed packet received from socket %s", idps_data)
-
-    if app_data:
-        for topic_suffix, data_list in app_data.items():
-            # If the topic suffix is None use the generic application data topic suffix
-            if not topic_suffix:
-                topic_suffix = os.environ.get('AppDataTopicSuffix')
-
-            for data in data_list:
-                # If the app_data has a timestamp, and it is behind the v2xdomu date
-                # by more than 15 minutes, replace it with the v2xdomu timestamp.
-                if "Timestamp" in data and \
-                    int(time.time()) - int(data["Timestamp"]) > 900:
-                    data["Timestamp"] = int(time.time())
+        if system_telemetry:
+            try:
+                # Send the telemetry statistics.
+                system_telemetry.update(time_values)
                 publish_to_topic(
-                    topic=f"{os.environ.get('telemetryTopic')}/{topic_suffix}",
-                    payload=json.dumps(data).encode())
+                    topic=os.environ.get('telemetryTopic'),
+                    payload=json.dumps(system_telemetry).encode())
+            except ValueError:
+                LOGGER.error("Malformed packet received from socket %s", system_telemetry)
+
+        if idps_data:
+            try:
+                idps_data.update(time_values)
+                publish_to_topic(
+                    topic=f"{os.environ.get('telemetryTopic')}/idps",
+                    payload=json.dumps(idps_data).encode())
+            except ValueError:
+                LOGGER.error("Malformed packet received from socket %s", idps_data)
+
+        if app_data:
+            for topic_suffix, data_list in app_data.items():
+                # If the topic suffix is None use the generic application data topic suffix
+                if not topic_suffix:
+                    topic_suffix = os.environ.get('AppDataTopicSuffix')
+
+                for data in data_list:
+                    # If the app_data has a timestamp, and it is behind the v2xdomu date
+                    # by more than 15 minutes, replace it with the v2xdomu timestamp.
+                    if "Timestamp" in data and \
+                        int(time.time()) - int(data["Timestamp"]) > 900:
+                        data["Timestamp"] = int(time.time())
+                    publish_to_topic(
+                        topic=f"{os.environ.get('telemetryTopic')}/{topic_suffix}",
+                        payload=json.dumps(data).encode())
 
     with LOCK:
         telemetry_interval = TELEMETRY_SEND_INTERVAL

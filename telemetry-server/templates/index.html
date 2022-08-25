@@ -1,0 +1,208 @@
+<!-- Copyright NXP 2022 -->
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript"
+            src="{{ url_for('static', filename='plotly-2.12.1.min.js') }}"></script>
+</head>
+<body>
+<input type="text" placeholder="Enter time window in seconds..." id="timeWindow">
+<button type="button" onclick="getInputValue();">Set time window</button>
+
+<style>
+    body{font-family: 'Scope One', serif; text-align: center;}
+    .divTable{
+        display: table;
+        width: 98%;
+    }
+    .divTableBody {
+        display: table-row-group;
+    }
+    .divTableRow {
+        border: 1px solid black;
+        display: table-row;
+    }
+    .divCell {
+        text-align: center;
+        display: table-cell;
+        width: 50%;
+    }
+</style>
+<!-- Total cpu load on a separate row -->
+<div class="divTable">
+    <div class="divCell" id="total_vcpu_load" style="width:100%"></div>
+</div>
+
+<!-- 2 x 2 Table for the cpu loads -->
+<div class="divTable">
+    <div class="divTableBody">
+
+        <div class="divTableRow">
+            <div class="divCell" id="vcpu0_load"></div>
+            <div class="divCell" id="vcpu1_load"></div>
+        </div>
+
+        <div class="divTableRow">
+            <div class="divCell" id="vcpu2_load"></div>
+            <div class="divCell" id="vcpu3_load"></div>
+        </div>
+
+        <div class="divTableRow">
+            <div class="divCell" id="vcpu4_load"></div>
+            <div class="divCell" id="vcpu5_load"></div>
+        </div>
+
+        <div class="divTableRow">
+            <div class="divCell" id="vcpu6_load"></div>
+            <div class="divCell" id="vcpu7_load"></div>
+        </div>
+    </div>
+</div>
+
+<!-- M7 core loads in a single row -->
+<div class="divTable">
+    <div class="divCell" id="m7_core_loads" style="width:100%"></div>
+</div>
+
+<!-- 3 x 2 Table for SOC  -->
+<div class="divTable">
+    <div class="divTableBody">
+        <div class="divTableRow">
+            <div class="divCell" id="pfe0_traffic"></div>
+            <div class="divCell" id="pfe2_traffic"></div>
+        </div>
+        <div class="divTableRow">
+            <div class="divCell" id="dom0_mem_load"></div>
+            <div class="divCell" id="temperature"></div>
+        </div>
+        <div class="divTableRow">
+            <div class="divCell" id="m7_can_anomalies"></div>
+            <div class="divCell" id="llce_can_anomalies"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function getInputValue(){
+        // Selecting the input element and get its value 
+        var inputVal = document.getElementById("timeWindow").value;
+        
+        fetch('/getdata/' + inputVal)
+            .then(function (response) {
+                return response.text();
+            }).then(function (text) {});
+    }
+
+    function plot_timeseries(data, y_data_array, y_data_labels, title, div_id, y_range=[]) {
+        // Define the chart timeseries
+        var chart_data = [];
+        for (let i = 0; i < y_data_array.length; i++) {
+            chart_data.push({
+                x: data.timestamps,
+                y: y_data_array[i],
+                name: y_data_labels[i],
+                mode: "lines"
+            })
+        }
+
+        // Define Layout
+        var layout = {
+            xaxis: {range: data.time_range, title: "Date"},
+            yaxis: {range: y_range, title: title},  
+            title: title
+        };
+
+        // Display using Plotly
+        Plotly.newPlot(div_id, chart_data, layout);
+    }
+
+    function chart(data) {
+        plot_timeseries(data, [data.telemetry.dom0_vcpu_load], [""], "Dom0 vCPU load", "total_vcpu_load", [0,100]);
+        plot_timeseries(data, [data.telemetry.dom0_vcpu0_load], [""], "Dom0 vCPU0 load", "vcpu0_load", [0,100]);
+        plot_timeseries(data, [data.telemetry.dom0_vcpu1_load], [""], "Dom0 vCPU1 load", "vcpu1_load", [0,100]);
+        plot_timeseries(data, [data.telemetry.dom0_vcpu2_load], [""], "Dom0 vCPU2 load", "vcpu2_load", [0,100]);
+        plot_timeseries(data, [data.telemetry.dom0_vcpu3_load], [""], "Dom0 vCPU3 load", "vcpu3_load", [0,100]);
+
+        if (String(data.device) === "s32g3") {
+            // Plot the four extra CPUs for G3
+            plot_timeseries(data, [data.telemetry.dom0_vcpu4_load], [""], "Dom0 vCPU4 load", "vcpu4_load", [0,100]);
+            plot_timeseries(data, [data.telemetry.dom0_vcpu5_load], [""], "Dom0 vCPU5 load", "vcpu5_load", [0,100]);
+            plot_timeseries(data, [data.telemetry.dom0_vcpu6_load], [""], "Dom0 vCPU6 load", "vcpu6_load", [0,100]);
+            plot_timeseries(data, [data.telemetry.dom0_vcpu7_load], [""], "Dom0 vCPU7 load", "vcpu7_load", [0,100]);
+            // Plot the four M7 core loads of the G3
+            plot_timeseries(data,
+                [data.telemetry.m7_0, data.telemetry.m7_1, data.telemetry.m7_2, data.telemetry.m7_3],
+                ["m7_0", "m7_1", "m7_2", "m7_3"],
+                "Cortex-M7 Core Loads",
+                "m7_core_loads",
+                [0,100]);
+        } else {
+            // Plot the three M7 core loads of the G2
+            plot_timeseries(data,
+                [data.telemetry.m7_0, data.telemetry.m7_1, data.telemetry.m7_2],
+                ["m7_0", "m7_1", "m7_2"],
+                "Cortex-M7 Core Loads",
+                "m7_core_loads",
+                [0,100]);
+        }
+
+        plot_timeseries(data,
+            [data.telemetry.pfe0_rx_mbps, data.telemetry.pfe0_tx_mbps],
+            ["PFE0 RX", "PFE0 TX"],
+            "PFE0 Traffic (Mbps)",
+            "pfe0_traffic")
+        plot_timeseries(data,
+            [data.telemetry.pfe2_rx_mbps, data.telemetry.pfe2_tx_mbps],
+            ["PFE2 RX", "PFE2 TX"],
+            "PFE2 Traffic (Mbps)",
+            "pfe2_traffic")
+        plot_timeseries(data,
+            [data.telemetry.mem_load],
+            [""],
+            "Dom0 Memory Load (MB)",
+            "dom0_mem_load")
+        plot_timeseries(data,
+            [
+                data.telemetry.hse_llce_average_temperature,
+                data.telemetry.a53_cluster_temperature,
+                data.telemetry.a53_cluster_average_temperature
+            ],
+            ["hse_llce_average_temperature", "a53_cluster_temperature", "a53_cluster_average_temperature"],
+            "Immediate Temperature",
+            "temperature")
+        plot_timeseries(data,
+            [data.telemetry.m7_anomalies],
+            [""],
+            "M7 CAN Anomalies",
+            "m7_can_anomalies")
+        plot_timeseries(data,
+            [data.telemetry.llce_anomalies],
+            [""],
+            "LLCE CAN Anomalies",
+            "llce_can_anomalies")
+    }
+
+    function fetch_data() {
+        fetch('/fetch')
+            .then(function (response) {
+                return response.json();
+            }).then(function (data) {
+                chart(data);
+            });
+    }
+
+    async function run() {
+        while (true) {
+            data = fetch_data();
+            await sleep(1000);
+        }
+    }
+
+    run();
+</script>
+</body>
+</html>

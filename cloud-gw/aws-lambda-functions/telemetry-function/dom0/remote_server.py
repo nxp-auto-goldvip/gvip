@@ -25,7 +25,7 @@ class RemoteServer(ABC):
     def __init__(self,
                  port=None, host=None,
                  buffer_size=None,
-                 max_clients=1,
+                 max_clients=2,
                  server_config_filename=None):
         """
         Class constructor
