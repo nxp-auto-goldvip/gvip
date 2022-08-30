@@ -110,7 +110,7 @@ def telemetry_run():
     with SOCKET_COM_LOCK:
         data = SOCKET.send_request(GET_STATS_COMMAND)
 
-    if data:
+    try:
         data = json.loads(data.decode())
 
         system_telemetry = data.get('system_telemetry', None)
@@ -156,6 +156,9 @@ def telemetry_run():
                     publish_to_topic(
                         topic=f"{os.environ.get('telemetryTopic')}/{topic_suffix}",
                         payload=json.dumps(data).encode())
+    # pylint: disable=broad-except
+    except Exception as exception:
+        LOGGER.error("Failed to get telemetry: %s \nData received from dom0: %s", exception, data)
 
     with LOCK:
         telemetry_interval = TELEMETRY_SEND_INTERVAL
@@ -201,7 +204,7 @@ class StreamHandler(client.SubscribeToIoTCoreStreamHandler):
                     SOCKET.send_fire_and_forget(SET_PARAMS_COMMAND + json.dumps(message))
         # pylint: disable=broad-except
         except Exception as exception:
-            print(exception)
+            LOGGER.error(exception)
 
 
 def listen_for_config():
@@ -224,7 +227,7 @@ def listen_for_config():
             time.sleep(10)
     # pylint: disable=broad-except
     except Exception as exception:
-        print(exception)
+        LOGGER.error(exception)
         # Close the connection and restart.
         operation.close()
         listen_for_config()
