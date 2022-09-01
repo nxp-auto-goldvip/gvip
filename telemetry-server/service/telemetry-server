@@ -17,14 +17,15 @@ LOG_PATH=/var/log/telemetry-server-log.txt
 
 case "$1" in
 start)
-        echo ""
+        echo "Starting the telemetry server service"
         nohup ${SERVER_PATH} > ${LOG_PATH} 2>&1 &
         ;;
 stop)
-        echo ""
+        echo "Stopping the telemetry server service"
         kill -9 $(ps aux | grep '[t]elemetry_server.py' | awk '{print $2}') 2> /dev/null || true
         ;;
 restart)
+        echo "Restarting the telemetry server service"
         kill -9 $(ps aux | grep '[t]elemetry_server.py' | awk '{print $2}') 2> /dev/null || true
         nohup ${SERVER_PATH} > ${LOG_PATH} 2>&1 &
         ;;

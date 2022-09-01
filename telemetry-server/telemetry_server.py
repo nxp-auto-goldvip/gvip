@@ -42,5 +42,5 @@ def getdata_handler(value):
     return 'OK', 200
 
 if __name__ == '__main__':
-    SystemTelemetryCollector.data_retriever()
+    TELEMETRY.data_retriever_run()
     APP.run(host='0.0.0.0')

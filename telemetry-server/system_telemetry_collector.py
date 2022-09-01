@@ -10,7 +10,7 @@ Copyright 2022 NXP
 
 import json
 import threading
-from time import time
+from time import time, sleep
 from datetime import datetime
 
 from remote_client import RemoteClient
@@ -84,18 +84,24 @@ class SystemTelemetryCollector():
             self.__data["telemetry"][ts_key] = []
 
     @staticmethod
+    def data_retriever_run():
+        """ Start the data retriever loop in a separate thread. """
+        threading.Thread(target=SystemTelemetryCollector.data_retriever).start()
+
+    @staticmethod
     def data_retriever():
         """ Gets the latest system telemetry data every second. """
-        data = SystemTelemetryCollector.SOCKET.send_request(
-            SystemTelemetryCollector.GET_STATS_COMMAND)
+        while True:
+            data = SystemTelemetryCollector.SOCKET.send_request(
+                SystemTelemetryCollector.GET_STATS_COMMAND)
 
-        with SystemTelemetryCollector.DATA_LOCK:
-            if data:
-                SystemTelemetryCollector.RAW_DATA = json.loads(data.decode())
-            else:
-                print("No messages from the telemetry socket.")
+            with SystemTelemetryCollector.DATA_LOCK:
+                if data:
+                    SystemTelemetryCollector.RAW_DATA = json.loads(data.decode())
+                else:
+                    print("No messages from the telemetry socket.")
 
-        threading.Timer(1, SystemTelemetryCollector.data_retriever).start()
+            sleep(1)
 
     def update_window_size(self, new_window_size):
         """

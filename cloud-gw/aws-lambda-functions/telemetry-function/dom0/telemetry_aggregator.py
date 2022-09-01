@@ -11,6 +11,7 @@ import logging
 import platform
 import sys
 import threading
+import time
 
 from app_data_collector_server import AppDataCollectorServer
 from configuration import config
@@ -35,7 +36,9 @@ M7_STAT_QUERY_TIME = "m7_status_query_time_interval"
 M7_WINDOW_SIZE_MULTIPLIER = "m7_window_size_multiplier"
 
 # A lock for accessing the config variable.
-LOCK = threading.Lock()
+CONFIG_LOCK = threading.Lock()
+# A lock for accessing the stats dict.
+STATS_LOCK = threading.Lock()
 
 # Setup logging to stdout.
 LOGGER = logging.getLogger(__name__)
@@ -60,6 +63,7 @@ class TelemetryAggregator:
         self.__idps_stats = IdpsStats()
         self.__m7_core_load.start()
         self.__stats = None
+        self.__board_uuid = get_uid()
 
         # Start the App Data Collector server in a separate thread.
         self.__app_data_collector = AppDataCollectorServer()
@@ -67,54 +71,66 @@ class TelemetryAggregator:
 
     def __calculate_stats(self):
         """
-        Compiles a dictionary of all telemetry statistics and
-        saves it as a string into a class variable
+        At every telemetry_interval seconds compiles a dictionary
+        of all telemetry statistics and saves it as a string into a class variable.
         """
-        self.__cpu_stats.step(process=True)
-        self.__net_stats.step()
+        while True:
+            loop_entry_time = time.time()
 
-        cpu_stats = self.__cpu_stats.get_load(scale_to_percents=True)
-        mem_stats = self.__mem_stats.get_telemetry(verbose=False)
-        net_stats = self.__net_stats.get_load()
-        m7_stats = self.__m7_core_load.get_load()
-        idps_stats = self.__idps_stats.get_telemetry()
-        temperature_stats = self.__temperature_stats.get_temperature()
+            try:
+                self.__cpu_stats.step(process=True)
+                self.__net_stats.step()
 
-        platform_name = {
-            "platform" : self.__current_platform,
-            "device" : config["device"],
-            "board_uuid_high" : get_uid()[0],
-            "board_uuid_low" : get_uid()[1],
-        }
+                cpu_stats = self.__cpu_stats.get_load(scale_to_percents=True)
+                mem_stats = self.__mem_stats.get_telemetry(verbose=False)
+                net_stats = self.__net_stats.get_load()
+                m7_stats = self.__m7_core_load.get_load()
+                idps_stats = self.__idps_stats.get_telemetry()
+                temperature_stats = self.__temperature_stats.get_temperature()
 
-        telemetry_stats = {
-            **platform_name,
-            **net_stats,
-            **cpu_stats,
-            **mem_stats,
-            **m7_stats,
-            **temperature_stats
-        }
+                platform_name = {
+                    "platform" : self.__current_platform,
+                    "device" : config["device"],
+                    "board_uuid_high" : self.__board_uuid[0],
+                    "board_uuid_low" : self.__board_uuid[1],
+                }
 
-        tot_stats = {
-            "system_telemetry": telemetry_stats,
-        }
+                telemetry_stats = {
+                    **platform_name,
+                    **net_stats,
+                    **cpu_stats,
+                    **mem_stats,
+                    **m7_stats,
+                    **temperature_stats
+                }
 
-        # Add IDPS data
-        if idps_stats:
-            tot_stats.update({"idps_stats": {**idps_stats}})
+                tot_stats = {
+                    "system_telemetry": telemetry_stats,
+                }
 
-        # Add the application data
-        tot_stats.update(self.__app_data_collector.get_data())
+                # Add IDPS data
+                if idps_stats:
+                    tot_stats.update({"idps_stats": {**idps_stats}})
 
-        # Prepare stats as a string
-        self.__stats = json.dumps(tot_stats)
+                # Add the application data
+                tot_stats.update(self.__app_data_collector.get_data())
 
-        with LOCK:
-            # Set telemetry interval for next function call
-            telemetry_interval = config[TELEMETRY_INTERVAL]
+                # Prepare stats as a string
+                with STATS_LOCK:
+                    self.__stats = json.dumps(tot_stats)
 
-        threading.Timer(telemetry_interval, self.__calculate_stats).start()
+                with CONFIG_LOCK:
+                    # Set telemetry interval for next function call
+                    telemetry_interval = config[TELEMETRY_INTERVAL]
+            # pylint: disable=broad-except
+            except Exception as exception:
+                LOGGER.error("Failed to retrieve telemetry data: %s", exception)
+
+            loop_exec_time = time.time() - loop_entry_time
+            next_run = telemetry_interval - loop_exec_time
+
+            if next_run > 0:
+                time.sleep(next_run)
 
     @staticmethod
     def __extract_parameter(event, parameter_name, parameter_type, min_value, default):
@@ -163,7 +179,7 @@ class TelemetryAggregator:
             # Malformed event, discard value
             return
 
-        with LOCK:
+        with CONFIG_LOCK:
             # get telemetry collector parameters
             config[TELEMETRY_INTERVAL] = \
                 self.__extract_parameter(event_dict, TELEMETRY_INTERVAL, int, 1,
@@ -185,11 +201,11 @@ class TelemetryAggregator:
         Gets the telemetry stats calculated from the __calculate_stats function
         :return: stats in string format
         """
-        return self.__stats
+        with STATS_LOCK:
+            return self.__stats
 
     def run(self):
         """
-        Class entry point. This function shall be called once. It will start the
-        Thread responsible for telemetry data calculation
+        Class entry point. Start the __calculate_stats function in another thread.
         """
-        self.__calculate_stats()
+        threading.Thread(target=self.__calculate_stats).start()

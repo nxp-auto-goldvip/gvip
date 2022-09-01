@@ -100,13 +100,12 @@ def publish_to_topic(topic, payload, qos=model.QOS.AT_LEAST_ONCE):
         LOGGER.error("Failed to publish message: %s", repr(exception))
 
 
-def telemetry_run():
+def telemetry_collect_and_publish():
     """
-    This function is called every telemetry_interval seconds. In each
-    call it sends an MQTT messages containing the host device's stats,
-    a timestamp and the device name.
+    This function is called every telemetry_interval seconds.
+    In each call it publishes MQTT messages for the system telemetry,
+    idps data, and app data (if applicable).
     """
-    function_entry_time = time.time()
     with SOCKET_COM_LOCK:
         data = SOCKET.send_request(GET_STATS_COMMAND)
 
@@ -160,20 +159,31 @@ def telemetry_run():
     except Exception as exception:
         LOGGER.error("Failed to get telemetry: %s \nData received from dom0: %s", exception, data)
 
-    with LOCK:
-        telemetry_interval = TELEMETRY_SEND_INTERVAL
 
-    function_exec_time = time.time() - function_entry_time
-    next_thread_run = telemetry_interval - function_exec_time
+def telemetry_run():
+    """
+    This function loops every telemetry_interval seconds.
+    In each loop it calls the telemetry_collect_and_publish function.
+    """
+    while True:
+        loop_entry_time = time.time()
 
-    # discard calculation in case the telemetry interval was spent
-    # while running the function
-    if next_thread_run < 0:
-        next_thread_run = telemetry_interval
+        telemetry_collect_and_publish()
 
-    # Asynchronously schedule this function to be run again, taking into account
-    # how much time has been spent while the function was executing
-    threading.Timer(next_thread_run, telemetry_run).start()
+        with LOCK:
+            telemetry_interval = TELEMETRY_SEND_INTERVAL
+
+        loop_exec_time = time.time() - loop_entry_time
+        next_run = telemetry_interval - loop_exec_time
+
+        # discard calculation in case the telemetry interval was spent
+        # while running the function
+        if next_run < 0:
+            next_run = telemetry_interval
+
+        # Sleep until the next call, taking into account
+        # how much time has been spent while the function was executing
+        time.sleep(next_run)
 
 
 class StreamHandler(client.SubscribeToIoTCoreStreamHandler):
@@ -244,7 +254,7 @@ SOCKET = RemoteClient()
 
 # Start executing the function above.
 # It will be executed every telemetry_interval seconds indefinitely.
-telemetry_run()
+threading.Thread(target=telemetry_run).start()
 
 # Start listening for configuration messages on the configuration topic.
 listen_for_config()
