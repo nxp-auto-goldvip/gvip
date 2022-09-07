@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ### BEGIN INIT INFO
 # Provides:          aws-iot-fwe service
-# Required-Start:    can aws-obd-simulator
+# Required-Start:    networking
 # Required-Stop:
 # Default-Start:     S
 # Default-Stop:      0 6
