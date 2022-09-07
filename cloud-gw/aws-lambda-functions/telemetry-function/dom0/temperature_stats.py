@@ -13,9 +13,9 @@ import os
 class TemperatureStats:
     """
     Reads and processes temperature stats
-    from /sys/devices/platform/400a8000.tmu/hwmon/hwmon*/
+    from  /sys/devices/platform/soc/400a8000.tmu/hwmon/hwmon*
     """
-    DIR_HWMON = "/sys/devices/platform/400a8000.tmu/hwmon/"
+    DIR_HWMON = "/sys/devices/platform/soc/400a8000.tmu/hwmon/"
 
     # Select the existing directory, it may be either hwmon0 or hwmon1.
     # It contains temperature monitoring data, each temperature data item of a site
