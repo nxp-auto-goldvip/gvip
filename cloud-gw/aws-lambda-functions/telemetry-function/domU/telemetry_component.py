@@ -4,7 +4,7 @@
 # Client used for fetching data from the remote server
 
 """
-Copyright 2021 NXP
+Copyright 2021-2022 NXP
 """
 
 import datetime
@@ -24,6 +24,9 @@ from remote_client import RemoteClient
 # Telemetry parameters
 # time interval between MQTT packets
 TELEMETRY_INTERVAL = "telemetry_interval"
+# Verbosity flag
+VERBOSE_FLAG = "verbose"
+VERBOSE = False
 
 # M7 core status query time
 M7_STAT_QUERY_TIME = "m7_status_query_time_interval"
@@ -50,16 +53,16 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 # Creating a interprocess comunication client
 IPC_CLIENT = awsiot.greengrasscoreipc.connect()
 
-def extract_parameter(message, parameter_name, parameter_type, min_value, default):
+def extract_parameter(message, parameter_name, parameter_type, default, min_value=None):
     """
     Extracts parameters from an message dictionary. If the message does not
     contain the desired value, the default is returned
     :param message: Event in json format
     :param parameter_name: Parameter name which shall be a key in the
     message dictionary
-    :param parameter_type: Parameter type (int, float)
-    :param min_value: Minimum accepted value
+    :param parameter_type: Parameter type (int, float, bool)
     :param default: Parameter default (in case the event does not contain
+    :param min_value: Minimum accepted value
     the desired parameter, this value will be returned
     :return: updated parameter value/default
     """
@@ -71,7 +74,7 @@ def extract_parameter(message, parameter_name, parameter_type, min_value, defaul
             updated_param_value = parameter_type(updated_param_value)
         except ValueError:
             updated_param_value = default
-    if updated_param_value != default:
+    if min_value and updated_param_value != default:
         if updated_param_value < min_value:
             updated_param_value = default
         else:
@@ -99,9 +102,10 @@ def publish_to_topic(topic, payload, qos=model.QOS.AT_LEAST_ONCE):
     except Exception as exception:
         LOGGER.error("Failed to publish message: %s", repr(exception))
 
-
-def telemetry_collect_and_publish():
+# pylint: disable=too-many-branches
+def telemetry_collect_and_publish(verbose=False):
     """
+    :param verbose: Verbosity flag
     This function is called every telemetry_interval seconds.
     In each call it publishes MQTT messages for the system telemetry,
     idps data, and app data (if applicable).
@@ -128,15 +132,21 @@ def telemetry_collect_and_publish():
                 publish_to_topic(
                     topic=os.environ.get('telemetryTopic'),
                     payload=json.dumps(system_telemetry).encode())
+                if verbose:
+                    LOGGER.info("Sent system telemetry to topic: %s data: %s",
+                        os.environ.get('telemetryTopic'), system_telemetry)
             except ValueError:
                 LOGGER.error("Malformed packet received from socket %s", system_telemetry)
 
         if idps_data:
             try:
+                topic = f"{os.environ.get('telemetryTopic')}/idps"
                 idps_data.update(time_values)
                 publish_to_topic(
-                    topic=f"{os.environ.get('telemetryTopic')}/idps",
+                    topic=topic,
                     payload=json.dumps(idps_data).encode())
+                if verbose:
+                    LOGGER.info("Sent IDSP data to topic: %s data: %s", topic, idps_data)
             except ValueError:
                 LOGGER.error("Malformed packet received from socket %s", idps_data)
 
@@ -146,6 +156,8 @@ def telemetry_collect_and_publish():
                 if not topic_suffix:
                     topic_suffix = os.environ.get('AppDataTopicSuffix')
 
+                topic = f"{os.environ.get('telemetryTopic')}/{topic_suffix}"
+
                 for data in data_list:
                     # If the app_data has a timestamp, and it is behind the v2xdomu date
                     # by more than 15 minutes, replace it with the v2xdomu timestamp.
@@ -153,8 +165,11 @@ def telemetry_collect_and_publish():
                         int(time.time()) - int(data["Timestamp"]) > 900:
                         data["Timestamp"] = int(time.time())
                     publish_to_topic(
-                        topic=f"{os.environ.get('telemetryTopic')}/{topic_suffix}",
+                        topic=topic,
                         payload=json.dumps(data).encode())
+                    if verbose:
+                        LOGGER.info("Sent app data to topic: %s data: %s", topic, data)
+
     # pylint: disable=broad-except
     except Exception as exception:
         LOGGER.error("Failed to get telemetry: %s \nData received from dom0: %s", exception, data)
@@ -168,10 +183,11 @@ def telemetry_run():
     while True:
         loop_entry_time = time.time()
 
-        telemetry_collect_and_publish()
-
         with LOCK:
             telemetry_interval = TELEMETRY_SEND_INTERVAL
+            verbose = VERBOSE
+
+        telemetry_collect_and_publish(verbose=verbose)
 
         loop_exec_time = time.time() - loop_entry_time
         next_run = telemetry_interval - loop_exec_time
@@ -196,6 +212,7 @@ class StreamHandler(client.SubscribeToIoTCoreStreamHandler):
         """
         # pylint: disable=global-statement
         global TELEMETRY_SEND_INTERVAL
+        global VERBOSE
 
         try:
             message = json.loads(str(event.message.payload, "utf-8"))
@@ -203,12 +220,15 @@ class StreamHandler(client.SubscribeToIoTCoreStreamHandler):
             with LOCK:
                 TELEMETRY_SEND_INTERVAL = \
                     extract_parameter(message=message, parameter_name=TELEMETRY_INTERVAL,
-                                      parameter_type=int, min_value=1,
-                                      default=TELEMETRY_SEND_INTERVAL)
+                                      parameter_type=int, default=TELEMETRY_SEND_INTERVAL,
+                                      min_value=1)
+                VERBOSE = \
+                    extract_parameter(message=message, parameter_name=VERBOSE_FLAG,
+                                      parameter_type=bool, default=VERBOSE)
 
             # Check if one or more config values have been updated.
             if set(message.keys()).intersection(
-                    set({TELEMETRY_INTERVAL, M7_STAT_QUERY_TIME, M7_WINDOW_SIZE_MULTIPLIER})):
+                    set({TELEMETRY_INTERVAL, VERBOSE_FLAG, M7_STAT_QUERY_TIME, M7_WINDOW_SIZE_MULTIPLIER})):
                 LOGGER.info("Got update message.")
                 with SOCKET_COM_LOCK:
                     SOCKET.send_fire_and_forget(SET_PARAMS_COMMAND + json.dumps(message))

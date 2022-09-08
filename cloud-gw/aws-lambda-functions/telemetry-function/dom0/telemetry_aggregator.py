@@ -35,6 +35,9 @@ M7_STAT_QUERY_TIME = "m7_status_query_time_interval"
 # Used for getting M7 core load
 M7_WINDOW_SIZE_MULTIPLIER = "m7_window_size_multiplier"
 
+# Logger verbosity falg
+VERBOSE_FLAG = "verbose"
+
 # A lock for accessing the config variable.
 CONFIG_LOCK = threading.Lock()
 # A lock for accessing the stats dict.
@@ -122,6 +125,9 @@ class TelemetryAggregator:
                 with CONFIG_LOCK:
                     # Set telemetry interval for next function call
                     telemetry_interval = config[TELEMETRY_INTERVAL]
+
+                if config.get(VERBOSE_FLAG, False):
+                    LOGGER.info("Updated system telemetry: %s\n", tot_stats)
             # pylint: disable=broad-except
             except Exception as exception:
                 LOGGER.error("Failed to retrieve telemetry data: %s", exception)
@@ -133,16 +139,16 @@ class TelemetryAggregator:
                 time.sleep(next_run)
 
     @staticmethod
-    def __extract_parameter(event, parameter_name, parameter_type, min_value, default):
+    def __extract_parameter(event, parameter_name, parameter_type, default, min_value=None):
         """
         Extracts parameters from an event dictionary. If the event does not
         contain the desired value, the default is returned
         :param event: Event in json format
         :param parameter_name: Parameter name which shall be a key in the
         event dictionary
-        :param parameter_type: Parameter type (int, float)
-        :param min_value: Minimum accepted value
+        :param parameter_type: Parameter type (int, float, bool)
         :param default: Parameter default (in case the event does not contain
+        :param min_value: Minimum accepted value
         the desired parameter, this value will be returned
         :return: updated parameter value/default
         """
@@ -157,7 +163,7 @@ class TelemetryAggregator:
             except ValueError:
                 updated_param_value = default
 
-        if updated_param_value != default:
+        if min_value and updated_param_value != default:
             if updated_param_value < min_value:
                 # new value is not valid
                 updated_param_value = default
@@ -182,14 +188,17 @@ class TelemetryAggregator:
         with CONFIG_LOCK:
             # get telemetry collector parameters
             config[TELEMETRY_INTERVAL] = \
-                self.__extract_parameter(event_dict, TELEMETRY_INTERVAL, int, 1,
-                                         config[TELEMETRY_INTERVAL])
+                self.__extract_parameter(event_dict, TELEMETRY_INTERVAL, int,
+                                         config[TELEMETRY_INTERVAL], 1)
             config[M7_STAT_QUERY_TIME] = \
-                self.__extract_parameter(event_dict, M7_STAT_QUERY_TIME, float, 0.0001,
-                                         config[M7_STAT_QUERY_TIME])
+                self.__extract_parameter(event_dict, M7_STAT_QUERY_TIME, float,
+                                         config[M7_STAT_QUERY_TIME], 0.0001)
             config[M7_WINDOW_SIZE_MULTIPLIER] = \
-                self.__extract_parameter(event_dict, M7_WINDOW_SIZE_MULTIPLIER, int, 1,
-                                         config[M7_WINDOW_SIZE_MULTIPLIER])
+                self.__extract_parameter(event_dict, M7_WINDOW_SIZE_MULTIPLIER, int,
+                                         config[M7_WINDOW_SIZE_MULTIPLIER], 1)
+            config[VERBOSE_FLAG] = \
+                self.__extract_parameter(event_dict, VERBOSE_FLAG, bool,
+                                         config.get(VERBOSE_FLAG, False))
 
         M7CoreMovingAverage.update_measurement(
             new_m7_status_query_time_interval=config[M7_STAT_QUERY_TIME],

@@ -7,7 +7,8 @@
         "telemetry_interval": 1,
         "m7_status_query_time_interval": 0.01,
         "m7_window_size_multiplier": 2,
-        "device": null
+        "device": null,
+        "verbose": false
     },
     "s32g2": {
         "M7_CORES_STAT_REGISTERS": {
