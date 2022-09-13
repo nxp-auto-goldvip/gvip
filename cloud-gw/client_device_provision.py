@@ -57,7 +57,7 @@ class ClientDeviceProvisioningClient():
     def __init__(
             self, thing_name,
             mqtt_topic, cfn_stack_name,
-            aws_region_name, netif,
+            aws_region_name,
             device_port, mqtt_port,
             device_ip=None, device_hwaddr=None,
             clean_provision=False,
@@ -67,7 +67,6 @@ class ClientDeviceProvisioningClient():
         :param mqtt_topic: Mqtt topic for the device.
         :param cfn_stack_name: Cloudformation stack name.
         :param aws_region_name: AWS region name.
-        :param netif: The network interface connected to the device.
         :param device_port: Eth port to connect to the device.
         :param mqtt_port: Mqtt port.
         :param device_ip: Ip address of the device thing.
@@ -105,7 +104,6 @@ class ClientDeviceProvisioningClient():
         self.__thing_name = thing_name
         self.__mqtt_topic = mqtt_topic
         self.__region = aws_region_name
-        self.__netif = netif
         self.__device_port = device_port
         self.__mqtt_port = mqtt_port
         self.__clean_provision = clean_provision
@@ -225,6 +223,12 @@ class ClientDeviceProvisioningClient():
                         print(f"Found ip address: " \
                               f"{self.client_device_data[self.DEVICE_IP]} " \
                               f"of device {self.__thing_name}")
+
+                        # Get the local ip for the network interface where
+                        # we found the client device.
+                        self.__gg_ip, _ = self.__get_netif_ip(netif, self.__verbose)
+                        # Update conectivity information with the greengrass ip.
+                        self.__update_connectivity_info()
                         return
 
                 if i < nb_tries - 1 and self.__verbose:
@@ -391,8 +395,6 @@ class ClientDeviceProvisioningClient():
         """
         self.__attach_thing_to_ggcore()
         self.__attach_device_to_certificate()
-        self.__gg_ip, _ = self.__get_netif_ip(self.__netif, self.__verbose)
-        self.__update_connectivity_info()
         self.__find_device_ip()
         self.__get_endpoint()
         self.__extract_certificate()

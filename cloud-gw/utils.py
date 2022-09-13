@@ -69,79 +69,12 @@ class Utils():
         return ret
 
     @staticmethod
-    def setup_wireless_interface(
-            netif, ssid=None, password=None,
-            wpa_conf_file=os.path.join('/etc', 'wpa_supplicant.conf')):
-        """
-        Configure the wireless connection using wpa_supplicant tool.
-        :param netif: wireless interface used for connection
-        :param ssid: name of the wireless network to connect to
-        :param password: network password
-        :param wpa_conf_file: Path to the default configuration file for wpa_supplicant.
-        """
-        print('Starting the wpa_supplicant service...')
-
-        # Stop wpa_supplicant, if it is running.
-        Utils.execute_command('pkill wpa_supplicant || true')
-        # If wpa_supplicant is killed, it will set the interface down. Bring it up again.
-        Utils.execute_command(f'ip link set dev {netif} up')
-        # Start wpa_supplicand service on the given interface.
-        Utils.execute_command(f'wpa_supplicant -i{netif} -Dnl80211,wext -c{wpa_conf_file} -B')
-
-        # Wait a bit for proper initialization.
-        time.sleep(Utils.WPA_WAIT_TIME)
-
-        # Check whether we are already connected to a network.
-        wpa_status = Utils.execute_command('wpa_cli status')[1].decode().splitlines()
-        if 'wpa_state=COMPLETED' in wpa_status:
-            used_ssid = [val for val in wpa_status if val.startswith('ssid=')][0].split('=', 1)[1]
-            if not ssid or used_ssid == ssid:
-                print(f"Successfully connected to '{used_ssid}'.")
-                return
-
-        # Create a new network configuration.
-        wpa_network_id = Utils.execute_command('wpa_cli add_network')[1].decode().splitlines()[1]
-
-        if ssid:
-            # Setup de SSID.
-            Utils.execute_command(f'wpa_cli set_network {wpa_network_id} ssid "\\"{ssid}\\""')
-            # Configure the network password.
-            if password:
-                Utils.execute_command(
-                    f'wpa_cli set_network {wpa_network_id} psk "\\"{password}\\""')
-
-        if not password:
-            Utils.execute_command(f'wpa_cli set_network {wpa_network_id} key_mgmt NONE')
-
-        # Connect to the configured network (it will disable the others).
-        Utils.execute_command(f'wpa_cli select_network {wpa_network_id}')
-
-        # Give a bit of time for the connection to be established.
-        time.sleep(Utils.WPA_WAIT_TIME)
-
-        # Check whether we are already connected to a network.
-        wpa_status = Utils.execute_command('wpa_cli status')[1].decode().splitlines()
-        if 'wpa_state=COMPLETED' in wpa_status:
-            used_ssid = [val for val in wpa_status if val.startswith('ssid=')][0].split('=', 1)[1]
-            print(f"Successfully connected to '{used_ssid}'. Saving the configuration...")
-            # Save the credentials for future use.
-            Utils.execute_command('wpa_cli save_config')
-        else:
-            print("wpa_supplicant wasn't able to connect to any known network...")
-            # Scan for nearby networks and list them for the user.
-            avail_networks = Utils.execute_command('wpa_cli scan && wpa_cli scan_results')[1]
-            print(f'(Hint) Nearby wireless networks:\n{avail_networks.decode()}')
-
-            raise Exception("Couldn't establish a connection to a known wireless network.")
-
-    @staticmethod
-    def setup_network_interface(netif, netip=None, ssid=None, password=None):
+    def setup_network_interface(netif, netip=None, setup_ifmetric=True):
         """
         Setup a given network interface to be used for internet connection.
         :param netif: the network interface name.
         :param netip: optional IP to be set statically on the given interface.
-        :param ssid: the SSID of the network to connect when using a wireless interface.
-        :param password: the password of the wireless network.
+        :param setup_ifmetric: sets the ifmetric priorities
         """
         try:
             print('Checking the internet connection...')
@@ -153,12 +86,6 @@ class Utils():
             # Bring up the given interface.
             Utils.execute_command(f'ip link set dev {netif} up')
 
-            # Generally, the wireless interface will start with ‘w’ (i.e. 'wlan0').
-            if netif.startswith('w'):
-                print('Wireless interface detected, configuring wpa_supplicant...')
-                Utils.setup_wireless_interface(netif, ssid, password)
-
-            # Set up the IP address on the given interface (statically or dynamically assigned).
             if netip:
                 print('Setting up static IP address...')
                 Utils.execute_command(f'ip address add {netip} dev {netif}')
@@ -166,14 +93,15 @@ class Utils():
                 print('Getting an IP address using DHCP client...')
                 Utils.execute_command(f'udhcpc -nq -i{netif} -t10')
 
-        print(f"Setting '{netif}' as the default network interface...")
-        # Increase the route metric so the given network interface will be used by default for
-        # access to open internet.
-        default_routes = Utils.execute_command('ip route show default to match 8.8.8.8')[1]
-        for dev in re.findall(r"dev\s+(\S+)", default_routes.decode()):
-            if dev != netif:
-                Utils.execute_command(f'ifmetric {dev} 1024')
-        Utils.execute_command(f'ifmetric {netif} 0')
+        if setup_ifmetric:
+            # Increase the route metric so the given network interface will be used by default for
+            # access to open internet.
+            print(f"Setting '{netif}' as the default network interface...")
+            default_routes = Utils.execute_command('ip route show default to match 8.8.8.8')[1]
+            for dev in re.findall(r"dev\s+(\S+)", default_routes.decode()):
+                if dev != netif:
+                    Utils.execute_command(f'ifmetric {dev} 1024')
+            Utils.execute_command(f'ifmetric {netif} 0')
 
     @staticmethod
     def sync_system_datetime(sync_iface=None, ip_ver='v4'):
@@ -202,6 +130,9 @@ class Utils():
             print('Synchronizing the system datetime with the ntp servers...')
             # Start the ntp to force the timedate sync.
             Utils.execute_command(sync_system_timedate, timeout=60)
+        # pylint: disable=broad-except
+        except Exception as exception:
+            print(f'Datetime sync failed: {exception}')
         finally:
             # Re-establish the ntp service.
             Utils.execute_command(restart_ntp_service)

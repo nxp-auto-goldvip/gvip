@@ -10,7 +10,6 @@ Copyright 2021-2022 NXP
 """
 
 import argparse
-import getpass
 import json
 import tempfile
 import time
@@ -34,7 +33,7 @@ class Greengrassv2Deployment():
                  region, stack_name,
                  deployment_name,
                  mqtt_port, https_port,
-                 netif, setup_devices,
+                 setup_devices,
                  no_deploy, clean_device_provision,
                  verbose):
         """
@@ -43,7 +42,6 @@ class Greengrassv2Deployment():
         :param deployment_name: A Name for the Greengrass v2 deployment.
         :param mqtt_port: Mqtt port used by greengrass.
         :param https_port: Https port used by greengrass.
-        :param netif: Network interface for the client devices
         :param setup_devices: Triggers the provisioning of the client devices.
         :param no_deploy: Don't create a deployment.
         :param clean_device_provision: Forces a clean provisioning of the client devices.
@@ -55,7 +53,6 @@ class Greengrassv2Deployment():
         self.__deployment_name = deployment_name
         self.__mqtt_port = mqtt_port
         self.__https_port = https_port
-        self.__netif = netif
         self.__setup_devices = setup_devices
         self.__no_deploy = no_deploy
         self.__clean_device_provision = clean_device_provision
@@ -240,7 +237,6 @@ class Greengrassv2Deployment():
                         mqtt_topic=device_data["mqtt_topic"],
                         cfn_stack_name=self.__stack_name,
                         aws_region_name=self.__region,
-                        netif=device_data.get("netif", self.__netif),
                         device_port=device_data["device_port"],
                         mqtt_port=self.__mqtt_port,
                         device_ip=device_data["device_ip"],
@@ -295,17 +291,11 @@ def main():
                         help='The AWS region where the CloudFormation stack was deployed.')
     parser.add_argument('--netif', dest='netif', type=str, default='eth0',
                         help='The network interface used to connect to open internet.')
+    parser.add_argument('--ntp-netif', dest='ntp_netif', type=str, default='eth0',
+                        help='The network interface used to sync the datetime.')
     parser.add_argument('--netip', dest='netip', type=str, default=None,
                         help='The static IP set on the given network interface. If ommited, then' \
                         ' the IP is obtained using a DHCP client.')
-    parser.add_argument('--ssid', dest='wlan_ssid', type=str, default=None,
-                        help='The SSID of the wireless network to connect to. It may be ommitted' \
-                        ' if the wireless network was previously configured or the board should' \
-                        ' connect to any available unsecured network.')
-    parser.add_argument('--psk', dest='wlan_psk', type=str, default=None,
-                        help='The password of the wireless network to connect to. If ommited, ' \
-                        'it will be read from standard input. If the SSID does not have ' \
-                        'password authentication, provide empty input.')
     parser.add_argument('--mqtt-port', dest='mqtt_port', type=int, default=443, choices=[8883, 443],
                         help='MQTT port used by Greengrass.')
     parser.add_argument('--https-port', dest='https_port', type=int, default=443,
@@ -325,18 +315,14 @@ def main():
 
     args = parser.parse_args()
 
-    ssid_password = None
-    # Ask for password only if the SSID was specified.
-    if args.wlan_ssid and not args.wlan_psk:
-        ssid_password = getpass.getpass(prompt='Please introduce the passphrase: ')
-    else:
-        ssid_password = args.wlan_psk
-
-    # Setup the network.
-    Utils.setup_network_interface(args.netif, args.netip, args.wlan_ssid, ssid_password)
+    # Setup the network for ntp.
+    Utils.setup_network_interface(args.ntp_netif, setup_ifmetric=False)
 
     # Ensure that the clock is synchronized with the ntp servers
-    Utils.sync_system_datetime(args.netif)
+    Utils.sync_system_datetime(args.ntp_netif)
+
+    # Setup the network.
+    Utils.setup_network_interface(args.netif, args.netip)
 
     if not args.no_deploy or args.setup_devices:
         # Check if the AWS credentials were provided
@@ -355,7 +341,6 @@ def main():
             args.deployment_name,
             args.mqtt_port,
             args.https_port,
-            args.netif,
             args.setup_devices,
             args.no_deploy,
             args.clean_device_provision,
