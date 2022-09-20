@@ -107,8 +107,8 @@ def telemetry_collect_and_publish(verbose=False):
     """
     :param verbose: Verbosity flag
     This function is called every telemetry_interval seconds.
-    In each call it publishes MQTT messages for the system telemetry,
-    idps data, and app data (if applicable).
+    In each call it publishes MQTT messages for the system telemetry
+    and app data (if applicable).
     """
     with SOCKET_COM_LOCK:
         data = SOCKET.send_request(GET_STATS_COMMAND)
@@ -118,7 +118,6 @@ def telemetry_collect_and_publish(verbose=False):
 
         system_telemetry = data.get('system_telemetry', None)
         app_data = data.get('app_data', None)
-        idps_data = data.get('idps_stats', None)
 
         timestamp = time.time()
         # Set timestamp for current telemetry packet
@@ -137,18 +136,6 @@ def telemetry_collect_and_publish(verbose=False):
                         os.environ.get('telemetryTopic'), system_telemetry)
             except ValueError:
                 LOGGER.error("Malformed packet received from socket %s", system_telemetry)
-
-        if idps_data:
-            try:
-                topic = f"{os.environ.get('telemetryTopic')}/idps"
-                idps_data.update(time_values)
-                publish_to_topic(
-                    topic=topic,
-                    payload=json.dumps(idps_data).encode())
-                if verbose:
-                    LOGGER.info("Sent IDSP data to topic: %s data: %s", topic, idps_data)
-            except ValueError:
-                LOGGER.error("Malformed packet received from socket %s", idps_data)
 
         if app_data:
             for topic_suffix, data_list in app_data.items():
