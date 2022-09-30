@@ -320,7 +320,7 @@ def main():
                         help='If set it will force the device provisioning client to '\
                         'retrieve the provisioning data instead of using the data stored '\
                         'after previous runs.')
-    parser.add_argument('--quiet', dest='verbose', default=True, action='store_false',
+    parser.add_argument('--quiet', dest='quiet', default=False, action='store_true',
                         help="Quiet mode. Causes most diagnostic messages to be suppressed.")
 
     args = parser.parse_args()
@@ -359,7 +359,7 @@ def main():
             args.setup_devices,
             args.no_deploy,
             args.clean_device_provision,
-            args.verbose).execute()
+            not args.quiet).execute()
     else:
         Greengrassv2Deployment.restart_greengrass_nucleus()
 
