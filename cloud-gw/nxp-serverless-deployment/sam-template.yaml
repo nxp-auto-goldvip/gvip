@@ -34,9 +34,9 @@ Metadata:
     SpdxLicenseId: BSD-3-Clause
     LicenseUrl: LICENSE
     Labels: ['nxp', 'goldvip', 's32g', 'goldbox']
-    HomePageUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
+    HomePageUrl: https://github.com/nxp-auto-goldvip/gvip
     SemanticVersion: 1.4.0
-    SourceCodeUrl: https://source.codeaurora.org/external/autobsps32/goldvip/gvip
+    SourceCodeUrl: https://github.com/nxp-auto-goldvip/gvip
 
 Conditions:
   DefaultThingName: !Equals [!Ref CoreThingName, 'DefaultName']
