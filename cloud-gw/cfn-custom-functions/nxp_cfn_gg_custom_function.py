@@ -15,6 +15,7 @@ Copyright 2021-2022 NXP
 
 import json
 import logging
+import time
 
 import boto3
 import cfnresponse
@@ -115,7 +116,8 @@ class Greengrassv2Handler:
         Initiates the creation of the Greengrass resources.
         :param event: The MQTT message in json dictionary format.
         """
-        ids = {'thing_name': event['ResourceProperties']['CoreThingName']}
+        ids = {'thing_name': event['ResourceProperties']['CoreThingName'], \
+                'thing_arn': event['ResourceProperties']['CoreThingArn']}
 
         Greengrassv2Handler.__attach_service_role(event)
         Greengrassv2Handler.__create_telemetry_component(event, ids)
@@ -130,11 +132,40 @@ class Greengrassv2Handler:
         """
         component_arn = ids["telemetry_component"]
         thing_name = ids['thing_name']
+        thing_arn = ids['thing_arn']
+        deployment_name = "nightly-telemetry-test-deployment"
+        retries=12
+        wait_time=15
+        deployment_completed = False
 
+        # Delete GoldVIP telemetry component
         Greengrassv2Handler.GGV2_CLIENT.delete_component(
             arn=component_arn
         )
         LOGGER.info("Greengrass telemetry component deleted.")
+
+        # Creates a Greengrass v2 deployment with minimal Greengrass components.
+        # This will uninstall unwanted components on the board
+        # Deployment name is GoldVIP default deployment name
+        new_deployment_id = Greengrassv2Handler.GGV2_CLIENT.create_deployment(
+            targetArn=thing_arn,
+            deploymentName=deployment_name,
+            components={}
+        )['deploymentId']
+
+        # Wait for deployment status
+        for _ in range(retries):
+            time.sleep(wait_time)
+            new_deployment_status = Greengrassv2Handler.GGV2_CLIENT.get_deployment(
+                deploymentId=new_deployment_id
+            )['deploymentStatus']
+            if new_deployment_status == 'COMPLETED':
+                deployment_completed = True
+                break
+        if deployment_completed:
+            LOGGER.info("Uninstalled components.")
+        else:
+            LOGGER.info("Failed to uninstall deployed components!")
 
         try:
             Greengrassv2Handler.GGV2_CLIENT.delete_core_device(
@@ -143,7 +174,6 @@ class Greengrassv2Handler:
             LOGGER.info("Core device deleted.")
         except Greengrassv2Handler.GGV2_CLIENT.exceptions.ResourceNotFoundException:
             LOGGER.info("Core device not found.")
-
 
 def lambda_handler(event, context):
     """
