@@ -239,8 +239,8 @@ class Greengrassv2Deployment():
                         aws_region_name=self.__region,
                         device_port=device_data["device_port"],
                         mqtt_port=self.__mqtt_port,
-                        device_ip=device_data["device_ip"],
-                        device_hwaddr=device_data["device_hwaddr"],
+                        device_ip=device_data.get("device_ip", None),
+                        device_hwaddr=device_data.get("device_hwaddr", None),
                         clean_provision=self.__clean_device_provision,
                         verbose=self.__verbose).execute()
                 # pylint: disable=broad-except

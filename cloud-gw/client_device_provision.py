@@ -115,7 +115,7 @@ class ClientDeviceProvisioningClient():
         elif device_hwaddr:
             self.client_device_data[self.DEVICE_MAC] = device_hwaddr
         else:
-            raise Exception("Must provide either Device ip or Device mac.")
+            raise Exception("Must provide either IP / MAC address of the device in the deployment configuration.")
 
     def __attach_thing_to_ggcore(self):
         """
@@ -395,7 +395,9 @@ class ClientDeviceProvisioningClient():
         """
         self.__attach_thing_to_ggcore()
         self.__attach_device_to_certificate()
-        self.__find_device_ip()
+        # Retrieve the device ip using the mac, only if the mac is specified.
+        if self.client_device_data.get(self.DEVICE_MAC, None):
+            self.__find_device_ip()
         self.__get_endpoint()
         self.__extract_certificate()
         self.__get_greengrass_ca()
