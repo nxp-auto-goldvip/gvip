@@ -52,7 +52,9 @@ tx_frames_count=0
 rx_frames_count=0
 
 # Generation mode of payload. Default value is increment
-payload_data="i"
+payload_random_mode="r"
+payload_increment_mode="i"
+payload_data="${payload_increment_mode}"
 
 readonly integer_regex="^[0-9]+$"
 readonly hex_regex="^[0-9A-Fa-f]+$"
@@ -161,12 +163,11 @@ check_input() {
                 -D | --payload)
                         shift
                         payload_data=${1}
-                        if ! [[ "${payload_data}" =~ ${hex_regex} ]]; then
-                                echo "Payload data must be a hex value (e.g., DE42AD37)"
+                        if ! [[ "${payload_data}" =~ ${hex_regex} || "${payload_data}" == "${payload_increment_mode}" ||  "${payload_data}" == "${payload_random_mode}" ]]; then
+                                echo "Payload data must be 'i' (incremental mode), 'r' (random mode) or a hex value (e.g., DE42AD37)"
                                 exit 1
-                        fi                        
+                        fi
                         ;;
-
                 -h | --help) usage && exit 0 ;;
                 *)
                         echo "$0: Invalid option $1"
