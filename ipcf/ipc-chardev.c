@@ -178,7 +178,7 @@ static struct ipc_shm_channel_cfg instance_0_channels[IPC_INST_0_CHAN_NUM] = {
 
 /* IPCF SHM compatible values */
 static const struct of_device_id ipcf_res_no_map_name[] = {
-    { .compatible = "fsl,ipcf-shm"}
+    { .compatible = "nxp,s32g-ipcf-shm"}
 };
 
 /* IPCF shared memory configuration */
