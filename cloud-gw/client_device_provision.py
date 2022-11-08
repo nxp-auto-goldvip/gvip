@@ -11,6 +11,7 @@ The provisioning data is stored for subsequent connections.
 Copyright 2022 NXP
 """
 
+import ipaddress
 import json
 import socket
 import subprocess
@@ -184,6 +185,26 @@ class ClientDeviceProvisioningClient():
         if self.__verbose:
             print("Updated Core connectivity information.")
 
+    def __find_local_ip(self):
+        """
+        Find the IP address of the network interface connected to the device.
+        :return: IP address as a string or None
+        """
+        netif_list = [
+            (netif, *self.__get_netif_ip(netif, self.__verbose)) \
+            for _, netif in socket.if_nameindex()
+        ]
+
+        for netif, ip_addr, mask in netif_list:
+            if not ip_addr:
+                continue
+
+            if (ipaddress.ip_address(self.client_device_data[self.DEVICE_IP]) in
+                ipaddress.ip_network(f"{ip_addr}/{mask}", strict=False)):
+                return ip_addr
+
+        raise Exception("Could not find local ip address.")
+
     def __find_device_ip(self, nb_tries=3):
         """
         Discover the device ip knowing its mac address.
@@ -192,6 +213,9 @@ class ClientDeviceProvisioningClient():
         # Check if the device ip was already found
         if (self.client_device_data.get(self.DEVICE_IP, None)
                 and not self.__clean_provision):
+            # If we have the device ip we still need the local ip
+            self.__gg_ip = self.__find_local_ip()
+            self.__update_connectivity_info()
             return
 
         # pylint: disable=import-outside-toplevel
@@ -398,6 +422,10 @@ class ClientDeviceProvisioningClient():
         # Retrieve the device ip using the mac, only if the mac is specified.
         if self.client_device_data.get(self.DEVICE_MAC, None):
             self.__find_device_ip()
+        else:
+            # Find the local ip of the interface connected to the client device.
+            self.__gg_ip = self.__find_local_ip()
+            self.__update_connectivity_info()
         self.__get_endpoint()
         self.__extract_certificate()
         self.__get_greengrass_ca()
