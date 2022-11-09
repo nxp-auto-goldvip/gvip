@@ -28,6 +28,8 @@ class SystemTelemetryCollector():
         "hse_llce_average_temperature": None,
         "a53_cluster_temperature": None,
         "a53_cluster_average_temperature": None,
+        "m7_anomalies": None,
+        "llce_anomalies": None
     }
 
     # The raw system telemetry.
@@ -121,7 +123,8 @@ class SystemTelemetryCollector():
 
     @staticmethod
     def get_raw_telemetry():
-        """ Gets the data from the socket. """
+        """ Gets the data from the socket.
+        Merges the system telemetry entry with the idps stats entry. if availabile. """
         raw_data = None
 
         with SystemTelemetryCollector.DATA_LOCK:
@@ -130,6 +133,7 @@ class SystemTelemetryCollector():
 
         data = {
             **raw_data.get("system_telemetry", {}),
+            **raw_data.get("idps_stats", {}).get("can_idps", {}).get("global_stats", {})
         }
 
         return data

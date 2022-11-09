@@ -64,7 +64,7 @@
     <div class="divCell" id="m7_core_loads" style="width:100%"></div>
 </div>
 
-<!-- 2 x 2 Table for SOC  -->
+<!-- 3 x 2 Table for SOC  -->
 <div class="divTable">
     <div class="divTableBody">
         <div class="divTableRow">
@@ -74,6 +74,10 @@
         <div class="divTableRow">
             <div class="divCell" id="dom0_mem_load"></div>
             <div class="divCell" id="temperature"></div>
+        </div>
+        <div class="divTableRow">
+            <div class="divCell" id="m7_can_anomalies"></div>
+            <div class="divCell" id="llce_can_anomalies"></div>
         </div>
     </div>
 </div>
@@ -170,6 +174,16 @@
             ["hse_llce_average_temperature", "a53_cluster_temperature", "a53_cluster_average_temperature"],
             "Immediate Temperature",
             "temperature")
+        plot_timeseries(data,
+            [data.telemetry.m7_anomalies],
+            [""],
+            "M7 CAN Anomalies",
+            "m7_can_anomalies")
+        plot_timeseries(data,
+            [data.telemetry.llce_anomalies],
+            [""],
+            "LLCE CAN Anomalies",
+            "llce_can_anomalies")
     }
 
     function fetch_data() {

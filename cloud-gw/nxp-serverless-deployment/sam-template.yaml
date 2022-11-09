@@ -468,6 +468,8 @@ Outputs:
     Value: !GetAtt SitewiseCustomResource.core_loads_db
   SitewiseSocDashboardId:
     Value: !GetAtt SitewiseCustomResource.soc_db
+  SitewiseIDPSDashboardId:
+    Value: !GetAtt SitewiseCustomResource.idps_db
   SitewiseMLDashboardId:
     Value: !GetAtt SitewiseCustomResource.ml_db
   SitewiseSJADashboard1Id:

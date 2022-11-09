@@ -586,6 +586,55 @@
           }
         ]
       },
+      "idps_db": {
+        "name": "IDPS Dashboard",
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "/idps",
+            "use_cloud_timestamp": false,
+            "measurements": {
+              "can_idps.global_stats.llce_anomalies": {
+                "name": "LLCE Anomalies",
+                "unit": "anomalies"
+              },
+              "can_idps.global_stats.m7_anomalies": {
+                "name": "M7 Anomalies",
+                "unit": "anomalies"
+              }
+            }
+          }
+        ],
+        "widgets": [
+          {
+            "x": 0,
+            "y": 0,
+            "height": 3,
+            "width": 3,
+            "title": "M7 CAN Anomalies",
+            "type": "sc-scatter-chart",
+            "metrics": {
+              "M7 CAN IDPS": {
+                "label": "IDPS Anomalies",
+                "property_name": "M7 Anomalies"
+              }
+            }
+          },
+          {
+            "x": 3,
+            "y": 0,
+            "height": 3,
+            "width": 3,
+            "title": "LLCE CAN Anomalies",
+            "type": "sc-scatter-chart",
+            "metrics": {
+              "M7 CAN IDPS": {
+                "label": "IDPS Anomalies",
+                "property_name": "LLCE Anomalies"
+              }
+            }
+          }
+        ]
+      },
       "ml_db": {
         "name": "Machine Learning Dashboard",
         "topic_rules": [
