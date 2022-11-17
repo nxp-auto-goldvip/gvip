@@ -35,9 +35,6 @@ _setup_l2_switch() {
 
 # Set layer three routing for the two local PFE interfaces.
 _setup_l3_router() {
-    delete_bridge
-    _bring_up_interface
-
     # Set ip for each interface.
     _set_ip "pfe0" "10.0.1.2"
     _set_ip "pfe2" "192.168.100.2"
@@ -102,4 +99,6 @@ _setup_network() {
 
 set_trap
 check_input "$@"
+delete_bridge
+_bring_up_interface
 _setup_network
