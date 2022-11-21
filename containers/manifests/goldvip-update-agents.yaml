@@ -13,7 +13,7 @@ spec:
   # Start the container with a custom command to get the logs from the GoldVIP Update
   # Agents on the rootfs of the host system.
   containers:
-  - name: goldvip-update-agents-pod
+  - name: goldvip-update-agents
     image: goldvip-ota-agents:local
     imagePullPolicy: Never
     command: [
@@ -21,7 +21,7 @@ spec:
       '-c',
       '/home/root/ota/goldvip_uas >> /var/log/ota/goldvip_uas 2>&1'
     ]
-    # The Update Agents requires access to some devices on the host (namely /dev/mtd and
+    # The GoldVIP Update Agents requires access to some devices on the host (namely /dev/mtd and
     # /dev/mmcblk).
     securityContext:
       privileged: true
@@ -36,15 +36,54 @@ spec:
       mountPath: /lib/firmware
     - name: varlog
       mountPath: /var/log/ota
-  initContainers:
-  - name: init-ota-agents-config-container
-    image: goldvip-ota-agents:local
+  # Start the Remote Update Agent in a separate container.
+  - name: goldvip-remote-ua
+    image: goldvip-remote-ua:local
     imagePullPolicy: Never
     command: [
       'sh',
       '-c',
-      'if [ ! "$(ls -A /mnt/host-data)" ]; then cp -r /data/* /mnt/host-data; fi; if [ ! "$(ls -A /mnt/uas-config)" ]; then cp -r /etc/ota/* /mnt/uas-config; fi'
+      '/home/root/ota/goldvip_remote_ua >> /var/log/ota/goldvip_remote_ua 2>&1'
     ]
+    volumeMounts:
+    - name: uas-config-path
+      mountPath: /etc/ota
+    - name: uptane-data-path
+      mountPath: /data
+    - name: varlog
+      mountPath: /var/log/ota
+    - name: remote-install-dir
+      mountPath: /home/root/ota/remote_ua
+  initContainers:
+  - name: init-ota-agents-config-container
+    image: goldvip-ota-agents:local
+    imagePullPolicy: Never
+    command: ['/bin/bash', '-c']
+    args:
+      - >
+        for ua in $(comm -23 <(ls /data) <(ls /mnt/host-data)); do
+          cp -r /data/* /mnt/host-data;
+        done;
+        for conf in $(comm -23 <(ls /etc/ota) <(ls /mnt/uas-config)); do
+          cp -r /etc/ota/* /mnt/uas-config;
+        done
+    volumeMounts:
+    - name: uas-config-path
+      mountPath: /mnt/uas-config
+    - name: uptane-data-path
+      mountPath: /mnt/host-data
+  - name: init-remote-ua-config-container
+    image: goldvip-remote-ua:local
+    imagePullPolicy: Never
+    command: ['/bin/bash', '-c']
+    args:
+      - >
+        for ua in $(comm -23 <(ls /data) <(ls /mnt/host-data)); do
+          cp -r /data/* /mnt/host-data;
+        done;
+        for conf in $(comm -23 <(ls /etc/ota) <(ls /mnt/uas-config)); do
+          cp -r /etc/ota/* /mnt/uas-config;
+        done
     volumeMounts:
     - name: uas-config-path
       mountPath: /mnt/uas-config
@@ -71,4 +110,7 @@ spec:
     hostPath:
       path: /var/log/ota
       type: DirectoryOrCreate
-
+  - name: remote-install-dir
+    hostPath:
+      path: /home/root/ota/remote_ua
+      type: DirectoryOrCreate
