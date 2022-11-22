@@ -159,11 +159,8 @@ def telemetry_collect_and_publish(verbose=False):
                 topic = f"{os.environ.get('telemetryTopic')}/{topic_suffix}"
 
                 for data in data_list:
-                    # If the app_data has a timestamp, and it is behind the v2xdomu date
-                    # by more than 15 minutes, replace it with the v2xdomu timestamp.
-                    if "Timestamp" in data and \
-                        int(time.time()) - int(data["Timestamp"]) > 900:
-                        data["Timestamp"] = int(time.time())
+                    # Add the timestamp to the data.
+                    data["Timestamp"] = int(timestamp)
                     publish_to_topic(
                         topic=topic,
                         payload=json.dumps(data).encode())

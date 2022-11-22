@@ -640,7 +640,7 @@
         "topic_rules": [
           {
             "mqtt_topic_suffix": "/eiqa/pd",
-            "use_cloud_timestamp": true,
+            "use_cloud_timestamp": false,
             "measurements": {
               "pd_lstm_onnx_prediction": {
                 "name": "pd lstm onnx prediction",
@@ -682,7 +682,7 @@
           },
           {
             "mqtt_topic_suffix": "/eiqa/bms",
-            "use_cloud_timestamp": true,
+            "use_cloud_timestamp": false,
             "measurements": {
               "bms_lstm_keras_onnx_prediction": {
                 "name": "bms lstm keras onnx prediction",
