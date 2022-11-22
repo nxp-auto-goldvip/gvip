@@ -95,11 +95,13 @@ class SystemTelemetryCollector():
             data = SystemTelemetryCollector.SOCKET.send_request(
                 SystemTelemetryCollector.GET_STATS_COMMAND)
 
-            with SystemTelemetryCollector.DATA_LOCK:
-                if data:
-                    SystemTelemetryCollector.RAW_DATA = json.loads(data.decode())
-                else:
-                    print("No messages from the telemetry socket.")
+            try:
+                data = json.loads(data.decode())
+                with SystemTelemetryCollector.DATA_LOCK:
+                    SystemTelemetryCollector.RAW_DATA = data
+            # pylint: disable=broad-except
+            except Exception as exception:
+                print(f'Failed to get telemetry data: {exception}\nData received: {data}')
 
             sleep(1)
 
