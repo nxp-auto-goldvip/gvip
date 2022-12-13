@@ -129,13 +129,13 @@ class Greengrassv2Deployment():
             deploymentName=self.__deployment_name,
             components={
                 'aws.greengrass.Nucleus': {
-                    'componentVersion': '2.6.0',
+                    'componentVersion': '2.9.1',
                     'configurationUpdate': {
                         'merge': json.dumps(self.__configs['nucleus'])
                     }
                 },
                 'aws.greengrass.Cli' : {
-                    'componentVersion': '2.6.0'
+                    'componentVersion': '2.9.1'
                 },
                 self.__stack_name + ".GoldVIP.Telemetry" : {
                     'componentVersion': '1.0.0',
@@ -144,25 +144,25 @@ class Greengrassv2Deployment():
                     }
                 },
                 'aws.greengrass.clientdevices.mqtt.Bridge' : {
-                    'componentVersion': '2.2.0',
+                    'componentVersion': '2.2.4',
                     'configurationUpdate': {
                         'merge': json.dumps(self.__configs['bridge'])
                     }
                 },
                 'aws.greengrass.clientdevices.mqtt.Moquette' : {
-                    'componentVersion': '2.2.0'
+                    'componentVersion': '2.3.0'
                 },
                 'aws.greengrass.clientdevices.Auth' : {
-                    'componentVersion': '2.2.0',
+                    'componentVersion': '2.3.1',
                     'configurationUpdate': {
                         'merge': json.dumps(self.__configs['auth'])
                     }
                 },
                 'aws.greengrass.clientdevices.IPDetector' : {
-                    'componentVersion': '2.1.2'
+                    'componentVersion': '2.1.5'
                 },
                 'aws.greengrass.LambdaManager' : {
-                    'componentVersion': '2.2.4'
+                    'componentVersion': '2.2.7'
                 }
             }
         )
