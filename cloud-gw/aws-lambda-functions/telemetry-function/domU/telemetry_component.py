@@ -159,6 +159,9 @@ def telemetry_collect_and_publish(verbose=False):
     """
     telemetry_data = DDS_Sub.receive()
 
+    if not telemetry_data:
+        LOGGER.error("No data received from the DDS subscriber: %s", telemetry_data)
+
     # It should be empty only if a timeout occured
     try:
         system_telemetry, app_data, idps_data = aggregate_telemetry(telemetry_data)
@@ -210,7 +213,7 @@ def telemetry_collect_and_publish(verbose=False):
                         LOGGER.info("Sent app data to topic: %s data: %s", topic, data)
     # pylint: disable=broad-except
     except Exception as exception:
-        LOGGER.error("Failed to get telemetry: %s \nData received from dom0: %s", exception, data)
+        LOGGER.error("Failed to get telemetry: %s \nData received from dom0: %s", exception, telemetry_data)
 
 def telemetry_run():
     """

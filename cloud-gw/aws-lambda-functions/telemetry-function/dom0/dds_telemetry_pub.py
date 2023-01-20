@@ -41,9 +41,12 @@ class DDSTelemetryPublisher():
         Class runnable, will be called whenever the user wants to start sending data
         """
         while True:
-            self.__dds_writer.instance.set_string("stats", AGGREGATOR.get_stats())
-            self.__dds_writer.write()
-            time.sleep(1)
+            try:
+                self.send(AGGREGATOR.get_stats())
+                time.sleep(1)
+            # pylint: disable=broad-except
+            except Exception as exception:
+                print("Failed to send data, exception: %s", exception)
 
 if __name__ == "__main__":
     # Start the collector
