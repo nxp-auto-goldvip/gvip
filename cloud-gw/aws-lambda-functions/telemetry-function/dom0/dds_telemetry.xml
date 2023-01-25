@@ -26,7 +26,7 @@ Copyright 2022 NXP
     <!-- types -->
     <types>
         <struct name="TelemetryType">
-            <member name="stats" type="string" stringMaxLength="8192"/>
+            <member name="stats" type="string" stringMaxLength="16384"/>
         </struct>
     </types>
 
