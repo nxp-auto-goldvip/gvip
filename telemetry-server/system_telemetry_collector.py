@@ -9,11 +9,21 @@ Copyright 2022-2023 NXP
 """
 
 import json
+import logging
+import sys
 import threading
 from time import time, sleep
 from datetime import datetime
 
 from dds_telemetry_sub import DDSTelemetrySubscriber
+
+# Setup logging to stdout.
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format="%(asctime)s|%(levelname)s| %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S")
 
 class SystemTelemetryCollector():
     """ Collects the telemetry data from the dom0 via a socket connection and compiles it in the
@@ -98,7 +108,7 @@ class SystemTelemetryCollector():
                     SystemTelemetryCollector.RAW_DATA = json.loads(dds_messages[0])
             # pylint: disable=broad-except
             except Exception as exception:
-                print(f'Failed to get telemetry data: {exception}\nData received: {dds_messages}')
+                LOGGER.error("Failed to get telemetry, received data: %s. Exception: %s\n", dds_messages, exception)
 
             sleep(1)
 

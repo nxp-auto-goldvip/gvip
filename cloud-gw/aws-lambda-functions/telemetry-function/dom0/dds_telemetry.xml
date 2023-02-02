@@ -8,8 +8,14 @@ Copyright 2022 NXP
     <!-- Qos Library -->
     <qos_library name="TelemetryLibrary">
         <qos_profile name="DefaultProfile"
-                     base_name="BuiltinQosLib::Generic.StrictReliable"
+                     base_name="BuiltinQosLib::Generic.KeepLastReliable"
                      is_default_qos="true">
+            <participant_factory_qos>
+                <logging>
+                    <verbosity>WARNING</verbosity>
+                    <print_format>VERBOSE_TIMESTAMPED</print_format>
+                </logging>
+            </participant_factory_qos>
             <participant_qos>
                 <property>
                     <value>

@@ -27,6 +27,14 @@ UUID = {
     "low" : None,
 }
 
+# Setup logging to stdout.
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format="%(asctime)s|%(levelname)s| %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S")
+
 def get_uid():
     """
     This function reads the Device UID from OCOTP shadow registers.
@@ -69,7 +77,5 @@ def get_uid():
         return UUID['high'], UUID['low']
 
     except (OSError, TypeError) as exception:
-        logger = logging.getLogger(__name__)
-        logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-        logger.error("Failed to read uuid: %s", repr(exception))
+        LOGGER.error("Failed to read uuid: %s", repr(exception))
         return None, None

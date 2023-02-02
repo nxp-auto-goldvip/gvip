@@ -37,9 +37,13 @@ VERBOSE_FLAG = "verbose"
 # A lock for accessing the stats dict.
 STATS_LOCK = threading.Lock()
 
-# Setup logging to stdout.
+# Setup logging to stdout
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format="%(asctime)s|%(levelname)s| %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S")
 
 # pylint: disable=too-many-instance-attributes
 class TelemetryAggregator:

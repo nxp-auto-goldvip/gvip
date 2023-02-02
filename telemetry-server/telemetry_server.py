@@ -5,14 +5,20 @@
 """
 Flask backend for the telemetry server.
 
-Copyright 2022 NXP
+Copyright 2022-2023 NXP
 """
+
+import logging
+import sys
 
 from flask import Flask, jsonify, request, render_template
 from system_telemetry_collector import SystemTelemetryCollector
 
 TELEMETRY = SystemTelemetryCollector(chart_window_size=300)
 APP = Flask(__name__)
+
+LOGGER = logging.getLogger(__name__)
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 @APP.route('/system_telemetry')
 def index():
@@ -25,7 +31,7 @@ def fetch_handler():
     Used to send the chart data to the webpage. """
     # POST request
     if request.method == 'POST':
-        print(request.get_json())  # parse as JSON
+        LOGGER.info(request.get_json())  # parse as JSON
         return 'OK', 200
     # GET request
     TELEMETRY.update_data()
@@ -37,8 +43,8 @@ def getdata_handler(value):
     """ Flask macro to handle the GET method for /getdata url.
     Used to receive input from the webpage.  """
     TELEMETRY.update_window_size(int(value))
-    print(f"New window size = {value}")
-    print(request.get_json())
+    LOGGER.info("New window size = %d\n", value)
+    LOGGER.info(request.get_json())
     return 'OK', 200
 
 if __name__ == '__main__':

@@ -15,7 +15,11 @@ import time
 
 # Setup logging to stdout.
 LOGGER = logging.getLogger(__name__)
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format="%(asctime)s|%(levelname)s| %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S")
 
 # Time between idps collect
 IDPS_COLLECT_INTERVAL = 1
