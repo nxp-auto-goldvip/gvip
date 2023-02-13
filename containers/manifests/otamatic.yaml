@@ -1,4 +1,4 @@
-# Copyright 2022 NXP
+# Copyright 2022-2023 NXP
 # OTAmatic Client pod - runs on a domU VM.
 apiVersion: v1
 kind: Pod
@@ -31,11 +31,12 @@ spec:
   - name: init-otamatic-config-container
     image: goldvip-ota-client:local
     imagePullPolicy: Never
-    command: [
-      'sh',
-      '-c',
-      'if [ ! "$(ls -A /mnt/host-data)" ]; then cp -r /data/* /mnt/host-data; fi'
-    ]
+    command: ['/bin/bash', '-c']
+    args:
+      - >
+        for dir in $(comm -23 <(ls /data) <(ls /mnt/host-data)); do
+          cp -r /data/${dir} /mnt/host-data/.;
+        done
     volumeMounts:
     - name: uptane-data-path
       mountPath: /mnt/host-data

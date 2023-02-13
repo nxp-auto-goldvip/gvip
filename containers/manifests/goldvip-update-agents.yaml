@@ -1,4 +1,4 @@
-# Copyright 2022 NXP
+# Copyright 2022-2023 NXP
 # GoldVIP Update Agents pod - runs on the dom0 VM.
 apiVersion: v1
 kind: Pod
@@ -61,11 +61,11 @@ spec:
     command: ['/bin/bash', '-c']
     args:
       - >
-        for ua in $(comm -23 <(ls /data) <(ls /mnt/host-data)); do
-          cp -r /data/* /mnt/host-data;
+        for dir in $(comm -23 <(ls /data) <(ls /mnt/host-data)); do
+          cp -r /data/${dir} /mnt/host-data/.;
         done;
         for conf in $(comm -23 <(ls /etc/ota) <(ls /mnt/uas-config)); do
-          cp -r /etc/ota/* /mnt/uas-config;
+          cp -r /etc/ota/${conf} /mnt/uas-config/.;
         done
     volumeMounts:
     - name: uas-config-path
@@ -78,11 +78,11 @@ spec:
     command: ['/bin/bash', '-c']
     args:
       - >
-        for ua in $(comm -23 <(ls /data) <(ls /mnt/host-data)); do
-          cp -r /data/* /mnt/host-data;
+        for dir in $(comm -23 <(ls /data) <(ls /mnt/host-data)); do
+          cp -r /data/${dir} /mnt/host-data/.;
         done;
         for conf in $(comm -23 <(ls /etc/ota) <(ls /mnt/uas-config)); do
-          cp -r /etc/ota/* /mnt/uas-config;
+          cp -r /etc/ota/${conf} /mnt/uas-config/.;
         done
     volumeMounts:
     - name: uas-config-path
