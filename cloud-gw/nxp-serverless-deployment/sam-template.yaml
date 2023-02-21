@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2021-2022 NXP
+# Copyright 2021-2023 NXP
 
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
@@ -35,7 +35,7 @@ Metadata:
     LicenseUrl: LICENSE
     Labels: ['nxp', 'goldvip', 's32g', 'goldbox']
     HomePageUrl: https://github.com/nxp-auto-goldvip/gvip
-    SemanticVersion: 1.5.0
+    SemanticVersion: 1.6.0
     SourceCodeUrl: https://github.com/nxp-auto-goldvip/gvip
 
 Conditions:
