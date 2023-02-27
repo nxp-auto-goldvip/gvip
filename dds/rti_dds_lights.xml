@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<!--
+Copyright 2023 NXP
+-->
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:noNamespaceSchemaLocation="https://community.rti.com/schema/current/rti_dds_qos_profiles.xsd">
+
+    <!-- Qos Library -->
+    <qos_library name="LightsLibrary">
+        <qos_profile name="DefaultProfile"
+                     base_name="BuiltinQosLib::Generic.KeepLastReliable"
+                     is_default_qos="true">
+            <participant_factory_qos>
+                <logging>
+                    <verbosity>WARNING</verbosity>
+                    <print_format>VERBOSE_TIMESTAMPED</print_format>
+                </logging>
+            </participant_factory_qos>
+            <participant_qos>
+                <participant_name>
+                    <name>Dom0 Lights</name>
+                </participant_name>
+                <property>
+                    <value>
+                        <element>
+                            <name>dds.transport.UDPv4.builtin.parent.allow_interfaces</name>
+                            <value>169.254.11.100</value>
+                        </element>
+                    </value>
+                </property>
+                <discovery>
+                    <initial_peers>
+                        <element>builtin.udpv4://169.254.11.12</element>
+                    </initial_peers>
+                    <multicast_receive_addresses/> 
+                </discovery>
+            </participant_qos>
+        </qos_profile>
+    </qos_library>
+
+    <!-- types -->
+    <types>
+        <struct name="HeadLamp">
+            <member name="side" stringMaxLength="8" type="string" key="true"/>
+            <member name="highBeam" type="byte"/>
+            <member name="lowBeam" type="byte"/>
+            <member name="dayLight" type="byte"/>
+            <member name="fog" type="byte"/>
+            <member name="parking" type="byte"/>
+            <member name="turn" type="boolean"/>
+        </struct>
+        <struct name= "RearLight">
+          <member name="side" stringMaxLength="8" type="string" key="true"/>
+          <member name="tail" type="byte"/>
+          <member name="reverse" type="byte"/>
+          <member name="brake" type="byte"/>
+          <member name="fog" type="byte"/>
+          <member name="parking" type="byte"/>
+          <member name="turn" type="boolean"/>
+        </struct>
+        <struct name= "HazardLights">
+          <member name="on" type="boolean"/>
+        </struct>
+        <struct name= "LicensePlateLight">
+          <member name="on" type="boolean"/>
+        </struct>
+        <struct name= "StopLamp">
+          <member name="intensity" type="byte"/>
+        </struct>        
+    </types>
+
+    <!-- Domain Library -->
+    <domain_library name="LightsDomainLibrary">
+        <domain name="LightsDomain" domain_id="1">
+            <register_type name="HeadLamp" type_ref="HeadLamp"/>
+            <topic name="HeadLampTopic" register_type_ref="HeadLamp"/>
+            <register_type name="RearLight" type_ref="RearLight"/>
+            <topic name="RearLightTopic" register_type_ref="RearLight"/>
+            <register_type name="HazardLights" type_ref="HazardLights"/>
+            <topic name="HazardLightsTopic" register_type_ref="HazardLights"/>
+            <register_type name="LicensePlateLight" type_ref="LicensePlateLight"/>
+            <topic name="LicensePlateLightTopic" register_type_ref="LicensePlateLight"/>
+            <register_type name="StopLamp" type_ref="StopLamp"/>
+            <topic name="StopLampTopic" register_type_ref="StopLamp"/>
+        </domain>
+    </domain_library>
+
+    <!-- Participant library -->
+    <domain_participant_library name="LightsParticipantLibrary">
+        <domain_participant name="LightsParticipant" domain_ref="LightsDomainLibrary::LightsDomain">
+            <subscriber name="LightsSubscriber">
+                <data_reader name="HeadLampReader" topic_ref="HeadLampTopic" />
+                <data_reader name="RearLightReader" topic_ref="RearLightTopic" />
+                <data_reader name="HazardLightsReader" topic_ref="HazardLightsTopic" />
+                <data_reader name="LicensePlateLightReader" topic_ref="LicensePlateLightTopic" />
+                <data_reader name="StopLampReader" topic_ref="StopLampTopic" />
+            </subscriber>
+        </domain_participant>
+    </domain_participant_library>
+</dds>
