@@ -6,7 +6,7 @@
 Script used for deploying the Greengrass certificate on the board and
 starting a new Greengrass group deployment.
 
-Copyright 2021-2022 NXP
+Copyright 2021-2023 NXP
 """
 
 import argparse
@@ -114,6 +114,7 @@ class Greengrassv2Deployment():
                 break
 
         if not self.__thing_arn:
+            # pylint: disable=broad-exception-raised
             raise Exception("Core Thing ARN not found.")
 
     def __create_deployment(self):
@@ -208,6 +209,7 @@ class Greengrassv2Deployment():
             stderr_file.seek(0)
             stderr = stderr_file.read()
 
+        # pylint: disable=broad-exception-raised
         raise Exception(f"Failed to start Greengrass V2: {stderr}")
 
     def execute(self):
@@ -229,8 +231,18 @@ class Greengrassv2Deployment():
         if self.__setup_devices:
             provision_failed = False
             for device_data in self.__configs["devices"].values():
+                # Check whether there is a known destination to the device. If none, skip the
+                # provisioning process.
+                knwon_device_dest = [device_data.get(key, None)
+                                     for key in ["device_ip", "device_hwaddr"]]
+                if not any(knwon_device_dest):
+                    if self.__verbose:
+                        print(f"Provisioning skipped for device {device_data['thing_name']}.")
+                    continue
+
                 if self.__verbose:
                     print(f"Provisioning device {device_data['thing_name']}...")
+
                 try:
                     ClientDeviceProvisioningClient(
                         thing_name=device_data["thing_name"],
@@ -242,14 +254,16 @@ class Greengrassv2Deployment():
                         device_ip=device_data.get("device_ip", None),
                         device_hwaddr=device_data.get("device_hwaddr", None),
                         clean_provision=self.__clean_device_provision,
+                        time_sync=device_data.get("time_sync", False),
                         verbose=self.__verbose).execute()
-                # pylint: disable=broad-except
+                # pylint: disable=broad-exception-caught
                 except Exception:
                     print(f"Provision failed for device {device_data['thing_name']}.")
                     # Printing full traceback
                     traceback.print_exc()
                     provision_failed = True
             if provision_failed:
+                # pylint: disable=broad-exception-raised
                 raise Exception("Client Device Provisioning failed.")
 
     @staticmethod
@@ -327,6 +341,7 @@ def main():
     if not args.no_deploy or args.setup_devices:
         # Check if the AWS credentials were provided
         if boto3.session.Session().get_credentials() is None:
+            # pylint: disable=broad-exception-raised
             raise Exception('There are no AWS credentials defined. '
                             'Please define them via environment variables.')
 

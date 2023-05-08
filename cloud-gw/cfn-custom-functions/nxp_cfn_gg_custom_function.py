@@ -240,8 +240,7 @@ def lambda_handler(event, context):
         else:
             LOGGER.info('Unexpected Request Type!')
             cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
-
-    # pylint: disable=broad-except
+    # pylint: disable=broad-exception-caught
     except Exception as err:
         LOGGER.error("Greengrass custom function handler error: %s", err)
         response_data = {"Data": str(err)}

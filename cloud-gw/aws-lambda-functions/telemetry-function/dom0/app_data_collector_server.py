@@ -6,7 +6,7 @@
 # Receives data from local sources and sends them to the cloud.
 
 """
-Copyright 2022 NXP
+Copyright 2022-2023 NXP
 """
 
 import ipaddress
@@ -109,7 +109,7 @@ class AppDataCollectorServer():
                         self.__data[topic].extend(data_list)
                     else:
                         self.__data[topic] = data_list
-        # pylint: disable=broad-except
+        # pylint: disable=broad-exception-caught
         except Exception:
             traceback.print_exc()
             print(f"Failed to parse data: {data}")
@@ -143,7 +143,7 @@ class AppDataCollectorServer():
                 self.__sock.bind((self.__host, self.__port))
                 self.__sock.listen(self.__max_clients)
                 break
-            # pylint: disable=broad-except
+            # pylint: disable=broad-exception-caught
             except BaseException as exc:
                 print(f"Failed to open the socket for {self.__host}:{self.__port} {repr(exc)}")
                 time.sleep(10)

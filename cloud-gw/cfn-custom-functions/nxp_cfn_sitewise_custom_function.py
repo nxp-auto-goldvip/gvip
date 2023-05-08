@@ -187,7 +187,7 @@ class SitewiseHandler:
                 'asset_model_active').wait(
                     assetModelId=model['assetModelId'],
                     WaiterConfig=self.configs['WAITER_CONFIG'])
-        # pylint: disable=broad-except
+        # pylint: disable=broad-exception-caught
         except Exception as exception:
             LOGGER.error(exception)
             return None
@@ -216,7 +216,7 @@ class SitewiseHandler:
                 'asset_active').wait(
                     assetId=asset['assetId'],
                     WaiterConfig=self.configs['WAITER_CONFIG'])
-        # pylint: disable=broad-except
+        # pylint: disable=broad-exception-caught
         except Exception as exception:
             LOGGER.error(exception)
             return None
@@ -342,7 +342,7 @@ class SitewiseHandler:
                 'portal_active').wait(
                     portalId=portal['portalId'],
                     WaiterConfig=self.configs['WAITER_CONFIG'])
-        # pylint: disable=broad-except
+        # pylint: disable=broad-exception-caught
         except Exception as exception:
             LOGGER.error(exception)
             return cfnresponse.FAILED
@@ -671,7 +671,7 @@ def lambda_handler(event, context):
             LOGGER.info('Unexpected RequestType!')
             cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
 
-    # pylint: disable=broad-except
+    # pylint: disable=broad-exception-caught
     except Exception as err:
         LOGGER.error("Sitewise custom function handler error: %s", err)
 

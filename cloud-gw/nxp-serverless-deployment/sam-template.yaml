@@ -382,13 +382,21 @@ Resources:
     Properties:
       ThingName: !If [DefaultThingName, !Join ["_", [!Ref 'AWS::StackName', "CoreDeviceThing"]], !Ref CoreThingName]
 
-  SjaThing:
+  SJA1110Thing:
     Type: 'AWS::IoT::Thing'
     Properties:
       ThingName: !Join
        - "_"
        - - !Ref 'AWS::StackName'
-         - SjaThing
+         - SJA1110Thing
+
+  S32K3Thing:
+    Type: 'AWS::IoT::Thing'
+    Properties:
+      ThingName: !Join
+       - "_"
+       - - !Ref 'AWS::StackName'
+         - S32K3Thing
 
 ### Custom Resources ###
   GreengrassCustomResource:
@@ -404,15 +412,6 @@ Resources:
             - "/"
             - - thing
               - !Ref GGv2CoreDeviceThing
-      SjaThingArn: !Join
-        - ':'
-        - - 'arn:aws:iot'
-          - !Ref 'AWS::Region'
-          - !Ref 'AWS::AccountId'
-          - !Join
-            - "/"
-            - - thing
-              - !Ref SjaThing
       CoreThingName: !Ref GGv2CoreDeviceThing
       Region: !Ref 'AWS::Region'
       StackName: !Ref 'AWS::StackName'
@@ -442,19 +441,11 @@ Resources:
     Properties:
       ServiceToken: !GetAtt 'CertificateCustomFunction.Arn'
       BucketName: !Ref CertStorage
-      ThingArn:  !Join
-        - ':'
-        - - 'arn:aws:iot'
-          - !Ref 'AWS::Region'
-          - !Ref 'AWS::AccountId'
-          - !Join
-            - "/"
-            - - thing
-              - !Ref GGv2CoreDeviceThing
       Region: !Ref 'AWS::Region'
       StackName: !Ref 'AWS::StackName'
       GGv2CoreName: !Ref GGv2CoreDeviceThing
-      SjaThingName: !Ref SjaThing
+      SJA1110ThingName: !Ref SJA1110Thing
+      S32K3ThingName: !Ref S32K3Thing
       PolicyName: !Ref CertificatePolicy
 
 ### Outputs ###
@@ -487,7 +478,5 @@ Outputs:
     Value: !GetAtt SitewiseCustomResource.assetId
   SitewiseAssetModelId:
     Value: !GetAtt SitewiseCustomResource.assetModelId
-  DeviceCertificateArn:
-    Value: !GetAtt CertificateCustomResource.certificateArn
   TelemetryTopic:
     Value: !Ref TelemetryTopic

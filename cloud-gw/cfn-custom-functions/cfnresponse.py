@@ -4,7 +4,7 @@
 
 """
 A module which implements the cloudformation response utility function.
-Copyright 2021 NXP
+Copyright 2021, 2023 NXP
 """
 
 from __future__ import print_function
@@ -36,7 +36,7 @@ def send(event, context, response_status, response_data,
 
     response_body = {
         'Status': response_status,
-        'Reason': "See the details in CloudWatch Log Stream: {}".format(context.log_stream_name),
+        'Reason': f"See the details in CloudWatch Log Stream: {context.log_stream_name}",
         'PhysicalResourceId': physical_resource_id or context.log_stream_name,
         'StackId': event['StackId'],
         'RequestId': event['RequestId'],
@@ -59,5 +59,6 @@ def send(event, context, response_status, response_data,
         response = http.request(
             'PUT', response_url, headers=headers, body=json_response_body)
         print("Status code:", response.status)
-    except Exception as exception:  # pylint: disable=broad-except
+    # pylint: disable=broad-exception-caught
+    except Exception as exception:
         print("send(..) failed executing http.request(..):", exception)

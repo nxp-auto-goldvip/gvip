@@ -123,7 +123,7 @@ class TelemetryAggregator:
 
                 if config.get(VERBOSE_FLAG, False):
                     LOGGER.info("Updated system telemetry: %s\n", tot_stats)
-            # pylint: disable=broad-except
+            # pylint: disable=broad-exception-caught
             except Exception as exception:
                 LOGGER.error("Failed to retrieve telemetry data: %s", exception)
 

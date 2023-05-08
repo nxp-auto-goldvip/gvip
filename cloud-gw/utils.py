@@ -5,7 +5,7 @@
 """
 Auxiliary functions used for the provisioning scripts.
 
-Copyright 2021-2022 NXP
+Copyright 2021-2023 NXP
 """
 
 import os
@@ -57,7 +57,7 @@ class Utils():
         while retries:
             try:
                 ret = func(*args)
-            # pylint: disable=broad-except
+            # pylint: disable=broad-exception-caught
             except Exception:
                 retries -= 1
                 time.sleep(5)
@@ -79,7 +79,7 @@ class Utils():
         try:
             print('Checking the internet connection...')
             Utils.execute_command(f'ping -c4 -I{netif} 8.8.8.8')
-        # pylint: disable=broad-except
+        # pylint: disable=broad-exception-caught
         except Exception:
             print('Setting up the network interface...')
 
@@ -130,7 +130,7 @@ class Utils():
             print('Synchronizing the system datetime with the ntp servers...')
             # Start the ntp to force the timedate sync.
             Utils.execute_command(sync_system_timedate, timeout=60)
-        # pylint: disable=broad-except
+        # pylint: disable=broad-exception-caught
         except Exception as exception:
             print(f'Datetime sync failed: {exception}')
         finally:

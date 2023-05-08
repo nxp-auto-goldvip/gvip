@@ -77,7 +77,7 @@ class DDSTelemetryPublisher():
 
                 self.send(AGGREGATOR.get_stats())
                 time.sleep(1)
-            # pylint: disable=broad-except
+            # pylint: disable=broad-exception-caught
             except Exception as exception:
                 LOGGER.error("Failed to send data, exception: %s", exception)
 

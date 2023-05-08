@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2021-2022 NXP
+Copyright 2021-2023 NXP
 """
 
 import logging
@@ -112,7 +112,7 @@ class M7CoreMovingAverage(threading.Thread):
                     LOCK.release()
 
                 time.sleep(self.m7_status_query_time_interval)
-        # pylint: disable=broad-except
+        # pylint: disable=broad-exception-caught
         except Exception as exception:
             LOGGER.error("M7 core stat error: %s", exception)
             os.close(self.file)

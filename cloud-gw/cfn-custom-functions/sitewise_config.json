@@ -1513,6 +1513,203 @@
             }
           }
         ]
+      },
+      "s32k3_db": {
+        "name": "XS32K3X4EVB-T172 Dashboard",
+        "topic_rules": [
+          {
+            "mqtt_topic_suffix": "/s32k3",
+            "use_cloud_timestamp": true,
+            "measurements": {
+              "button0": {
+                "name": "User Push Button 0",
+                "unit": "Value"
+              },
+              "button1": {
+                "name": "User Push Button 1",
+                "unit": "Value"
+              },
+              "pot": {
+                "name": "ADC Potentiometer",
+                "unit": "Voltage"
+              },
+              "temp": {
+                "name": "S32K3 Chip Temperature",
+                "unit": "Celsius"
+              },
+              "tcpxmit": {
+                "name": "Transmitted TCP packets",
+                "unit": "Packets"
+              },
+              "tcprecv": {
+                "name": "Received TCP packets",
+                "unit": "Packets"
+              },
+              "tcpdrop": {
+                "name": "Dropped TCP packets",
+                "unit": "Packets"
+              },
+              "ipxmit": {
+                "name": "Transmitted IP packets",
+                "unit": "Packets"
+              },
+              "iprecv": {
+                "name": "Received IP packets",
+                "unit": "Packets"
+              },
+              "ipdrop": {
+                "name": "Dropped IP packets",
+                "unit": "Packets"
+              },
+              "dtcpxmit": {
+                "name": "Delta Transmitted TCP packets",
+                "unit": "Packets"
+              },
+              "dtcprecv": {
+                "name": "Delta Received TCP packets",
+                "unit": "Packets"
+              },
+              "dtcpdrop": {
+                "name": "Delta Dropped TCP packets",
+                "unit": "Packets"
+              },
+              "dipxmit": {
+                "name": "Delta Transmitted IP packets",
+                "unit": "Packets"
+              },
+              "diprecv": {
+                "name": "Delta Received IP packets",
+                "unit": "Packets"
+              },
+              "dipdrop": {
+                "name": "Delta Dropped IP packets",
+                "unit": "Packets"
+              }
+            }
+          }
+        ],
+        "widgets": [
+          {
+            "x": 0,
+            "y": 0,
+            "height": 3,
+            "width": 3,
+            "title": "TCP Traffic (Packets)",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "Transmit": {
+                "label": "Transmit",
+                "property_name": "Delta Transmitted TCP packets"
+              },
+              "Receive": {
+                "label": "Receive",
+                "property_name": "Delta Received TCP packets"
+              },
+              "Drop": {
+                "label": "Drop",
+                "property_name": "Delta Dropped TCP packets"
+              }
+            }
+          },
+          {
+            "x": 3,
+            "y": 0,
+            "height": 3,
+            "width": 3,
+            "title": "IP Traffic (Packets)",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "Transmit": {
+                "label": "Transmit",
+                "property_name": "Delta Transmitted IP packets"
+              },
+              "Receive": {
+                "label": "Receive",
+                "property_name": "Delta Received IP packets"
+              },
+              "Drop": {
+                "label": "Drop",
+                "property_name": "Delta Dropped IP packets"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 3,
+            "height": 1,
+            "width": 3,
+            "title": "TCP Counters (Packets)",
+            "type": "monitor-kpi",
+            "metrics": {
+              "Transmit": {
+                "label": "Transmit",
+                "property_name": "Transmitted TCP packets"
+              },
+              "Receive": {
+                "label": "Receive",
+                "property_name": "Received TCP packets"
+              },
+              "Drop": {
+                "label": "Drop",
+                "property_name": "Dropped TCP packets"
+              }
+            }
+          },
+          {
+            "x": 3,
+            "y": 3,
+            "height": 1,
+            "width": 3,
+            "title": "IP Counters (Packets)",
+            "type": "monitor-kpi",
+            "metrics": {
+              "Transmit": {
+                "label": "Transmit",
+                "property_name": "Transmitted IP packets"
+              },
+              "Receive": {
+                "label": "Receive",
+                "property_name": "Received IP packets"
+              },
+              "Drop": {
+                "label": "Drop",
+                "property_name": "Dropped IP packets"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 6,
+            "height": 3,
+            "width": 3,
+            "title": "User Push Buttons",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "button0": {
+                "label": "Button 0",
+                "property_name": "User Push Button 0"
+              },
+              "button1": {
+                "label": "Button 1",
+                "property_name": "User Push Button 1"
+              }
+            }
+          },
+          {
+            "x": 3,
+            "y": 6,
+            "height": 3,
+            "width": 3,
+            "title": "ADC Potentiometer",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "potentiometer": {
+                "label": "Voltage",
+                "property_name": "ADC Potentiometer"
+              }
+            }
+          }
+        ]
       }
     }
   }

@@ -68,11 +68,19 @@
   },
   "devices": {
     "sja1110": {
-      "thing_name": "STACK_NAME_SjaThing",
+      "thing_name": "STACK_NAME_SJA1110Thing",
       "mqtt_topic": "TELEMETRY_TOPIC/sja1110",
       "device_port": 8080,
       "device_ip": null,
       "device_hwaddr": "00:04:9f:06:12:00"
+    },
+    "s32k3": {
+      "thing_name": "STACK_NAME_S32K3Thing",
+      "mqtt_topic": "TELEMETRY_TOPIC/s32k3",
+      "device_port": 8080,
+      "device_ip": null,
+      "device_hwaddr": null,
+      "time_sync": true
     }
   }
 }

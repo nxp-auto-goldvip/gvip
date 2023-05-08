@@ -92,7 +92,7 @@ def publish_to_topic(topic, payload, qos=model.QOS.AT_LEAST_ONCE):
         ))
 
         operation.get_response().result(timeout=1.0)
-    # pylint: disable=broad-except
+    # pylint: disable=broad-exception-caught
     except Exception as exception:
         LOGGER.error("Failed to publish message: %s", repr(exception))
 
@@ -219,7 +219,7 @@ def telemetry_collect_and_publish(verbose=False):
                         payload=json.dumps(data).encode())
                     if verbose:
                         LOGGER.info("Sent app data to topic: %s data: %s", topic, data)
-    # pylint: disable=broad-except
+    # pylint: disable=broad-exception-caught
     except Exception as exception:
         LOGGER.error("Failed to get telemetry: %s \nData received from dom0: %s", exception, telemetry_data)
 
@@ -272,7 +272,7 @@ class StreamHandler(client.SubscribeToIoTCoreStreamHandler):
                 VERBOSE = \
                     extract_parameter(message=message, parameter_name=VERBOSE_FLAG,
                                       parameter_type=bool, default=VERBOSE) # TODO, send verbosity flag to dom0 with dds
-        # pylint: disable=broad-except
+        # pylint: disable=broad-exception-caught
         except Exception as exception:
             LOGGER.error(exception)
 
@@ -295,7 +295,7 @@ def listen_for_config():
         # Keep this running forever
         while True:
             time.sleep(10)
-    # pylint: disable=broad-except
+    # pylint: disable=broad-exception-caught
     except Exception as exception:
         LOGGER.error(exception)
         # Close the connection and restart.

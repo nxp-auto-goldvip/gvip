@@ -8,7 +8,7 @@ connect to the greengrass core on v2xdomu.
 
 The provisioning data is stored for subsequent connections.
 
-Copyright 2022 NXP
+Copyright 2022-2023 NXP
 """
 
 import ipaddress
@@ -22,6 +22,7 @@ import time
 import os
 
 from io import BytesIO
+from string import Template
 
 import requests
 import boto3
@@ -49,10 +50,10 @@ class ClientDeviceProvisioningClient():
     DEVICE_IP = "Device ip"
     DEVICE_MAC = "Device mac"
 
-    # The archive stored in a s3 bucket which contains the certificate
-    DEVICE_CERTIFICATE = "Device_Certificate.tar.gz"
     # Name of the client device data file
     DATA_FILE = "/home/root/cloud-gw/client_device_data.json"
+
+    CERTS_ARCHIVE_TEMPLATE = Template("${thing}_certificates.tar.gz")
 
     # pylint: disable=too-many-arguments
     def __init__(
@@ -62,18 +63,21 @@ class ClientDeviceProvisioningClient():
             device_port, mqtt_port,
             device_ip=None, device_hwaddr=None,
             clean_provision=False,
+            time_sync=False,
             verbose=True):
         """
         :param thing_name: Name of the Decive Thing to connect to.
-        :param mqtt_topic: Mqtt topic for the device.
+        :param mqtt_topic: MQTT topic for the device.
         :param cfn_stack_name: Cloudformation stack name.
         :param aws_region_name: AWS region name.
         :param device_port: Eth port to connect to the device.
-        :param mqtt_port: Mqtt port.
-        :param device_ip: Ip address of the device thing.
-        :param device_hwaddr: Mac address of the device thing.
+        :param mqtt_port: MQTT port.
+        :param device_ip: IP address of the device thing.
+        :param device_hwaddr: MAC address of the device thing.
         :param clean_provision: Forces the download of the provisioning data
                                 even if it has already been downloaded.
+        :param time_sync: Synchronize the date and time between the core and
+                          client devices.
         :param verbose: Verbosity flag.
         """
 
@@ -84,8 +88,6 @@ class ClientDeviceProvisioningClient():
             cfn_stack_outputs, 'CoreThingName')
         self.__s3_bucket_name = Utils.get_cfn_output_value(
             cfn_stack_outputs, 'CertificateBucket')
-        self.__certificate_arn = Utils.get_cfn_output_value(
-            cfn_stack_outputs, 'DeviceCertificateArn')
 
         self.data = {}
         self.client_device_data = {}
@@ -108,14 +110,18 @@ class ClientDeviceProvisioningClient():
         self.__device_port = device_port
         self.__mqtt_port = mqtt_port
         self.__clean_provision = clean_provision
+        self.__time_sync = time_sync
         self.__verbose = verbose
         self.__gg_ip = None
+
+        self.__certs_archive = self.CERTS_ARCHIVE_TEMPLATE.substitute(thing=thing_name)
 
         if device_ip:
             self.client_device_data[self.DEVICE_IP] = device_ip
         elif device_hwaddr:
             self.client_device_data[self.DEVICE_MAC] = device_hwaddr
         else:
+            # pylint: disable=broad-exception-raised
             raise Exception("Must provide either IP / MAC address of the device in the deployment configuration.")
 
     def __attach_thing_to_ggcore(self):
@@ -131,15 +137,6 @@ class ClientDeviceProvisioningClient():
                 }
             ],
             coreDeviceThingName=self.__ggv2_core_name
-        )
-
-    def __attach_device_to_certificate(self):
-        """
-        Attach the core device thing to the certificate.
-        """
-        boto3.client('iot').attach_thing_principal(
-            thingName=self.__thing_name,
-            principal=self.__certificate_arn
         )
 
     @staticmethod
@@ -200,9 +197,10 @@ class ClientDeviceProvisioningClient():
                 continue
 
             if (ipaddress.ip_address(self.client_device_data[self.DEVICE_IP]) in
-                ipaddress.ip_network(f"{ip_addr}/{mask}", strict=False)):
+                    ipaddress.ip_network(f"{ip_addr}/{mask}", strict=False)):
                 return ip_addr
 
+        # pylint: disable=broad-exception-raised
         raise Exception("Could not find local ip address.")
 
     def __find_device_ip(self, nb_tries=3):
@@ -258,6 +256,7 @@ class ClientDeviceProvisioningClient():
                 if i < nb_tries - 1 and self.__verbose:
                     print("Device ip not found, retrying...")
 
+        # pylint: disable=broad-exception-raised
         raise Exception(f"Could not find ip address of device {self.__thing_name}.")
 
     def __get_endpoint(self):
@@ -290,10 +289,10 @@ class ClientDeviceProvisioningClient():
 
         s3_client = boto3.client('s3')
 
-        Utils.check_certificates_tarball(s3_client, self.__s3_bucket_name, self.DEVICE_CERTIFICATE)
+        Utils.check_certificates_tarball(s3_client, self.__s3_bucket_name, self.__certs_archive)
 
         gzip = BytesIO()
-        s3_client.download_fileobj(self.__s3_bucket_name, self.DEVICE_CERTIFICATE, gzip)
+        s3_client.download_fileobj(self.__s3_bucket_name, self.__certs_archive, gzip)
         gzip.seek(0)
 
         with tarfile.open(fileobj=gzip, mode='r:gz') as tar:
@@ -303,6 +302,7 @@ class ClientDeviceProvisioningClient():
                         tar.extractfile(member).read().decode("utf-8")
 
         if not all(self.client_device_data[self.CERT]):
+            # pylint: disable=broad-exception-raised
             raise Exception("One or more certificates couldn't be found.")
 
         if self.__verbose:
@@ -342,7 +342,7 @@ class ClientDeviceProvisioningClient():
                 except requests.exceptions.RequestException as err:
                     if self.__verbose:
                         print(f"The request for thing discovery failed (reason: {err}). "
-                               "Retrying...")
+                              "Retrying...")
 
                 # Save the Greengrass Certitficate Authority from the request.
                 response = json.loads(ret.text)
@@ -359,6 +359,7 @@ class ClientDeviceProvisioningClient():
                     if i < nb_retries - 1 and self.__verbose:
                         print("Certificate Authority not found, retrying...")
 
+        # pylint: disable=broad-exception-raised
         raise Exception(f"Greengrass CA not found in request response: {response}")
 
     def provision(self):
@@ -384,6 +385,11 @@ class ClientDeviceProvisioningClient():
             bytes(self.__gg_ip, 'utf-8'),
         ]
 
+        # Optional: ensure the time on the client devices is synchronized so
+        # that certificates are valid
+        if self.__time_sync:
+            outbound_data.append(int(time.time()).to_bytes(4, 'little'))
+
         for data in outbound_data:
             payload_size = struct.pack("i", len(data))
 
@@ -397,6 +403,7 @@ class ClientDeviceProvisioningClient():
             # Check for ACK.
             if recv != bytes(ack, 'utf-8'):
                 sock.close()
+                # pylint: disable=broad-exception-raised
                 raise Exception(f"Send failed. Ack message: {recv}")
 
         if self.__verbose:
@@ -418,7 +425,7 @@ class ClientDeviceProvisioningClient():
         Retrieves the required data to be provisioned to a client device.
         """
         self.__attach_thing_to_ggcore()
-        self.__attach_device_to_certificate()
+
         # Retrieve the device ip using the mac, only if the mac is specified.
         if self.client_device_data.get(self.DEVICE_MAC, None):
             self.__find_device_ip()
@@ -426,6 +433,7 @@ class ClientDeviceProvisioningClient():
             # Find the local ip of the interface connected to the client device.
             self.__gg_ip = self.__find_local_ip()
             self.__update_connectivity_info()
+
         self.__get_endpoint()
         self.__extract_certificate()
         self.__get_greengrass_ca()
