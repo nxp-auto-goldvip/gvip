@@ -165,6 +165,8 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:PutRetentionPolicy
                 Resource: arn:aws:logs:*:*:*
               - Effect: Allow
                 Action:
@@ -450,6 +452,7 @@ Resources:
             - - thing
               - !Ref GGv2CoreDeviceThing
       Region: !Ref 'AWS::Region'
+      StackName: !Ref 'AWS::StackName'
       GGv2CoreName: !Ref GGv2CoreDeviceThing
       SjaThingName: !Ref SjaThing
       PolicyName: !Ref CertificatePolicy

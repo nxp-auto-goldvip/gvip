@@ -11,19 +11,15 @@ which routes the telemetry data from AWS IoT Core to SiteWise.
 When 'delete' is invoked it handles the deletion of all resources
 created by this function.
 
-Copyright 2021-2022 NXP
+Copyright 2021-2023 NXP
 """
 import json
-import logging
 import time
 
 import boto3
 import cfnresponse
 
-from cfn_utils import Utils
-
-LOGGER = logging.getLogger()
-LOGGER.setLevel(logging.INFO)
+from cfn_utils import Utils, LOGGER
 
 
 class SitewiseHandler:
@@ -627,11 +623,17 @@ class SitewiseHandler:
                         ruleName=rule['ruleName']
                     )
 
-    def delete(self, ids):
+    def delete(self, event):
         """
         Initiates the deletion of the SiteWise resources.
-        :param ids: dictionary of resource ids.
+        :param event: The MQTT message in json dictionary format.
         """
+        ids = Utils.decode_ids(event['PhysicalResourceId'])
+
+        Utils.set_cloudwatch_retention(
+            event['ResourceProperties']['StackName'],
+            event['ResourceProperties']['Region'])
+
         SitewiseHandler.delete_monitor(ids)
         self.delete_sitewise_asset(ids)
         SitewiseHandler.delete_topic_rules(ids)
@@ -661,8 +663,7 @@ def lambda_handler(event, context):
                 event, context,
                 cfnresponse.SUCCESS, response_data)
         elif event['RequestType'] == 'Delete':
-            ids = Utils.decode_ids(event['PhysicalResourceId'])
-            sitewise_handler.delete(ids)
+            sitewise_handler.delete(event)
             cfnresponse.send(
                 event, context,
                 cfnresponse.SUCCESS, response_data)

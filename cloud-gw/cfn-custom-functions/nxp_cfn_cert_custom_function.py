@@ -9,11 +9,10 @@ When create is invoked it generates a certificate for the sja thing,
 one for the greengrass thing, and packs them in a tar archive and stores it in a S3 bucket.
 When delete is invoked it empties the bucket and deletes the certificate from the account.
 
-Copyright 2021-2022 NXP
+Copyright 2021-2023 NXP
 """
 
 import json
-import logging
 import tempfile
 import tarfile
 import urllib.request
@@ -21,8 +20,7 @@ import urllib.request
 import boto3
 import cfnresponse
 
-LOGGER = logging.getLogger()
-LOGGER.setLevel(logging.INFO)
+from cfn_utils import Utils, LOGGER
 
 
 class CertificateHandler:
@@ -121,6 +119,10 @@ class CertificateHandler:
         policy_name = event['ResourceProperties']['PolicyName']
 
         LOGGER.info("Initiated certificate deletion")
+
+        Utils.set_cloudwatch_retention(
+            event['ResourceProperties']['StackName'],
+            event['ResourceProperties']['Region'])
 
         CertificateHandler.S3_CLIENT.delete_objects(
             Bucket=bucket_name,

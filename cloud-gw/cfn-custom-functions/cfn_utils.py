@@ -5,9 +5,15 @@
 """
 Functions to encode (and decode) a dictionary of ids into a string.
 
-Copyright 2021-2022 NXP
+Copyright 2021-2023 NXP
 """
 import json
+import logging
+
+import boto3
+
+LOGGER = logging.getLogger()
+LOGGER.setLevel(logging.INFO)
 
 class Utils:
     """
@@ -35,6 +41,26 @@ class Utils:
         config[Utils.DASHBOARD_LABEL].update(configs[device_type][Utils.DASHBOARD_LABEL])
 
         return config
+
+    @staticmethod
+    def set_cloudwatch_retention(stack_name, region, retention_days=14):
+        """
+        Retrieves the cloudwatch logs associated with the current cloudformation stack
+        and sets them to expire after a number of days.
+        :param stack_name: The name of the current cloudforamtion stack.
+        :param region: AWS region name.
+        :param retention_days: Number of days after which the logs will be deleted.
+                               Possible values are: [1, 3, 5, 7, 14, 30, 60, 90, 120, ...]
+        """
+        try:
+            client = boto3.client('logs', region_name=region)
+            for page in client.get_paginator('describe_log_groups').paginate(logGroupNamePattern=stack_name):
+                for log in page['logGroups']:
+                    client.put_retention_policy(logGroupName=log['logGroupName'], retentionInDays=retention_days)
+        # pylint: disable=broad-exception-caught
+        except Exception as err:
+            LOGGER.error("Failed to set retention in cloudwatch logs: %s", err)
+
 
     @staticmethod
     def encode_ids(ids_dict):
