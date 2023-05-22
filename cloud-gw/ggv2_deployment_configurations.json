@@ -81,6 +81,14 @@
       "device_ip": null,
       "device_hwaddr": null,
       "time_sync": true
+    },
+    "s32z2": {
+      "thing_name": "STACK_NAME_S32Z2Thing",
+      "mqtt_topic": "TELEMETRY_TOPIC/s32z2",
+      "device_port": 8080,
+      "device_ip": null,
+      "device_hwaddr": null,
+      "time_sync": true
     }
   }
 }

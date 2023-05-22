@@ -1710,6 +1710,120 @@
             }
           }
         ]
+      },
+      "s32z_db": {
+        "name": "GreenVIP dashboard",
+        "topic_rules": [
+            {
+            "mqtt_topic_suffix": "/s32z2",
+            "measurements": {
+              "rtu_0_c0_core_load": {
+                "name": "RTU 0 C0 core load",
+                "unit": "%"
+              },
+              "rtu_0_c1_core_load": {
+                "name": "RTU 0 C1 core load",
+                "unit": "%"
+              },
+              "rtu_0_c2_core_load": {
+                "name": "RTU 0 C2 core load",
+                "unit": "%"
+              },
+              "rtu_0_c3_core_load": {
+                "name": "RTU 0 C3 core load",
+                "unit": "%"
+              },
+              "rtu_1_c0_vm1_core_load": {
+                "name": "RTU 1 C0 VM1 core load",
+                "unit": "%"
+              },
+              "rtu_1_c0_vm2_core_load": {
+                "name": "RTU 1 C0 VM2 core load",
+                "unit": "%"
+              },
+              "rtu_1_c1_vm1_core_load": {
+                "name": "RTU 1 C1 VM1 core load",
+                "unit": "%"
+              },
+              "rtu_1_c1_vm2_core_load": {
+                "name": "RTU 1 C1 VM2 core load",
+                "unit": "%"
+              },
+              "smu_app_core_load": {
+                "name": "SMU APP core load",
+                "unit": "%"
+              }
+            }
+          }
+        ],
+        "widgets": [
+          {
+            "x": 0,
+            "y": 0,
+            "height": 3,
+            "width": 6,
+            "title": "GreenVIP RTU 0 core loads",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "RTU 0 C0 core load": {
+                "label": "RTU 0 C0 core load",
+                "property_name": "RTU 0 C0 core load"
+              },
+              "RTU 0 C1 core load": {
+                "label": "RTU 0 C1 core load",
+                "property_name": "RTU 0 C1 core load"
+              },
+              "RTU 0 C2 core load": {
+                "label": "RTU 0 C2 core load",
+                "property_name": "RTU 0 C2 core load"
+              },
+              "RTU 0 C3 core load": {
+                "label": "RTU 0 C3 core load",
+                "property_name": "RTU 0 C3 core load"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 3,
+            "height": 3,
+            "width": 6,
+            "title": "GreenVIP RTU 1 core loads",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "RTU 1 C0 VM1 core load": {
+                "label": "RTU 1 C0 VM1 core load",
+                "property_name": "RTU 1 C0 VM1 core load"
+              },
+              "RTU 1 C0 VM2 core load": {
+                "label": "RTU 1 C0 VM2 core load",
+                "property_name": "RTU 1 C0 VM2 core load"
+              },
+              "RTU 1 C1 VM1 core load": {
+                "label": "RTU 1 C1 VM1 core load",
+                "property_name": "RTU 1 C1 VM1 core load"
+              },
+              "RTU 1 C1 VM2 core load": {
+                "label": "RTU 1 C1 VM2 core load",
+                "property_name": "RTU 1 C1 VM2 core load"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 6,
+            "height": 3,
+            "width": 6,
+            "title": "SMU Core Load",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "SMU APP core load": {
+                "label": "SMU APP core load",
+                "property_name": "SMU APP core load"
+              }
+            }
+          }
+        ]
       }
     }
   }

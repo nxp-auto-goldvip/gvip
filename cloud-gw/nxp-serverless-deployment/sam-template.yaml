@@ -398,6 +398,14 @@ Resources:
        - - !Ref 'AWS::StackName'
          - S32K3Thing
 
+  S32Z2Thing:
+    Type: 'AWS::IoT::Thing'
+    Properties:
+      ThingName: !Join
+       - "_"
+       - - !Ref 'AWS::StackName'
+         - S32Z2Thing
+
 ### Custom Resources ###
   GreengrassCustomResource:
     Type: AWS::CloudFormation::CustomResource
@@ -446,6 +454,7 @@ Resources:
       GGv2CoreName: !Ref GGv2CoreDeviceThing
       SJA1110ThingName: !Ref SJA1110Thing
       S32K3ThingName: !Ref S32K3Thing
+      S32Z2ThingName: !Ref S32Z2Thing
       PolicyName: !Ref CertificatePolicy
 
 ### Outputs ###
