@@ -153,7 +153,7 @@ def aggregate_telemetry(telemetry_data):
     system_telemetry = {**data, **count_dict, **avg_dict}
     return system_telemetry, app_data, idps_data
 
-#pylint: disable=too-many-locals
+#pylint: disable=too-many-locals, too-many-branches
 def telemetry_collect_and_publish(verbose=False):
     """
     :param verbose: Verbosity flag
@@ -208,7 +208,11 @@ def telemetry_collect_and_publish(verbose=False):
 
                 for data in data_list:
                     # Add the timestamp to the data.
-                    data["Timestamp"] = int(timestamp)
+                    if isinstance(data, dict):
+                        data["Timestamp"] = int(timestamp)
+                    else:
+                        LOGGER.error("Invalid app data received, must be dictionary.")
+                        continue
 
                     publish_to_topic(
                         topic=topic,
