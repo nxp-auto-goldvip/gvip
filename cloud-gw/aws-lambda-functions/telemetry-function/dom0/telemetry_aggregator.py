@@ -24,15 +24,19 @@ from temperature_stats import TemperatureStats
 from telemetry import M7CoreMovingAverage
 
 
-# Telemetry parameters
-# time interval between MQTT packets
-TELEMETRY_INTERVAL = "telemetry_interval"
-
+# Configuration options
+# Time interval between consecutive MQTT packets
+TELEMETRY_INTERVAL = config.get("telemetry_interval", 1)
+# List of interfaces for which network statistics are gathered
+MONITORED_NETIFS = config.get("monitored_netifs", [])
+# List of aliases for the monitored interfaces
+MONITORED_NETIFS_ALIASES = config.get("monitored_netifs_aliases", None)
 # M7 core status query time
-M7_STAT_QUERY_TIME = "m7_status_query_time_interval"
-
-# Logger verbosity falg
-VERBOSE_FLAG = "verbose"
+M7_STAT_QUERY_TIME = config.get("m7_status_query_time_interval", 0.1)
+# Logger verbosity flag
+VERBOSE_FLAG = config.get("verbose", False)
+# Device name
+DEVICE = config.get("device", None)
 
 # A lock for accessing the stats dict.
 STATS_LOCK = threading.Lock()
@@ -51,15 +55,15 @@ class TelemetryAggregator:
     Collects telemetry data from the system and puts data into a json format
     """
     def __init__(self):
-        self.__telemetry_interval = config[TELEMETRY_INTERVAL]
+        self.__telemetry_interval = TELEMETRY_INTERVAL
         # Retrieve platform information
         self.__current_platform = platform.platform()
         # Get instances for telemetry data
         self.__cpu_stats = CpuStats()
-        self.__net_stats = NetStats(["pfe2", "pfe0"])
+        self.__net_stats = NetStats(MONITORED_NETIFS, MONITORED_NETIFS_ALIASES)
         self.__m7_core_load = M7CoreMovingAverage(
-            self.__telemetry_interval / config[M7_STAT_QUERY_TIME],
-            config[M7_STAT_QUERY_TIME])
+            self.__telemetry_interval / M7_STAT_QUERY_TIME,
+            M7_STAT_QUERY_TIME)
         self.__mem_stats = MemStats()
         self.__temperature_stats = TemperatureStats()
         self.__idps_stats = IdpsStats()
@@ -92,7 +96,7 @@ class TelemetryAggregator:
 
                 platform_name = {
                     "platform" : self.__current_platform,
-                    "device" : config["device"],
+                    "device" : DEVICE,
                     "board_uuid_high" : self.__board_uuid[0],
                     "board_uuid_low" : self.__board_uuid[1],
                 }

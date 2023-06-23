@@ -7,6 +7,11 @@
         "telemetry_interval": 1,
         "m7_status_query_time_interval": 0.01,
         "m7_window_size_multiplier": 2,
+        "monitored_netifs": ["pfe2sl", "pfe0sl"],
+        "monitored_netifs_aliases": {
+            "pfe2sl": "pfe2",
+            "pfe0sl": "pfe0"
+        },
         "device": null,
         "verbose": false
     },

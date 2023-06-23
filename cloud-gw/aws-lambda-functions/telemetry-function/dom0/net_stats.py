@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2020-2021 NXP
+Copyright 2020-2021,2023 NXP
 """
 
 from time import time
@@ -15,31 +15,30 @@ class NetStats:
     """
     Reads and processes network stats from /proc/net/dev.
     """
-    def __init__(self, desired_ifaces=None):
+    def __init__(self, monitored_ifaces=None, aliases=None):
         self._prev_net_stats = None
         self._net_load = {}
         self.previous_timestamp = None
         self.current_timestamp = None
 
-        if not desired_ifaces:
-            self._desired_ifaces = []
+        if not monitored_ifaces:
+            self._monitored_ifaces = []
         else:
-            self._desired_ifaces = desired_ifaces
+            self._monitored_ifaces = monitored_ifaces
+
+        if not aliases:
+            self._aliases = {}
+        else:
+            self._aliases = aliases
 
     # pylint: disable=too-many-locals
-    def _read_stats(self, desired_ifaces):
+    def _read_stats(self):
         """
         Reads network statistics from /proc/net/dev file
-
-        :param desired_ifaces: A list that specifies the desired interfaces.
-            If empty the function will return all interfaces.
-        :type desired_faces: List[str]
-        :returns: a dictionary of stats.
-        :rtype: dict
         """
         stat_dict = {}
 
-        desired_ifaces = set(desired_ifaces)
+        desired_ifaces = set(self._monitored_ifaces)
 
         self.previous_timestamp = self.current_timestamp
         self.current_timestamp = time()
@@ -74,7 +73,7 @@ class NetStats:
                 values = values.split()
 
                 for i, col in enumerate(cols):
-                    stat = iface + "_" + col
+                    stat = self._aliases.get(iface, iface) + "_" + col
                     val = int(values[i])
                     stat_dict[stat] = val
 
@@ -113,7 +112,7 @@ class NetStats:
         and the stat loads for the interval between the last two
         interrogations.
         """
-        stat_dict = self._read_stats(self._desired_ifaces)
+        stat_dict = self._read_stats()
 
         if self._prev_net_stats is None:
             self._prev_net_stats = stat_dict
