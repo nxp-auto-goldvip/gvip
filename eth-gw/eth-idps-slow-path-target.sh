@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2021 NXP
+# Copyright 2021,2023 NXP
 #
 # This script implements the target machine logic for the 
 # L3 forwarding slow path scenario with IDPS.
@@ -14,7 +14,7 @@
 source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
 # Global constants
-readonly eth_idps_rx="pfe2"
+readonly eth_idps_rx="${PFE2_NETIF}"
 
 # Default values
 target_message_count=2967

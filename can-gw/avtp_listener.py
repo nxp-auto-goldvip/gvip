@@ -7,7 +7,7 @@ and log it to a file. By default, the program listens on aux0 interface
 
 Example usage: python3 avtp_listener.py -i <interface>
 
-Copyright 2021 NXP
+Copyright 2021,2023 NXP
 """
 import argparse
 import socket
@@ -85,7 +85,7 @@ def main():
     Runnable
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--interface", dest="interface", type=str, default='aux0')
+    parser.add_argument("--interface", dest="interface", type=str, default='aux0sl')
     args = parser.parse_args()
 
     with socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(AVTP_ETHER_TYPE)) \

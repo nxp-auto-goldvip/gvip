@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2020-2021 NXP
+# Copyright 2020-2021,2023 NXP
 #
 # This script implements the target machine logic for the L2/L3 forwarding slow path scenario.
 #
@@ -27,8 +27,8 @@ _setup_l3_router() {
     _bring_up_interface
 
     # Set ip for each interface
-    _set_ip "pfe0" "10.0.1.2"
-    _set_ip "pfe2" "192.168.100.2"
+    _set_ip "${PFE0_NETIF}" "10.0.1.2"
+    _set_ip "${PFE2_NETIF}" "192.168.100.2"
 
     #Enable forwarding
     echo 1 > /proc/sys/net/ipv4/ip_forward

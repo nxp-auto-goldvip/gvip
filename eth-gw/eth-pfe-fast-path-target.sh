@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2021-2022 NXP
+# Copyright 2021-2023 NXP
 #
 # This script implements the target machine logic for the L2/L3 forwarding
 # fast path scenario using the PFE interfaces of the board.
@@ -36,13 +36,13 @@ _setup_l2_switch() {
 # Set layer three routing for the two local PFE interfaces.
 _setup_l3_router() {
     # Set ip for each interface.
-    _set_ip "pfe0" "10.0.1.2"
-    _set_ip "pfe2" "192.168.100.2"
+    _set_ip "${PFE0_NETIF}" "10.0.1.2"
+    _set_ip "${PFE2_NETIF}" "192.168.100.2"
 
     # kube-proxy is inserting a rule that drop packets in "INVALID" state, affecting the L3
     # router in TCP mode. Prepend rules to accept all the traffic that reside on
     # pfe interfaces to avoid the iptables rules inserted by Kubernetes components.
-    for netif in "pfe0" "pfe2"; do
+    for netif in "${PFE0_NETIF}" "${PFE2_NETIF}"; do
         for iptables_chain in "INPUT" "FORWARD"; do
             iptables -I "${iptables_chain}" 1 -i "${netif}" -j ACCEPT
         done
@@ -79,7 +79,7 @@ OPTIONS:
         -L <layer_number>       specify network layer to set up
                                 layer_number=2 for L2-Switch
                                              3 for L3-Router (default)
-        -m0	<host_mac_0>		Host MAC adress connected to pfe0
+        -m0 <host_mac_0>		Host MAC adress connected to pfe0
         -m1 <host_mac_1>		Host MAC adress connected to pfe2
         -V <VLAN ID>			VLAN ID for L2 bridge
         -h                      help"
