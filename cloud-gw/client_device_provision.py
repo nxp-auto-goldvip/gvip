@@ -203,7 +203,7 @@ class ClientDeviceProvisioningClient():
         # pylint: disable=broad-exception-raised
         raise Exception("Could not find local ip address.")
 
-    def __find_device_ip(self, nb_tries=3):
+    def __find_device_ip(self, nb_tries=4):
         """
         Discover the device ip knowing its mac address.
         :param nb_tries: number of tries to get the device ip.
@@ -233,7 +233,7 @@ class ClientDeviceProvisioningClient():
 
                 try:
                     arp = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=f"{ip_addr}/{mask}")
-                    answered = srp(arp, iface=netif, timeout=20, verbose=True)[0]
+                    answered = srp(arp, iface=netif, timeout=10 * (i + 1), verbose=True)[0]
                 except OSError:
                     print("Network is down")
                     continue
