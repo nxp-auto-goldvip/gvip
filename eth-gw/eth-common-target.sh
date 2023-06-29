@@ -4,7 +4,7 @@
 # Copyright 2020-2021,2023 NXP
 #
 # This script contains base functions and variables for all scenarios that
-# will run on the target machine. 
+# will run on the target machine.
 
 # shellcheck source=eth-gw/eth-common.sh
 source "${BASH_SOURCE[0]%/*}/eth-common.sh"
@@ -74,7 +74,7 @@ delete_pfe_fast_path() {
 check_input() {
     while [ $# -gt 0 ]; do
         case "$1" in
-            -h)
+            -h|--help)
                 usage
                 exit
                 ;;

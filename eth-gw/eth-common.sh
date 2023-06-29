@@ -29,6 +29,6 @@ readonly PFE0_NETIF="pfe0sl"
 readonly PFE2_NETIF="pfe2sl"
 
 # Default modes for emac0/emac2 physical interfaces
-readonly EMAC0_DEFAULT_MODE="FLEXIBLE_ROUTER"
-readonly EMAC2_DEFAULT_MODE="FLEXIBLE_ROUTER"
+readonly EMAC0_DEFAULT_MODE="DEFAULT"
+readonly EMAC2_DEFAULT_MODE="DEFAULT"
 

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+### BEGIN INIT INFO
+# Provides:          pfe-slave-setup
+# Required-Start:    networking
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start:
+# Default-Stop:
+# Short-Description: PFE Linux slave instance setup
+# Description:       Configure the PFE Linux slave driver instance to be able to
+#                    receive/trasmit ethernet packets.
+### END INIT INFO
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright 2023 NXP
+
+PFE_CONFIG_SCRIPT="/home/root/eth-gw/eth-linux-slave-target.sh"
+LOG_PATH="/var/log/pfe-slave-setup.log"
+
+case "$1" in
+start)
+        echo "Configuring the PFE physical and logical interfaces"
+        ${PFE_CONFIG_SCRIPT} &> ${LOG_PATH}
+        ;;
+*)
+        echo "Usage: /etc/init.d/pfe-slave-setup start"
+        exit 1
+        ;;
+esac
+
+exit 0
