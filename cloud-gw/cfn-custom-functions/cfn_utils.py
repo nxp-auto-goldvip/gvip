@@ -7,6 +7,7 @@ Functions to encode (and decode) a dictionary of ids into a string.
 
 Copyright 2021-2023 NXP
 """
+import collections.abc
 import json
 import logging
 
@@ -24,6 +25,23 @@ class Utils:
     DASHBOARD_LABEL = "dashboards"
 
     @staticmethod
+    def recursive_dict_merge(orig_dict, new_dict):
+        """
+        Recursively merges two dictionaries
+        :param orig_dict: the first dict to merge, this is updated in place.
+        :param new_dict: the second dict to merge.
+        :return: the orig_dict, updated with the values from the second one.
+        """
+        for key, val in new_dict.items():
+            if isinstance(val, collections.Mapping):
+                orig_dict[key] = Utils.recursive_dict_merge(orig_dict.get(key, { }), val)
+            elif isinstance(val, list):
+                orig_dict[key] = orig_dict.get(key, []) + val
+            else:
+                orig_dict[key] = new_dict[key]
+        return orig_dict
+
+    @staticmethod
     def parse_sitewise_config(config_path, device_type):
         """
         Parse the Sitewise configuration
@@ -38,7 +56,10 @@ class Utils:
 
         # Merge common configuration and specific device configuration
         config = configs[Utils.COMMON_CONFIG_LABEL]
-        config[Utils.DASHBOARD_LABEL].update(configs[device_type][Utils.DASHBOARD_LABEL])
+        Utils.recursive_dict_merge(
+            config[Utils.DASHBOARD_LABEL],
+            configs[device_type][Utils.DASHBOARD_LABEL]
+            )
 
         return config
 

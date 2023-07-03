@@ -467,8 +467,6 @@ Outputs:
     Value: !GetAtt SitewiseCustomResource.portalId
   SitewisePortalUrl:
     Value: !GetAtt SitewiseCustomResource.portalUrl
-  SitewiseCoreLoadDashboardId:
-    Value: !GetAtt SitewiseCustomResource.core_loads_db
   SitewiseSocDashboardId:
     Value: !GetAtt SitewiseCustomResource.soc_db
   SitewiseIDPSDashboardId:
@@ -479,8 +477,6 @@ Outputs:
     Value: !GetAtt SitewiseCustomResource.sja1110_db_1
   SitewiseSJADashboard2Id:
     Value: !GetAtt SitewiseCustomResource.sja1110_db_2
-  SitewiseSJADashboard3Id:
-    Value: !GetAtt SitewiseCustomResource.sja1110_db_3
   SitewiseProjectId:
     Value: !GetAtt SitewiseCustomResource.projectId
   SitewiseAssetId:

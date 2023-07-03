@@ -1,8 +1,8 @@
 {
   "s32g2": {
     "dashboards": {
-      "core_loads_db": {
-        "name": "Core Loads Dashboard",
+      "soc_db": {
+        "name": "SoC Dashboard",
         "topic_rules": [
           {
             "mqtt_topic_suffix": "",
@@ -179,8 +179,8 @@
   },
   "s32g3": {
     "dashboards": {
-      "core_loads_db": {
-        "name": "Core Loads Dashboard",
+      "soc_db": {
+        "name": "SoC Dashboard",
         "topic_rules": [
           {
             "mqtt_topic_suffix": "",
@@ -433,7 +433,7 @@
     "MAX_ACTIONS_PER_TOPIC": 10,
     "dashboards": {
       "soc_db": {
-        "name": "SOC Dashboard",
+        "name": "SoC Dashboard",
         "topic_rules": [
           {
             "mqtt_topic_suffix": "",
@@ -514,7 +514,7 @@
         "widgets": [
           {
             "x": 0,
-            "y": 3,
+            "y": 18,
             "height": 3,
             "width": 3,
             "title": "PFE0 Traffic (Mbps)",
@@ -532,7 +532,7 @@
           },
           {
             "x": 3,
-            "y": 3,
+            "y": 18,
             "height": 3,
             "width": 3,
             "title": "PFE2 Traffic (Mbps)",
@@ -550,7 +550,7 @@
           },
           {
             "x": 0,
-            "y": 6,
+            "y": 21,
             "height": 3,
             "width": 3,
             "title": "Dom0 Memory Load (MB)",
@@ -564,7 +564,7 @@
           },
           {
             "x": 3,
-            "y": 6,
+            "y": 21,
             "height": 3,
             "width": 3,
             "title": "Immediate Temperature",
@@ -896,7 +896,8 @@
                     1,
                     2,
                     3,
-                    4
+                    4,
+                    5
                   ]
                 }
               },
@@ -1155,6 +1156,50 @@
                 "property_name": "Egress Counter switch 0 port 4"
               }
             }
+          },
+          {
+            "x": 3,
+            "y": 8,
+            "height": 3,
+            "width": 3,
+            "title": "Switch0 Port5 Traffic (Pckts)",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "Drop": {
+                "label": "Drop",
+                "property_name": "Drop Delta switch 0 port 5"
+              },
+              "Ingress": {
+                "label": "Ingress",
+                "property_name": "Ingress Delta switch 0 port 5"
+              },
+              "Egress": {
+                "label": "Egress",
+                "property_name": "Egress Delta switch 0 port 5"
+              }
+            }
+          },
+          {
+            "x": 3,
+            "y": 11,
+            "height": 1,
+            "width": 3,
+            "title": "Switch0 Port5 Counter (Pckts)",
+            "type": "monitor-kpi",
+            "metrics": {
+              "Drop": {
+                "label": "Drop",
+                "property_name": "Drop Counter switch 0 port 5"
+              },
+              "Ingress": {
+                "label": "Ingress",
+                "property_name": "Ingress Counter switch 0 port 5"
+              },
+              "Egress": {
+                "label": "Egress",
+                "property_name": "Egress Counter switch 0 port 5"
+              }
+            }
           }
         ]
       },
@@ -1168,11 +1213,11 @@
                 "X": {
                   "pattern": "X",
                   "val_list": [
-                    5,
                     6,
                     7,
                     8,
-                    9
+                    9,
+                    10
                   ]
                 }
               },
@@ -1217,50 +1262,6 @@
             "y": 0,
             "height": 3,
             "width": 3,
-            "title": "Switch0 Port5 Traffic (Pckts)",
-            "type": "monitor-line-chart",
-            "metrics": {
-              "Drop": {
-                "label": "Drop",
-                "property_name": "Drop Delta switch 0 port 5"
-              },
-              "Ingress": {
-                "label": "Ingress",
-                "property_name": "Ingress Delta switch 0 port 5"
-              },
-              "Egress": {
-                "label": "Egress",
-                "property_name": "Egress Delta switch 0 port 5"
-              }
-            }
-          },
-          {
-            "x": 0,
-            "y": 3,
-            "height": 1,
-            "width": 3,
-            "title": "Switch0 Port5 Counter (Pckts)",
-            "type": "monitor-kpi",
-            "metrics": {
-              "Drop": {
-                "label": "Drop",
-                "property_name": "Drop Counter switch 0 port 5"
-              },
-              "Ingress": {
-                "label": "Ingress",
-                "property_name": "Ingress Counter switch 0 port 5"
-              },
-              "Egress": {
-                "label": "Egress",
-                "property_name": "Egress Counter switch 0 port 5"
-              }
-            }
-          },
-          {
-            "x": 3,
-            "y": 0,
-            "height": 3,
-            "width": 3,
             "title": "Switch0 Port6 Traffic (Pckts)",
             "type": "monitor-line-chart",
             "metrics": {
@@ -1279,7 +1280,7 @@
             }
           },
           {
-            "x": 3,
+            "x": 0,
             "y": 3,
             "height": 1,
             "width": 3,
@@ -1301,8 +1302,8 @@
             }
           },
           {
-            "x": 0,
-            "y": 4,
+            "x": 3,
+            "y": 0,
             "height": 3,
             "width": 3,
             "title": "Switch0 Port7 Traffic (Pckts)",
@@ -1323,11 +1324,11 @@
             }
           },
           {
-            "x": 0,
-            "y": 7,
+            "x": 3,
+            "y": 3,
             "height": 1,
             "width": 3,
-            "title": "Switch0 Port2 Counter (Pckts)",
+            "title": "Switch0 Port7 Counter (Pckts)",
             "type": "monitor-kpi",
             "metrics": {
               "Drop": {
@@ -1345,7 +1346,7 @@
             }
           },
           {
-            "x": 3,
+            "x": 0,
             "y": 4,
             "height": 3,
             "width": 3,
@@ -1367,7 +1368,7 @@
             }
           },
           {
-            "x": 3,
+            "x": 0,
             "y": 7,
             "height": 1,
             "width": 3,
@@ -1389,8 +1390,8 @@
             }
           },
           {
-            "x": 0,
-            "y": 8,
+            "x": 3,
+            "y": 4,
             "height": 3,
             "width": 3,
             "title": "Switch0 Port9 Traffic (Pckts)",
@@ -1411,8 +1412,8 @@
             }
           },
           {
-            "x": 0,
-            "y": 11,
+            "x": 3,
+            "y": 7,
             "height": 1,
             "width": 3,
             "title": "Switch0 Port9 Counter (Pckts)",
@@ -1431,46 +1432,10 @@
                 "property_name": "Egress Counter switch 0 port 9"
               }
             }
-          }
-        ]
-      },
-      "sja1110_db_3": {
-        "name": "SJA1110 Dashboard 3",
-        "topic_rules": [
-          {
-            "mqtt_topic_suffix": "/sja1110",
-            "measurements": {
-              "s0.p10.DropEventsCounter": {
-                "name": "Drop Counter switch 0 port 10",
-                "unit": "Packets"
-              },
-              "s0.p10.IngressPktsCounter": {
-                "name": "Ingress Counter switch 0 port 10",
-                "unit": "Packets"
-              },
-              "s0.p10.EgressPktsCounter": {
-                "name": "Egress Counter switch 0 port 10",
-                "unit": "Packets"
-              },
-              "s0.p10.DropEventsDelta": {
-                "name": "Drop Delta switch 0 port 10",
-                "unit": "Packets"
-              },
-              "s0.p10.IngressPktsDelta": {
-                "name": "Ingress Delta switch 0 port 10",
-                "unit": "Packets"
-              },
-              "s0.p10.EgressPktsDelta": {
-                "name": "Egress Delta switch 0 port 10",
-                "unit": "Packets"
-              }
-            }
-          }
-        ],
-        "widgets": [
+          },
           {
             "x": 0,
-            "y": 0,
+            "y": 8,
             "height": 3,
             "width": 3,
             "title": "Switch0 Port10 Traffic (Pckts)",
@@ -1492,7 +1457,7 @@
           },
           {
             "x": 0,
-            "y": 3,
+            "y": 11,
             "height": 1,
             "width": 3,
             "title": "Switch0 Port10 Counter (Pckts)",
