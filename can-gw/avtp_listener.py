@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # -*- coding: utf-8 -*-
 """
@@ -7,7 +7,7 @@ and log it to a file. By default, the program listens on aux0 interface
 
 Example usage: python3 avtp_listener.py -i <interface>
 
-Copyright 2021,2023 NXP
+Copyright 2021, 2023 NXP
 """
 import argparse
 import socket

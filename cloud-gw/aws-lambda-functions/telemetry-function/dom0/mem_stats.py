@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # -*- coding: utf-8 -*-
 
 """
-Copyright 2020-2021 NXP
+Copyright 2020-2021, 2023 NXP
 """
 
 # The number of rows to get from the /proc/meminfo file.

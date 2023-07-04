@@ -1,9 +1,9 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Generate the goldvip telemetry pacakges
+Generate the GoldVIP telemetry pacakges
 
-Copyright 2022 NXP
+Copyright 2022-2023 NXP
 """
 import os
 from setuptools import setup, find_packages

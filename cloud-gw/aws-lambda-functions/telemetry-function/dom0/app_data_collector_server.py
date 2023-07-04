@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # -*- coding: utf-8 -*-
 # Application data collector server.

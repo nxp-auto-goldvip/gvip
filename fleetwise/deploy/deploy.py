@@ -1,10 +1,10 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # -*- coding: utf-8 -*-
 
 """
 Script used for starting the AWS IOT FleetWise engine on the S32G board
-Copyright 2022 NXP
+Copyright 2022-2023 NXP
 """
 import argparse
 import os
