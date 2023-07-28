@@ -118,7 +118,7 @@ check_input() {
                                 echo "CAN ID must be a positive integer number!"
                                 exit 1
                         fi
-                        if [[ -z "${tx_id}" ]] || [[ 10#${tx_id} -lt 0 ]] || [[ 10#${tx_id} -gt 2047 ]]; then
+                        if [[ -z "${tx_id}" ]] || [[ $((tx_id)) -lt 0 ]] || [[ $((tx_id)) -gt 2047 ]]; then
                                 echo "CAN ID must be greater than or equal to 0 and less than 2048!"
                                 exit 1
                         fi
@@ -131,7 +131,7 @@ check_input() {
                                 echo "CAN ID must be a positive integer number!"
                                 exit 1
                         fi
-                        if [[ -z "${rx_id}" ]] || [[ 10#${rx_id} -lt 0 ]] || [[ 10#${rx_id} -gt 2047 ]]; then
+                        if [[ -z "${rx_id}" ]] || [[ $((rx_id)) -lt 0 ]] || [[ $((rx_id)) -gt 2047 ]]; then
                                 echo "CAN ID must be greater than or equal to 0 and less than 2048!"
                                 exit 1
                         fi
