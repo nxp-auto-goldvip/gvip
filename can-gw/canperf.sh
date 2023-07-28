@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2020-2022 NXP
+# Copyright 2020-2023 NXP
 
 # This script is used to simulate a virtual CAN network so that the user can test the CAN-GW and get some performance overview.
 # It generates pre-defined CAN traffic on a configured interface and logs the received frames on a configured interface from Linux.
@@ -231,7 +231,7 @@ check_input() {
                 exit 1
         fi
 
-        tx_id=$(printf %x "${tx_id}")
+        tx_id=$(printf 0%x "${tx_id}")
         if [[ "${use_rx_interface}" == "true" ]]; then
                 rx_id=$(printf %x "${rx_id}")
                 echo "Transmit CAN id         : ${tx_id}"
