@@ -373,7 +373,7 @@ static void data_chan_rx_cb(void *arg, const uint8_t inst_id, int chan_id,
 
         /* Copy to pool, these message will be available to user space via the
            read function */
-        memcpy(pbuff, buf, size);
+        memcpy_fromio(pbuff, buf, size);
     } else {
         printk(KERN_ALERT "Received data does not fit \
                in the existing buffers with for instance id %d, channel id %d,\
