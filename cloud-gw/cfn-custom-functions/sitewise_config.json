@@ -470,6 +470,18 @@
               "hse_llce_temperature": {
                 "name": "HSE LLCE Temperature",
                 "unit": "C"
+              },
+              "hmon_1V1": {
+                "name": "1.1V Voltage",
+                "unit": "mV"
+              },
+              "hmon_1V2": {
+                "name": "1.2V Voltage",
+                "unit": "mV"
+              },
+              "hmon_1V8": {
+                "name": "1.8V Voltage",
+                "unit": "mV"
               }
             }
           }
@@ -581,6 +593,28 @@
               "HSE LLCE Temperature": {
                 "label": "HSE LLCE Temperature",
                 "property_name": "HSE LLCE Temperature"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 24,
+            "height": 3,
+            "width": 3,
+            "title": "Health Monitoring Voltage",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "1.1V Voltage": {
+                "label": "1.1V Voltage",
+                "property_name": "1.1V Voltage"
+              },
+              "1.2V Voltage": {
+                "label": "1.2V Voltage",
+                "property_name": "1.2V Voltage"
+              },
+              "1.8V Voltage": {
+                "label": "1.8V Voltage",
+                "property_name": "1.8V Voltage"
               }
             }
           }

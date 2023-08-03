@@ -17,6 +17,7 @@ from app_data_collector_server import AppDataCollectorServer
 from configuration import config
 from cpu_stats import CpuStats
 from dev_mem_uid import get_uid
+from health_mon import HealthMonStats
 from idps_stats import IdpsStats
 from mem_stats import MemStats
 from net_stats import NetStats
@@ -67,6 +68,7 @@ class TelemetryAggregator:
         self.__mem_stats = MemStats()
         self.__temperature_stats = TemperatureStats()
         self.__idps_stats = IdpsStats()
+        self.__hmon_stats = HealthMonStats()
         self.__m7_core_load.start()
         self.__stats = None
         self.__board_uuid = get_uid()
@@ -93,6 +95,7 @@ class TelemetryAggregator:
                 m7_stats = self.__m7_core_load.get_load()
                 idps_stats = self.__idps_stats.get_telemetry()
                 temperature_stats = self.__temperature_stats.get_temperature()
+                hmon_stats = self.__hmon_stats.get_telemetry()
 
                 platform_name = {
                     "platform" : self.__current_platform,
@@ -107,7 +110,8 @@ class TelemetryAggregator:
                     **cpu_stats,
                     **mem_stats,
                     **m7_stats,
-                    **temperature_stats
+                    **temperature_stats,
+                    **hmon_stats
                 }
 
                 tot_stats = {

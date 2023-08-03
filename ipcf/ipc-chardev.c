@@ -54,7 +54,7 @@ MODULE_VERSION(MODULE_VER);
 #endif /* IPC_NUM_INSTANCES */
 
 #ifndef IPC_INST_0_CHAN_NUM
-#define IPC_INST_0_CHAN_NUM             3u
+#define IPC_INST_0_CHAN_NUM             4u
 #endif /* IPC_INST_0_CHAN_NUM */
 
 #ifndef IPC_INST_1_CHAN_NUM
@@ -174,6 +174,7 @@ static const struct ipc_shm_channel_cfg data_chan_cfg = {
 static struct ipc_shm_channel_cfg instance_0_channels[IPC_INST_0_CHAN_NUM] = {
     data_chan_cfg,
     data_chan_cfg,
+    data_chan_cfg,
     data_chan_cfg
 };
 
@@ -226,13 +227,14 @@ static struct ipc_chan_descr_t ipc_ch_descr[IPC_NUM_CHANNELS];
  * /dev/ipcfshm/M7_0/echo
  * /dev/ipcfshm/M7_0/idps_statistics
  * /dev/ipcfshm/M7_0/benchmark
+ * /dev/ipcfshm/M7_0/health_mon
  */
 static struct ipc_inst_descr_t inst_descr[IPC_NUM_INSTANCES] = {
     {
         .instance_name = "M7_0",
         .channel_count = IPC_INST_0_CHAN_NUM,
-        .channel_names = {"echo", "idps_statistics", "benchmark"},
-        .chan_prepend_size = {false, true, false},
+        .channel_names = {"echo", "idps_statistics", "benchmark", "health_mon"},
+        .chan_prepend_size = {false, true, false, false},
     },
 };
 

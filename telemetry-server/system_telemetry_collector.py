@@ -39,7 +39,10 @@ class SystemTelemetryCollector():
         "a53_cluster_temperature": None,
         "a53_cluster_average_temperature": None,
         "m7_anomalies": None,
-        "llce_anomalies": None
+        "llce_anomalies": None,
+        "hmon_1V1": None,
+        "hmon_1V2": None,
+        "hmon_1V8": None
     }
 
     # The raw system telemetry.

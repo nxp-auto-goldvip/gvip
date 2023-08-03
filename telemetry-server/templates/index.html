@@ -64,6 +64,11 @@
     <div class="divCell" id="m7_core_loads" style="width:100%"></div>
 </div>
 
+<!-- Health monitoring voltages in a single row -->
+<div class="divTable">
+    <div class="divCell" id="hmon_volt" style="width:100%"></div>
+</div>
+
 <!-- 3 x 2 Table for SOC  -->
 <div class="divTable">
     <div class="divTableBody">
@@ -150,6 +155,11 @@
                 [0,100]);
         }
 
+        plot_timeseries(data,
+            [data.telemetry.hmon_1V1, data.telemetry.hmon_1V2, data.telemetry.hmon_1V8],
+            ["1.1V Voltage", "1.2V Voltage", "1.8V Voltage"],
+            "Health Monitoring Voltages (mV)",
+            "hmon_volt")
         plot_timeseries(data,
             [data.telemetry.pfe0_rx_mbps, data.telemetry.pfe0_tx_mbps],
             ["PFE0 RX", "PFE0 TX"],
