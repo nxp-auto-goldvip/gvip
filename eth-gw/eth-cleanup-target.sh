@@ -12,7 +12,10 @@ source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 set_trap
 flush_ip
 delete_bridge
-delete_pfe_fast_path
+reset_pfe_setup
+
+ip a s "${PFE0_NETIF}.${vlan_id_pfe0}" > /dev/null 2>&1 && ip link del "${PFE0_NETIF}.${vlan_id_pfe0}"
+ip a s "${PFE2_NETIF}.${vlan_id_pfe2}" > /dev/null 2>&1 && ip link del "${PFE2_NETIF}.${vlan_id_pfe2}"
 
 # Stop the strongSwan IPsec process.
 ipsec stop 2> /dev/null || true

@@ -14,8 +14,34 @@
 # shellcheck source=eth-gw/eth-common-target.sh
 source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
+_create_vlan_interfaces() {
+    ip link add link "${PFE0_NETIF}" name "${PFE0_NETIF}.${vlan_id_pfe0}" type vlan id "${vlan_id_pfe0}"
+    ip link add link "${PFE2_NETIF}" name "${PFE2_NETIF}.${vlan_id_pfe2}" type vlan id "${vlan_id_pfe2}"
+    ip link set dev "${PFE0_NETIF}.${vlan_id_pfe0}" up
+    ip link set dev "${PFE2_NETIF}.${vlan_id_pfe2}" up
+}
+
 _setup_l2_switch() {
+    USE_VLANS=true
+
+    # Clear previous configuration.
+    libfci_cli route-and-cntk-reset --all
+
+    # Add vlans to the pfe interfaces
+    for vlan_id in "${vlan_id_pfe0}" "${vlan_id_pfe2}"; do
+        libfci_cli bd-print | grep "domain ${vlan_id}" || libfci_cli bd-add --vlan="${vlan_id}"
+        libfci_cli bd-update --vlan "${vlan_id}" --ucast-hit FORWARD --ucast-miss FLOOD --mcast-hit FORWARD --mcast-miss FLOOD
+
+        for if in "${PFE_VLAN_IFS[@]}"; do
+            libfci_cli bd-insif --vlan "${vlan_id}" --interface "${if}" --tag ON
+        done
+    done
+    for if in "${PFE_VLAN_IFS[@]}"; do
+        libfci_cli phyif-update  --interface "${if}" --enable  --promisc ON  --mode VLAN_BRIDGE  --block-state NORMAL
+    done
+
     flush_ip
+    _create_vlan_interfaces
     create_bridge
     setup_bridge
 }

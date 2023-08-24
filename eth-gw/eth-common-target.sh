@@ -11,12 +11,21 @@ source "${BASH_SOURCE[0]%/*}/eth-common.sh"
 
 # Global constants
 readonly network_bridge_name="br0"
+# The PFE physical interfaces that shall be configured.
+readonly PFE_PHYIFS=("emac0" "emac2")
+# The HIF assigned to the Linux PFE instance.
+readonly A53_ASSIGNED_HIF="hif3"
+# The HIF assigned to the M7 PFE instance.
+readonly M7_ASSIGNED_HIF="hif0"
+# The PFE interfaces and which shall be configured to use VLANs.
+readonly PFE_VLAN_IFS=("${M7_ASSIGNED_HIF}" "${A53_ASSIGNED_HIF}" "${PFE_PHYIFS[@]}")
 
 # Default values
 layer_number=3
 host_mac_pfe0="00:00:00:00:00:00"
 host_mac_pfe2="00:00:00:00:00:00"
 vlan_id=1
+USE_VLANS=false
 
 _set_ip() {
     intf=$1
@@ -54,8 +63,13 @@ setup_bridge() {
     _set_ip "${network_bridge_name}" "10.0.1.100"
 
     # Set both PFE interfaces in bridge configuration.
-    ip link set dev "${PFE0_NETIF}" master "${network_bridge_name}"
-    ip link set dev "${PFE2_NETIF}" master "${network_bridge_name}"
+    if $USE_VLANS ; then
+        ip link set dev "${PFE0_NETIF}.${vlan_id_pfe0}" master "${network_bridge_name}"
+        ip link set dev "${PFE2_NETIF}.${vlan_id_pfe2}" master "${network_bridge_name}"
+    else
+        ip link set dev "${PFE0_NETIF}" master "${network_bridge_name}"
+        ip link set dev "${PFE2_NETIF}" master "${network_bridge_name}"
+    fi
 }
 
 delete_bridge() {
@@ -63,12 +77,24 @@ delete_bridge() {
         ip link set dev "${network_bridge_name}" down
         ip link delete "${network_bridge_name}"
     fi
+
+    if $USE_VLANS ; then
+        ip link del dev "${PFE0_NETIF}.${vlan_id_pfe0}" || true
+        ip link del dev "${PFE2_NETIF}.${vlan_id_pfe2}" || true
+    fi
 }
 
-delete_pfe_fast_path() {
+reset_pfe_setup() {
+    # Resets the libfci_cli setups from the pfe fast path and slow path
     libfci_cli route-and-cntk-reset --all
-    libfci_cli phyif-update --i emac0 --mode "${EMAC0_DEFAULT_MODE}" --enable --promisc OFF
-    libfci_cli phyif-update --i emac2 --mode "${EMAC2_DEFAULT_MODE}" --enable --promisc OFF
+
+    for if in "${PFE_VLAN_IFS[@]}"; do
+        libfci_cli phyif-update --i "${if}" --mode "${PHYIF_DEFAULT_MODE}" --enable --promisc OFF
+    done
+    for vlan_id in "${vlan_id_pfe0}" "${vlan_id_pfe2}"; do
+        # shellcheck disable=SC2015
+        libfci_cli bd-print | grep "domain ${vlan_id}" && libfci_cli bd-del --vlan="${vlan_id}" || true
+    done
 }
 
 check_input() {

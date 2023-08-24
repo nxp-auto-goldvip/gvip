@@ -11,7 +11,7 @@ source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
 set_trap
 flush_ip
-delete_pfe_fast_path
+reset_pfe_setup
 create_bridge
 setup_bridge
 exit

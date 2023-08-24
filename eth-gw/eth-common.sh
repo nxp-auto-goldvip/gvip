@@ -4,6 +4,7 @@
 # Copyright 2020-2021,2023 NXP
 #
 # This script collects base functions and variables for all host/target scripts.
+# shellcheck disable=SC2154,SC2034
 
 # Enable bash strict mode (i.e. fail on any non-zero exit code,
 # undefined variable reference and prevent masked pipeline errors).
@@ -28,7 +29,10 @@ readonly payload_size_regex="^[0-9]+[K|k|M|m]?$"
 readonly PFE0_NETIF="pfe0sl"
 readonly PFE2_NETIF="pfe2sl"
 
-# Default modes for emac0/emac2 physical interfaces
-readonly EMAC0_DEFAULT_MODE="DEFAULT"
-readonly EMAC2_DEFAULT_MODE="DEFAULT"
+# Default mode for physical interfaces
+readonly PHYIF_DEFAULT_MODE="DEFAULT"
+
+# Vlan IDs used by the L2 slow path scenario
+readonly vlan_id_pfe0=101
+readonly vlan_id_pfe2=102
 

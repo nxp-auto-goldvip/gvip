@@ -9,14 +9,8 @@
 # shellcheck source=eth-gw/eth-common-target.sh
 source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
-# The PFE physical interfaces that shall be configured.
-readonly PFE_PHYIFS=("emac0" "emac2")
 # The PFE Linux network interfaces.
 readonly PFE_NETIFS=("${PFE0_NETIF}" "${PFE2_NETIF}")
-# The HIF assigned to the Linux PFE instance.
-readonly A53_ASSIGNED_HIF="hif3"
-# The HIF assigned to the M7 PFE instance.
-readonly M7_ASSIGNED_HIF="hif0"
 # The MAC addresses assigned to the PFE instance running on the Cortex-M7 core.
 readonly M7_MAC_ADDRS=("77:55:44:33:22:11" "66:55:44:33:22:11")
 # File used to store the initial FCI configuration.
