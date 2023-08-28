@@ -35,7 +35,7 @@ Metadata:
     LicenseUrl: LICENSE
     Labels: ['nxp', 'goldvip', 's32g', 'goldbox']
     HomePageUrl: https://github.com/nxp-auto-goldvip/gvip
-    SemanticVersion: 1.8.0
+    SemanticVersion: 1.9.0
     SourceCodeUrl: https://github.com/nxp-auto-goldvip/gvip
 
 Conditions:
