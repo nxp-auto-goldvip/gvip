@@ -7,7 +7,6 @@ Functions to encode (and decode) a dictionary of ids into a string.
 
 Copyright 2021-2023 NXP
 """
-import collections.abc
 import json
 import logging
 
@@ -33,7 +32,7 @@ class Utils:
         :return: the orig_dict, updated with the values from the second one.
         """
         for key, val in new_dict.items():
-            if isinstance(val, collections.Mapping):
+            if isinstance(val, dict):
                 orig_dict[key] = Utils.recursive_dict_merge(orig_dict.get(key, { }), val)
             elif isinstance(val, list):
                 orig_dict[key] = orig_dict.get(key, []) + val

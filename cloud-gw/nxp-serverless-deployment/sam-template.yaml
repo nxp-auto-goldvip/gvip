@@ -328,7 +328,7 @@ Resources:
   Telemetry:
     Type: AWS::Serverless::Function
     Properties:
-      Runtime: python3.8
+      Runtime: python3.10
       Role: !GetAtt 'LambdaRole.Arn'
       Handler: telemetry_component.function_handler
       CodeUri: ../aws-lambda-functions/telemetry-function/domU/
@@ -351,7 +351,7 @@ Resources:
       Description: "Creates: A Greengrass V2 Component."
       Timeout: 700
       Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
-      Runtime: python3.8
+      Runtime: python3.10
       CodeUri: ../cfn-custom-functions/
     DependsOn: SitewisePortalRole
 
@@ -362,7 +362,7 @@ Resources:
       Description: "Creates: an asset model, an asset, a portal, project and dashboards"
       Timeout: 700
       Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
-      Runtime: python3.8
+      Runtime: python3.10
       CodeUri: ../cfn-custom-functions/
     DependsOn: SitewisePortalRole
 
@@ -373,7 +373,7 @@ Resources:
       Description: "Creates a certificate for the SJA1110 Thing and stores it in a S3 bucket."
       Timeout: 30
       Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
-      Runtime: python3.8
+      Runtime: python3.10
       CodeUri: ../cfn-custom-functions/
 
 ### Things ###
