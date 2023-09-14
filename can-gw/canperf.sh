@@ -158,7 +158,6 @@ check_input() {
                                 echo "Length must be a positive integer number"
                                 exit 1
                         fi
-                        ((time_gen *= 1000))                        
                         ;;
                 -D | --payload)
                         shift
@@ -260,16 +259,16 @@ setup_can() {
 
 # Terminate cangen processes
 stop_cangen() {
-        disown ${pid_cangen}
-        kill ${pid_cangen} 2>/dev/null
+        disown ${pid_cangen} 2> /dev/null || true
+        kill ${pid_cangen} 2> /dev/null || true
         # wait for in-flight frames to be processed by candump
         sleep 1
 }
 
 # Terminate candump processes
 stop_candump() {
-        disown ${pid_candump}
-        kill ${pid_candump} 2>/dev/null
+        disown ${pid_candump} 2> /dev/null || true
+        kill ${pid_candump} 2> /dev/null || true
 
         if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
                 service avtp_listener stop
@@ -313,12 +312,19 @@ run_perf() {
                 pid_candump=$!
         fi
 
-        # Get time base
-        start_time_ms=$(date +%s%3N)
-        current_time_ms=${start_time_ms}
+        # Compute the number of CAN frames to be sent considering the allocated time for the
+        # frames generation session and the time gap between the frames. Round the result
+        # up to the nearest integer (ceil function) if necessary
+        if [[ ${frame_gap_ms} -gt 0 ]]; then
+                gen_frames_count=$((time_gen * 1000 / frame_gap_ms + ! ! (time_gen * 1000 % frame_gap_ms)))
+                gen_frames_opt="-n ${gen_frames_count}"
+        else
+                gen_frames_opt=""
+        fi
 
         # Start cangen on can_tx_interface interface with requested frame size and gap
-        cangen "${can_tx_interface}" -g "${frame_gap_ms}" -p 10 -b -I "${tx_id}" -L "${can_frame_data_size}" -D "${payload_data}" -v -v >${tx_log} &
+        timeout "${time_gen}" cangen "${can_tx_interface}" -g "${frame_gap_ms}" -p 10 -b -I "${tx_id}" \
+                -L "${can_frame_data_size}" -D "${payload_data}" "${gen_frames_opt}" -v -v >${tx_log} &
         pid_cangen=$!
 
         # Compute M7 load during the canperf run
@@ -330,13 +336,11 @@ run_perf() {
         m7_core_load.py \
         --outfile "${m7_load_file}" \
         --monitored-cores "M7_0" "M7_1" \
-        --time $((time_gen / 1000)) &
+        --time $((time_gen)) &
 
         echo "Running CAN generator..."
         # Wait until requested session length expires
-        while [[ $((current_time_ms - start_time_ms)) -lt ${time_gen} ]]; do
-                current_time_ms=$(date +%s%3N)
-        done
+        wait ${pid_cangen} || true
         stop_cangen
 
         if [[ "${use_rx_interface}" == "true" ]]; then
@@ -372,10 +376,10 @@ display_report() {
                 echo "Rx frames:                ${rx_frames_count}"
                 echo "Tx data transfer:         ${tx_bytes} bytes"
                 echo "Rx data transfer:         ${rx_bytes} bytes"
-                echo "Tx frames/s:              $((tx_frames_count * 1000 / time_gen))"
-                echo "Rx frames/s:              $((rx_frames_count * 1000 / time_gen))"
-                echo "Tx throughput:            $((tx_bytes * 8 / time_gen)) Kbit/s"
-                echo "Rx throughput:            $((rx_bytes * 8 / time_gen)) Kbit/s"
+                echo "Tx frames/s:              $((tx_frames_count / time_gen))"
+                echo "Rx frames/s:              $((rx_frames_count / time_gen))"
+                echo "Tx throughput:            $((tx_bytes * 8 / time_gen / 1000)) Kbit/s"
+                echo "Rx throughput:            $((rx_bytes * 8 / time_gen / 1000)) Kbit/s"
                 echo "Lost frames:              ${frames_lost}"
                 echo "Lost frames (%):          $((frames_lost * 100 / tx_frames_count)).$(((frames_lost * 100 - (frames_lost * 100 / tx_frames_count) * tx_frames_count) * 100 / tx_frames_count))%"
                 echo "M7_0 core load:           ${M7_0_LOAD}%"
@@ -390,8 +394,8 @@ display_report() {
                 echo "#############################################################"
                 echo "Tx frames:                ${tx_frames_count}"
                 echo "Tx data transfer:         ${tx_bytes} bytes"
-                echo "Tx frames/s:              $((tx_frames_count * 1000 / time_gen))"
-                echo "Tx throughput:            $((tx_bytes * 8 / time_gen)) Kbit/s"
+                echo "Tx frames/s:              $((tx_frames_count / time_gen))"
+                echo "Tx throughput:            $((tx_bytes * 8 / time_gen / 1000)) Kbit/s"
                 echo "M7_0 core load:           ${M7_0_LOAD}%"
                 echo "M7_1 core load:           ${M7_1_LOAD}%"
                 echo "#############################################################"
