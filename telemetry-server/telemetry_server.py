@@ -11,7 +11,7 @@ Copyright 2022-2023 NXP
 import logging
 import sys
 
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, render_template
 from system_telemetry_collector import SystemTelemetryCollector
 
 TELEMETRY = SystemTelemetryCollector(chart_window_size=300)
@@ -25,15 +25,10 @@ def index():
     """ Flask macro to render the server webpage. """
     return render_template("index.html")
 
-@APP.route('/fetch', methods=['GET', 'POST'])
+@APP.route('/fetch', methods=['GET'])
 def fetch_handler():
-    """ Flask macro to handle the GET and POST events for the /fetch url.
+    """ Flask macro to handle the GET event for the /fetch url.
     Used to send the chart data to the webpage. """
-    # POST request
-    if request.method == 'POST':
-        LOGGER.info(request.get_json())  # parse as JSON
-        return 'OK', 200
-    # GET request
     TELEMETRY.update_data()
     # Serialize and use JSON headers for the output
     return jsonify(TELEMETRY.get_data())
@@ -43,8 +38,7 @@ def getdata_handler(value):
     """ Flask macro to handle the GET method for /getdata url.
     Used to receive input from the webpage.  """
     TELEMETRY.update_window_size(int(value))
-    LOGGER.info("New window size = %d\n", value)
-    LOGGER.info(request.get_json())
+    LOGGER.info("New window size = %d\n", int(value))
     return 'OK', 200
 
 if __name__ == '__main__':
