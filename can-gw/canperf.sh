@@ -58,6 +58,7 @@ payload_data="${payload_increment_mode}"
 
 readonly integer_regex="^[0-9]+$"
 readonly hex_regex="^[0-9A-Fa-f]+$"
+readonly can_to_eth_ids=("0e4" "0e5")
 
 # The variable that specifies whether the CAN RX interface is used or not
 use_rx_interface="true"
@@ -94,7 +95,7 @@ check_input() {
                         if [[ ! "${frame_gap_ms}" =~ ${integer_regex} ]]; then
                                 echo "Frame gap must be a positive integer number"
                                 exit 1
-                        fi                        
+                        fi
                         ;;
                 -i | --tx-id)
                         shift
@@ -149,7 +150,7 @@ check_input() {
                                         echo "Frame size must be a positive integer between 1 and 64 or 'i', received ${can_frame_data_size}"
                                         exit 1
                                 fi
-                        fi                        
+                        fi
                         ;;
                 -l | --length)
                         shift
@@ -192,7 +193,7 @@ check_input() {
 
         # Check if rx_id and can_rx_interface are not set by user
         if [[ "${rx_id}" == "notset" ]] && [[ "${can_rx_interface}" == "notset" ]]; then
-                use_rx_interface="false" 
+                use_rx_interface="false"
         fi
 
         # Check if CAN rx_id is set by user
@@ -246,12 +247,12 @@ check_input() {
 # Bring CAN interfaces up
 setup_can() {
         ip a | grep -Eq ": ${can_tx_interface}:.*state UP" || service can restart "${can_tx_interface}"
-     
+
         if [[ "${use_rx_interface}" == "true" ]]; then
                 ip a | grep -Eq ": ${can_rx_interface}:.*state UP" || service can restart "${can_rx_interface}"
         fi
 
-        if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
+        if [[ " ${can_to_eth_ids[*]} " =~ " ${tx_id} " ]]; then
                 service avtp_listener restart ${can_to_eth_log}
         fi
         sleep 1
@@ -270,13 +271,13 @@ stop_candump() {
         disown ${pid_candump} 2> /dev/null || true
         kill ${pid_candump} 2> /dev/null || true
 
-        if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
+        if [[ " ${can_to_eth_ids[*]} " =~ " ${tx_id} " ]]; then
                 service avtp_listener stop
         fi
 }
 
 # Compute the core load using measurement data from a given file.
-# arguments: 
+# arguments:
 #       - core_load_file
 #       - core name (M7_0, M7_1, M7_2)
 compute_core_load() {
@@ -355,7 +356,7 @@ run_perf() {
 # Display report by parsing the previously generated logs
 display_report() {
         echo "Generating report..."
-        tx_frames_count=$(wc -l ${tx_log} | awk '{ print $1 }')        
+        tx_frames_count=$(wc -l ${tx_log} | awk '{ print $1 }')
         tx_bytes=$(awk -F'[][]' '{print $2}' ${tx_log} | awk '{ sum += $1 } END { print sum }')
         if [[ ! "${tx_bytes}" =~ ${integer_regex} ]]; then
                 echo "No frames have been transmitted. Please check your connections."
@@ -385,7 +386,7 @@ display_report() {
                 echo "M7_0 core load:           ${M7_0_LOAD}%"
                 echo "M7_1 core load:           ${M7_1_LOAD}%"
 
-                if [[ "${tx_id}" == "e4" ]] || [[ "${tx_id}" == "e5" ]]; then
+                if [[ " ${can_to_eth_ids[*]} " =~ " ${tx_id} " ]]; then
                     can_to_eth_bytes=$(compute_can_to_eth_transfer)
                     echo "CAN to ETH data transfer: ${can_to_eth_bytes} Bytes"
                 fi
