@@ -39,7 +39,7 @@ class HealthMonStats:
         with self.LOCK:
             # check if data is available
             if not os.path.exists(self.HMON_STATS_DEV):
-                self.__stats = None
+                self.__stats = {}
             else:
                 with open(self.HMON_STATS_DEV, "rb") as file_:
                     raw_data = file_.read()
@@ -60,4 +60,3 @@ class HealthMonStats:
         with self.LOCK:
             data = self.__stats
         return data
- 
