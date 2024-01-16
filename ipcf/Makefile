@@ -1,21 +1,21 @@
 #
-# Copyright 2022 NXP Semiconductors
-# Makefile for the ipc character device driver 
+# Copyright 2022, 2024 NXP Semiconductors
+# Makefile for the GoldVIP IPC character device driver
 
 MODULE_NAME := ipc-chdev
-
+PLATFORM ?= s32g2
 ARCH ?= arm64
 
-# additional module symbols dependency
-EXTRA_SYMBOLS ?= ${IPC_SHM_DEV_PATH}/Module.symvers 
+# Additional module symbols dependency
+EXTRA_SYMBOLS ?= ${IPC_SHM_DEV_PATH}/Module.symvers
 
 ifneq ($(KERNELRELEASE),)
 # kbuild part of makefile
 obj-m := $(MODULE_NAME).o
 $(MODULE_NAME)-y := ipc-chardev.o
 
-# Add here cc flags (e.g. header lookup paths, defines, etc) 
-ccflags-y += -I$(IPC_SHM_DEV_PATH) -I$(src) 
+# Add here cc flags (e.g., header lookup paths, defines)
+ccflags-y += -DPLATFORM_${PLATFORM} -I$(IPC_SHM_DEV_PATH) -I$(src)
 
 else
 # normal part of makefile

@@ -1,24 +1,15 @@
 /**
-*   @file       ipc-mem-cfg.h
-*   @brief      IPCF memory settings
+*   @file       ipc-platform-cfg.h
+*   @brief      IPCF platform-specific settings
 */
 /* ==========================================================================
-*   (c) Copyright 2022 NXP
+*   (c) Copyright 2022, 2024 NXP
 *   All Rights Reserved.
 =============================================================================*/
-#ifndef __IPCF_MEM_CFG__H__
-#define __IPCF_MEM_CFG__H__
+#ifndef __IPC_PLATFORM_CFG__H__
+#define __IPC_PLATFORM_CFG__H__
 
-#ifndef PLATFORM
-#define S32G74A
-#endif /* PLATFORM */
-
-#if defined(S32G74A)
-
-/* Shared memory size, half for local, half for remote */
-#ifndef IPC_SHM_SIZE
-#define IPC_SHM_SIZE                0x80000
-#endif /* IPC_SHM_SIZE */
+#if defined(PLATFORM_s32g2) || defined(PLATFORM_s32g3)
 
 /* IPCF Buffer size */
 #ifndef IPCF_BUF_LEN
@@ -36,7 +27,9 @@
 #define M7_0_CORE_ACTIVE            0x1u
 
 #else
-#error "UNKNOWN PLATFORM"
-#endif /* defined(S32G74A) */
 
-#endif /* __IPCF_MEM_CFG__H__ */
+#error "Platform not supported"
+
+#endif /* defined(PLATFORM_s32g2) || defined(PLATFORM_s32g2) */
+
+#endif /* __IPC_PLATFORM_CFG__H__ */

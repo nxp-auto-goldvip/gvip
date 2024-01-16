@@ -1,10 +1,10 @@
 /**
 *   @file       ipc-chardev.c
-*   @brief      Implementation of a character device driver on top of ipcf
+*   @brief      Implementation of a character device driver on top of IPCF
 *
 */
 /* ==========================================================================
-*   (c) Copyright 2022-2023 NXP
+*   (c) Copyright 2022-2024 NXP
 *   All Rights Reserved.
 =============================================================================*/
 #include <linux/module.h>
@@ -20,13 +20,13 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/of.h>
-#include <linux/of_address.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/kern_levels.h>
 #include <linux/ioport.h>
 #include <linux/mod_devicetable.h>
 #include <asm/io.h>
 #include <ipc-shm.h>
-#include <ipc-mem-cfg.h>
+#include <ipc-platform-cfg.h>
 
 /* ==========================================================================
  * MODULE INFORMATION
@@ -179,7 +179,7 @@ static struct ipc_shm_channel_cfg instance_0_channels[IPC_INST_0_CHAN_NUM] = {
 };
 
 /* IPCF SHM compatible values */
-static const struct of_device_id ipcf_res_no_map_name[] = {
+static const struct of_device_id ipcf_res_no_map_name[IPC_NUM_INSTANCES] = {
     { .compatible = "nxp,s32g-ipcf-shm"}
 };
 
@@ -187,7 +187,6 @@ static const struct of_device_id ipcf_res_no_map_name[] = {
 static struct ipc_shm_cfg shm_cfg[IPC_NUM_INSTANCES] = {
     {
         /* IPCF shared memory address will be used by init function. */
-        .shm_size = IPC_SHM_SIZE,
         .inter_core_tx_irq = IPC_IRQ_NONE,
         .inter_core_rx_irq = INTER_CORE_RX_IRQ,
         .local_core = {
@@ -545,29 +544,33 @@ static int __init ipcf_module_init(void)
     int ch_id = 0;
     uint32_t M7_0_stat = 0;
     struct device *pdev = NULL;
-    struct resource res;
-    struct device_node *np;
+    struct device_node *mem_node;
+    struct reserved_mem *rmem;
     struct ipc_shm_instances_cfg shm_instances_cfg = {
         .num_instances = IPC_NUM_INSTANCES,
         .shm_cfg = shm_cfg
     };
 
-    /* Find a node by its "compatible" property */
     for (inst_id = 0; inst_id < IPC_NUM_INSTANCES; inst_id++) {
-        np = of_find_compatible_node(NULL, NULL, ipcf_res_no_map_name[inst_id].compatible);
-        if (!np) {
+        /* Find a node by its "compatible" property */
+        mem_node = of_find_compatible_node(NULL, NULL, ipcf_res_no_map_name[inst_id].compatible);
+        if (!mem_node) {
             printk(KERN_ERR "The node was not found by its compatible: %s\n", ipcf_res_no_map_name[inst_id].compatible);
             return -ENODEV;
         }
-         /* Translate device tree address and return as resource */
-        err = of_address_to_resource(np, 0, &res);
-        /* Check if reg property is available */
-        if (err < 0) {
-            printk(KERN_ERR "The node has invalid reg property\n");
-            return err;
+
+        rmem = of_reserved_mem_lookup(mem_node);
+        if (!rmem) {
+            printk(KERN_ERR "of_reserved_mem_lookup() returned NULL\n");
+            of_node_put(mem_node);
+            return -ENODEV;
         }
-        shm_instances_cfg.shm_cfg[inst_id].remote_shm_addr = res.start;
-        shm_instances_cfg.shm_cfg[inst_id].local_shm_addr = res.start + IPC_SHM_SIZE;
+
+        of_node_put(mem_node);
+
+        shm_instances_cfg.shm_cfg[inst_id].shm_size = rmem->size / 2;
+        shm_instances_cfg.shm_cfg[inst_id].remote_shm_addr = rmem->base;
+        shm_instances_cfg.shm_cfg[inst_id].local_shm_addr = rmem->base + rmem->size / 2;
     }
 
     uint32_t *pM7_0_stat = ioremap(M7_0_CORE_STAT_REG, M7_0_CORE_STAT_REG_SIZE);
