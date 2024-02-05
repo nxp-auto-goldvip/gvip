@@ -6,7 +6,7 @@
 Script used for deploying the Greengrass certificate on the board and
 starting a new Greengrass group deployment.
 
-Copyright 2021-2023 NXP
+Copyright 2021-2024 NXP
 """
 
 import argparse
@@ -108,10 +108,11 @@ class Greengrassv2Deployment():
         """
         iot_client = boto3.client("iot")
 
-        for thing in iot_client.list_things()['things']:
-            if thing['thingName'] == self.__thing_name:
-                self.__thing_arn = thing['thingArn']
-                break
+        for page in iot_client.get_paginator('list_things').paginate():
+            for thing in page['things']:
+                if thing['thingName'] == self.__thing_name:
+                    self.__thing_arn = thing['thingArn']
+                    break
 
         if not self.__thing_arn:
             # pylint: disable=broad-exception-raised
