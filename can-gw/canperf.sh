@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2020-2023 NXP
+# Copyright 2020-2024 NXP
 
 # This script is used to simulate a virtual CAN network so that the user can test the CAN-GW and get some performance overview.
 # It generates pre-defined CAN traffic on a configured interface and logs the received frames on a configured interface from Linux.
@@ -59,7 +59,7 @@ payload_data="${payload_increment_mode}"
 readonly integer_regex="^[0-9]+$"
 readonly hex_regex="^[0-9A-Fa-f]+$"
 readonly can_to_eth_ids=("0e4" "0e5")
-
+readonly can_dlc_array=("1" "2" "3" "4" "5" "6" "7" "8" "12" "16" "20" "24" "32" "48" "64")
 # The variable that specifies whether the CAN RX interface is used or not
 use_rx_interface="true"
 
@@ -141,13 +141,13 @@ check_input() {
                         shift
                         can_frame_data_size=${1}
                         if [[ "${can_frame_data_size}" =~ ${integer_regex} ]]; then
-                                if ((can_frame_data_size < 1 || can_frame_data_size > 64)); then
-                                        echo "Frame size must be a positive integer between 1 and 64 or 'i', received ${can_frame_data_size}"
+                                if ! [[ " ${can_dlc_array[*]} " =~ ${can_frame_data_size} ]]; then
+                                        echo "Frame size must be a valid CAN FD frame size or 'i', received ${can_frame_data_size}"
                                         exit 1
                                 fi
                         else
                                 if [[ "${can_frame_data_size}" != "i" ]]; then
-                                        echo "Frame size must be a positive integer between 1 and 64 or 'i', received ${can_frame_data_size}"
+                                        echo "Frame size must be a valid CAN FD frame size or 'i', received ${can_frame_data_size}"
                                         exit 1
                                 fi
                         fi
@@ -252,7 +252,7 @@ setup_can() {
                 ip a | grep -Eq ": ${can_rx_interface}:.*state UP" || service can restart "${can_rx_interface}"
         fi
 
-        if [[ " ${can_to_eth_ids[*]} " =~ " ${tx_id} " ]]; then
+        if [[ " ${can_to_eth_ids[*]} " =~ ${tx_id} ]]; then
                 service avtp_listener restart ${can_to_eth_log}
         fi
         sleep 1
@@ -271,7 +271,7 @@ stop_candump() {
         disown ${pid_candump} 2> /dev/null || true
         kill ${pid_candump} 2> /dev/null || true
 
-        if [[ " ${can_to_eth_ids[*]} " =~ " ${tx_id} " ]]; then
+        if [[ " ${can_to_eth_ids[*]} " =~ ${tx_id} ]]; then
                 service avtp_listener stop
         fi
 }
@@ -386,7 +386,7 @@ display_report() {
                 echo "M7_0 core load:           ${M7_0_LOAD}%"
                 echo "M7_1 core load:           ${M7_1_LOAD}%"
 
-                if [[ " ${can_to_eth_ids[*]} " =~ " ${tx_id} " ]]; then
+                if [[ " ${can_to_eth_ids[*]} " =~ ${tx_id} ]]; then
                     can_to_eth_bytes=$(compute_can_to_eth_transfer)
                     echo "CAN to ETH data transfer: ${can_to_eth_bytes} Bytes"
                 fi

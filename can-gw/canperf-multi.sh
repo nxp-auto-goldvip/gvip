@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2022-2023 NXP
+# Copyright 2022-2024 NXP
 # This script is used to simulate a virtual CAN network so that the user can test the CAN-GW and get some performance overview.
 # It generates pre-defined CAN traffic on a configured interface and logs the received frames on a configured interface from Linux.
 # It is also measuring the throughput and the core load during the run and generates the performance report afterwards.
@@ -72,6 +72,7 @@ declare -A tx_pdu_count=()
 
 readonly integer_regex="^[0-9]+$"
 readonly hex_regex="^[0-9A-Fa-f]+$"
+readonly can_dlc_array=("1" "2" "3" "4" "5" "6" "7" "8" "12" "16" "20" "24" "32" "48" "64")
 
 # The variable that specifies whether the CAN RX interface is used or not
 use_rx_interface="true"
@@ -157,12 +158,12 @@ check_input() {
                         shift
                         can_frame_data_size=${1}
                         if [[ "${can_frame_data_size}" =~ ${integer_regex} ]]; then
-                                if ((can_frame_data_size < 1 || can_frame_data_size > 64)); then
-                                        echo "Frame size must be a positive integer between 1 and 64 , received ${can_frame_data_size}!"
+                                if ! [[ " ${can_dlc_array[*]} " =~ ${can_frame_data_size} ]]; then
+                                        echo "Frame size must be a valid CAN FD frame size or 'i', received ${can_frame_data_size}"
                                         exit 1
                                 fi
                         else
-                                echo "Frame size must be a positive integer between 1 and 64 , received ${can_frame_data_size}!"
+                                        echo "Frame size must be a valid CAN FD frame size or 'i', received ${can_frame_data_size}"
                                 exit 1
                         fi                        
                         ;;
