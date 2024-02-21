@@ -640,7 +640,6 @@ free_cdev:
         cdev_del(&(ipc_ch_descr[cdev_idx].chardev));
         device_destroy(ipcfshm_class, MKDEV(dev_major, cdev_idx));
     }
-    class_unregister(ipcfshm_class);
     class_destroy(ipcfshm_class);
 
 free_chdev_region:
@@ -667,7 +666,6 @@ static void __exit ipcf_module_exit(void)
 
     unregister_chrdev_region(MKDEV(dev_major, 0), MINORMASK);
 
-    class_unregister(ipcfshm_class);
     class_destroy(ipcfshm_class);
 
     ipc_shm_free();
