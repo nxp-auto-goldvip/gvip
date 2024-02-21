@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017, Linaro Limited
+ * Copyright 2024 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +29,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 /* OP-TEE TEE client API (built by optee_client) */
 #include <tee_client_api.h>
@@ -35,11 +37,17 @@
 /* TA API: UUID and command IDs */
 #include <secure_storage_ta.h>
 
+/* Export functions for python ctypes. */
+#include <secure_storage.h>
+
 /* TEE resources */
 struct test_ctx {
 	TEEC_Context ctx;
 	TEEC_Session sess;
 };
+
+/* Buffer length, made visible for python ctypes. */
+const int buffer_len = OBJECT_SIZE;
 
 void prepare_tee_session(struct test_ctx *ctx)
 {
@@ -164,78 +172,66 @@ TEEC_Result delete_secure_object(struct test_ctx *ctx, char *id)
 	return res;
 }
 
-#define TEST_OBJECT_SIZE	7000
-
-int main(void)
-{
+int rpmb_get(const char *key, const char *data) {
 	struct test_ctx ctx;
-	char obj1_id[] = "object#1";		/* string identification for the object */
-	char obj2_id[] = "object#2";		/* string identification for the object */
-	char obj1_data[TEST_OBJECT_SIZE];
-	char read_data[TEST_OBJECT_SIZE];
 	TEEC_Result res;
 
-	printf("Prepare session with the TA\n");
 	prepare_tee_session(&ctx);
 
-	/*
-	 * Create object, read it, delete it.
-	 */
-	printf("\nTest on object \"%s\"\n", obj1_id);
+	res = read_secure_object(&ctx, key, data, OBJECT_SIZE);
 
-	printf("- Create and load object in the TA secure storage\n");
-
-	memset(obj1_data, 0xA1, sizeof(obj1_data));
-
-	res = write_secure_object(&ctx, obj1_id,
-				  obj1_data, sizeof(obj1_data));
-	if (res != TEEC_SUCCESS)
-		errx(1, "Failed to create an object in the secure storage");
-
-	printf("- Read back the object\n");
-
-	res = read_secure_object(&ctx, obj1_id,
-				 read_data, sizeof(read_data));
-	if (res != TEEC_SUCCESS)
-		errx(1, "Failed to read an object from the secure storage");
-	if (memcmp(obj1_data, read_data, sizeof(obj1_data)))
-		errx(1, "Unexpected content found in secure storage");
-
-	printf("- Delete the object\n");
-
-	res = delete_secure_object(&ctx, obj1_id);
-	if (res != TEEC_SUCCESS)
-		errx(1, "Failed to delete the object: 0x%x", res);
-
-	/*
-	 * Non volatile storage: create object2 if not found, delete it if found
-	 */
-	printf("\nTest on object \"%s\"\n", obj2_id);
-
-	res = read_secure_object(&ctx, obj2_id,
-				  read_data, sizeof(read_data));
 	if (res != TEEC_SUCCESS && res != TEEC_ERROR_ITEM_NOT_FOUND)
 		errx(1, "Unexpected status when reading an object : 0x%x", res);
 
-	if (res == TEEC_ERROR_ITEM_NOT_FOUND) {
-		char data[] = "This is data stored in the secure storage.\n";
+	terminate_tee_session(&ctx);
 
-		printf("- Object not found in TA secure storage, create it.\n");
+	if (res == TEEC_ERROR_ITEM_NOT_FOUND)
+		return -1;
 
-		res = write_secure_object(&ctx, obj2_id,
-					  data, sizeof(data));
-		if (res != TEEC_SUCCESS)
-			errx(1, "Failed to create/load an object");
+	return 0;
+}
 
-	} else if (res == TEEC_SUCCESS) {
-		printf("- Object found in TA secure storage, delete it.\n");
+int rpmb_put(const char *key, const char *data) {
+	struct test_ctx ctx;
+	TEEC_Result res;
+	char *obj = (char*) calloc(OBJECT_SIZE, sizeof(char));
 
-		res = delete_secure_object(&ctx, obj2_id);
-		if (res != TEEC_SUCCESS)
-			errx(1, "Failed to delete an object");
+	prepare_tee_session(&ctx);
+
+	if (strlen(key) > 64)
+		errx(1, "Key length is too large, must be a maximum of 64 characters.");
+
+	memcpy(obj, data, strlen(data));
+
+	res = write_secure_object(&ctx, key, obj, OBJECT_SIZE);
+
+	if (res != TEEC_SUCCESS)
+		errx(1, "Failed to create an object in the secure storage");
+
+	free(obj);
+	terminate_tee_session(&ctx);
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	char *obj;
+
+	if (argc == 3 && (strcmp(argv[1], GET) == 0)) {
+		obj = (char*) calloc(OBJECT_SIZE, sizeof(char));
+
+		if (rpmb_get(argv[2], obj) < 0) 
+			printf("%s\n", NOT_FOUND);
+		else
+			printf("%s:%s:%s\n", OK, argv[2], obj);
+
+		free(obj);
+	} else if (argc == 4 && strcmp(argv[1], PUT) == 0) {
+		rpmb_put(argv[2], argv[3]);
+		printf("%s\n", OK);
+	} else {
+		printf("Invalid input.\n%s\n", HELP);
 	}
 
-	printf("\nWe're done, close and release TEE resources\n");
-	terminate_tee_session(&ctx);
 	return 0;
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017, Linaro Limited
+ * Copyright 2024 NXP
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,8 +25,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __SECURE_STORAGE_H__
-#define __SECURE_STORAGE_H__
+#ifndef __SECURE_STORAGE_TA_H__
+#define __SECURE_STORAGE_TA_H__
 
 /* UUID of the trusted application */
 #define TA_SECURE_STORAGE_UUID \
@@ -58,4 +59,4 @@
  */
 #define TA_SECURE_STORAGE_CMD_DELETE		2
 
-#endif /* __SECURE_STORAGE_H__ */
+#endif /* __SECURE_STORAGE_TA_H__ */

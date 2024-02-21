@@ -34,6 +34,7 @@ class Greengrassv2Deployment():
                  deployment_name,
                  mqtt_port, https_port,
                  setup_devices,
+                 use_rpmb,
                  no_deploy, clean_device_provision,
                  verbose):
         """
@@ -43,6 +44,7 @@ class Greengrassv2Deployment():
         :param mqtt_port: Mqtt port used by greengrass.
         :param https_port: Https port used by greengrass.
         :param setup_devices: Triggers the provisioning of the client devices.
+        :param use_rpmb: Use the OP-TEE RPMB secure storage in the client device provisioning steps.
         :param no_deploy: Don't create a deployment.
         :param clean_device_provision: Forces a clean provisioning of the client devices.
         :param verbose: Verbosity flag.
@@ -54,6 +56,7 @@ class Greengrassv2Deployment():
         self.__mqtt_port = mqtt_port
         self.__https_port = https_port
         self.__setup_devices = setup_devices
+        self.__use_rpmb = use_rpmb
         self.__no_deploy = no_deploy
         self.__clean_device_provision = clean_device_provision
         self.__verbose = verbose
@@ -256,6 +259,7 @@ class Greengrassv2Deployment():
                         device_hwaddr=device_data.get("device_hwaddr", None),
                         clean_provision=self.__clean_device_provision,
                         time_sync=device_data.get("time_sync", False),
+                        use_rpmb=self.__use_rpmb,
                         verbose=self.__verbose).execute()
                 # pylint: disable=broad-exception-caught
                 except Exception:
@@ -317,6 +321,9 @@ def main():
                         choices=[8443, 443], help='HTTP port used by Greengrass.')
     parser.add_argument('--setup-devices', dest='setup_devices', default=False, action='store_true',
                         help='Provision the client devices with the connection data.')
+    parser.add_argument('--use-rpmb', dest='use_rpmb', default=False, action='store_true',
+                        help='Use the OP-TEE RPMB secure storage for the certificates used in the '
+                        'device provisioning.')
     parser.add_argument('--deployment-name', dest='deployment_name', type=str,
                         default='GoldVIP_Telemetry_Deployment',
                         help='Name of the Greengrass V2 continuous deployment.')
@@ -358,6 +365,7 @@ def main():
             args.mqtt_port,
             args.https_port,
             args.setup_devices,
+            args.use_rpmb,
             args.no_deploy,
             args.clean_device_provision,
             not args.quiet).execute()

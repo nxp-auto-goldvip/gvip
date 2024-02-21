@@ -8,11 +8,12 @@ connect to the greengrass core on v2xdomu.
 
 The provisioning data is stored for subsequent connections.
 
-Copyright 2022-2023 NXP
+Copyright 2022-2024 NXP
 """
 
 import ipaddress
 import json
+import hashlib
 import socket
 import subprocess
 import struct
@@ -43,7 +44,7 @@ class ClientDeviceProvisioningClient():
     # The AWS endpoing
     ENDPOINT = "AWS endpoint"
     # Greengrass certificate authority
-    GG_CA = "Greengrass Certificate Authority"
+    GG_CA = "GG_CA"
 
     # We must provide either the client device's local ip or its
     # Hwaddr which we use to find its ip.
@@ -64,6 +65,7 @@ class ClientDeviceProvisioningClient():
             device_ip=None, device_hwaddr=None,
             clean_provision=False,
             time_sync=False,
+            use_rpmb=False,
             verbose=True):
         """
         :param thing_name: Name of the Decive Thing to connect to.
@@ -78,6 +80,7 @@ class ClientDeviceProvisioningClient():
                                 even if it has already been downloaded.
         :param time_sync: Synchronize the date and time between the core and
                           client devices.
+        :param use_rpmb: Use the OP-TEE RPMB secure storage to store the certificates.
         :param verbose: Verbosity flag.
         """
 
@@ -89,8 +92,26 @@ class ClientDeviceProvisioningClient():
         self.__s3_bucket_name = Utils.get_cfn_output_value(
             cfn_stack_outputs, 'CertificateBucket')
 
+        self.__thing_name = thing_name
+        self.__mqtt_topic = mqtt_topic
+        self.__region = aws_region_name
+        self.__device_port = device_port
+        self.__mqtt_port = mqtt_port
+        self.__clean_provision = clean_provision
+        self.__time_sync = time_sync
+        self.__verbose = verbose
+        self.__use_rpmb = use_rpmb
+        self.__gg_ip = None
+
+        self.cert_pem_key, self.cert_priv_key, self.gg_ca_key = self.__compute_cert_keys()
+
         self.data = {}
         self.client_device_data = {}
+        self.client_certificates = {
+            self.cert_pem_key : None,
+            self.cert_priv_key : None,
+            self.gg_ca_key : None
+        }
 
         if os.path.exists(self.DATA_FILE):
             with open(self.DATA_FILE, "r", encoding="utf-8") as data_file:
@@ -104,16 +125,6 @@ class ClientDeviceProvisioningClient():
                 else:
                     self.client_device_data = self.data.get(thing_name, {})
 
-        self.__thing_name = thing_name
-        self.__mqtt_topic = mqtt_topic
-        self.__region = aws_region_name
-        self.__device_port = device_port
-        self.__mqtt_port = mqtt_port
-        self.__clean_provision = clean_provision
-        self.__time_sync = time_sync
-        self.__verbose = verbose
-        self.__gg_ip = None
-
         self.__certs_archive = self.CERTS_ARCHIVE_TEMPLATE.substitute(thing=thing_name)
 
         if device_ip:
@@ -123,6 +134,34 @@ class ClientDeviceProvisioningClient():
         else:
             # pylint: disable=broad-exception-raised
             raise Exception("Must provide either IP / MAC address of the device in the deployment configuration.")
+
+    def __compute_cert_keys(self, maxlen=64):
+        """
+        Compile the names of the key certificates to be used in RPMB secure storage.
+        The key used in RPMB has a maximum length of 64 characters.
+        The key must include the thing name in order for keys from different stacks to be distinguishable,
+        but the thing name contains the name fo the CFN stack, which can be of any length.
+        If the keys exceed the maximum length, instead of using the thing name,
+        a hash of the thing name is used.
+        :param maxlen: maximum length of the key.
+        """
+        cert_pem_key = f"{self.__thing_name}/{self.CERT_PEM}"
+        cert_priv_key = f"{self.__thing_name}/{self.CERT_PRIV}"
+        gg_ca_key = f"{self.__thing_name}/{self.GG_CA}"
+
+        if (len(cert_pem_key) >= maxlen or
+                len(cert_priv_key) >= maxlen or
+                len(gg_ca_key) >= maxlen):
+
+            hash_m = hashlib.md5()
+            hash_m.update(self.__thing_name.encode())
+            thing_name_hashed = hash_m.hexdigest()[0:20]
+
+            cert_pem_key = f"{thing_name_hashed}/{self.CERT_PEM}"
+            cert_priv_key = f"{thing_name_hashed}/{self.CERT_PRIV}"
+            gg_ca_key = f"{thing_name_hashed}/{self.GG_CA}"
+
+        return cert_pem_key, cert_priv_key, gg_ca_key
 
     def __attach_thing_to_ggcore(self):
         """
@@ -281,11 +320,24 @@ class ClientDeviceProvisioningClient():
         created by the CFN stack.
         """
         # Check if the certificates were already downloaded.
-        if (self.client_device_data.get(self.CERT, None)
-                and not self.__clean_provision):
-            return
+        if self.__use_rpmb:
+            found_certs = True
+            for key in [self.cert_pem_key, self.cert_priv_key]:
+                cert = Utils.read_from_rpmb(key)
+                if cert:
+                    self.client_certificates[key] = cert
+                else:
+                    found_certs = False
+                    break
 
-        self.client_device_data[self.CERT] = {}
+            if found_certs:
+                return
+        elif (self.client_device_data.get(self.CERT, None) and
+                self.client_device_data[self.CERT].get(self.cert_pem_key, None) and
+                self.client_device_data[self.CERT].get(self.cert_priv_key, None)):
+            self.client_certificates[self.cert_pem_key] = self.client_device_data[self.CERT][self.cert_pem_key]
+            self.client_certificates[self.cert_priv_key] = self.client_device_data[self.CERT][self.cert_priv_key]
+            return
 
         s3_client = boto3.client('s3')
 
@@ -297,13 +349,21 @@ class ClientDeviceProvisioningClient():
 
         with tarfile.open(fileobj=gzip, mode='r:gz') as tar:
             for member in tar.getmembers():
-                if member.name in [self.CERT_PRIV, self.CERT_PEM]:
-                    self.client_device_data[self.CERT][member.name] = \
+                if member.name in [self.CERT_PRIV]:
+                    self.client_certificates[self.cert_priv_key] = \
+                        tar.extractfile(member).read().decode("utf-8")
+                if member.name in [self.CERT_PEM]:
+                    self.client_certificates[self.cert_pem_key] = \
                         tar.extractfile(member).read().decode("utf-8")
 
-        if not all(self.client_device_data[self.CERT]):
+        if not all(self.client_certificates):
             # pylint: disable=broad-exception-raised
             raise Exception("One or more certificates couldn't be found.")
+
+        # Saving the certificates to RPMB.
+        if self.__use_rpmb:
+            Utils.write_to_rpmb(self.cert_priv_key, self.client_certificates[self.cert_priv_key])
+            Utils.write_to_rpmb(self.cert_pem_key, self.client_certificates[self.cert_pem_key])
 
         if self.__verbose:
             print("Retrieved certificates.")
@@ -316,16 +376,22 @@ class ClientDeviceProvisioningClient():
         :param wait_time: Wait time in seconds between retries.
         """
         # Check if the greengrass certificate authority was already downloaded.
-        if (self.client_device_data.get(self.GG_CA, None)
-                and not self.__clean_provision):
+        if self.__use_rpmb:
+            cert = Utils.read_from_rpmb(self.gg_ca_key)
+            if cert:
+                self.client_certificates[self.gg_ca_key] = cert
+                return
+        elif (self.client_device_data.get(self.CERT, None) and
+                self.client_device_data[self.CERT].get(self.gg_ca_key, None)):
+            self.client_certificates[self.gg_ca_key] = self.client_device_data[self.CERT][self.gg_ca_key]
             return
 
         with tempfile.NamedTemporaryFile(mode="w+") as certpath, \
              tempfile.NamedTemporaryFile(mode="w+") as keypath:
 
             # Write the certificates to temporary files.
-            certpath.write(self.client_device_data[self.CERT][self.CERT_PEM])
-            keypath.write(self.client_device_data[self.CERT][self.CERT_PRIV])
+            certpath.write(self.client_certificates[self.cert_pem_key])
+            keypath.write(self.client_certificates[self.cert_priv_key])
 
             certpath.flush()
             keypath.flush()
@@ -343,15 +409,21 @@ class ClientDeviceProvisioningClient():
                     if self.__verbose:
                         print(f"The request for thing discovery failed (reason: {err}). "
                               "Retrying...")
+                    continue
 
-                # Save the Greengrass Certitficate Authority from the request.
-                response = json.loads(ret.text)
                 try:
-                    self.client_device_data[self.GG_CA] \
+                    # Save the Greengrass Certitficate Authority from the request.
+                    response = json.loads(ret.text)
+                    self.client_certificates[self.gg_ca_key] \
                         = response["GGGroups"][0]["CAs"][0]
 
                     if self.__verbose:
                         print("Greengrass certificate authority retrieved.")
+
+                    # Saving the certificate to RPMB.
+                    if self.__use_rpmb:
+                        Utils.write_to_rpmb(self.gg_ca_key, self.client_certificates[self.gg_ca_key])
+
                     return
                 except KeyError:
                     time.sleep(wait_time)
@@ -378,10 +450,10 @@ class ClientDeviceProvisioningClient():
         outbound_data = [
             bytes(self.client_device_data[self.ENDPOINT], 'utf-8'),
             bytes(self.__thing_name, 'utf-8'),
-            bytes(self.client_device_data[self.CERT][self.CERT_PRIV], 'utf-8'),
-            bytes(self.client_device_data[self.CERT][self.CERT_PEM], 'utf-8'),
+            bytes(self.client_certificates[self.cert_priv_key], 'utf-8'),
+            bytes(self.client_certificates[self.cert_pem_key], 'utf-8'),
             bytes(self.__mqtt_topic, 'utf-8'),
-            bytes(self.client_device_data[self.GG_CA], 'utf-8'),
+            bytes(self.client_certificates[self.gg_ca_key], 'utf-8'),
             bytes(self.__gg_ip, 'utf-8'),
         ]
 
@@ -416,6 +488,9 @@ class ClientDeviceProvisioningClient():
         """
         Saves the client data.
         """
+        if not self.__use_rpmb:
+            self.client_device_data[self.CERT] = self.client_certificates
+
         with open(self.DATA_FILE, "w+", encoding="utf-8") as data_file:
             self.data[self.__thing_name] = self.client_device_data
             json.dump(self.data, data_file, indent=4)
@@ -426,6 +501,10 @@ class ClientDeviceProvisioningClient():
         """
         self.__attach_thing_to_ggcore()
 
+        self.__get_endpoint()
+        self.__extract_certificate()
+        self.__get_greengrass_ca()
+
         # Retrieve the device ip using the mac, only if the mac is specified.
         if self.client_device_data.get(self.DEVICE_MAC, None):
             self.__find_device_ip()
@@ -434,8 +513,5 @@ class ClientDeviceProvisioningClient():
             self.__gg_ip = self.__find_local_ip()
             self.__update_connectivity_info()
 
-        self.__get_endpoint()
-        self.__extract_certificate()
-        self.__get_greengrass_ca()
         self.provision()
         self.save_data()

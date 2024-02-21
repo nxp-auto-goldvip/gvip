@@ -5,9 +5,10 @@
 """
 Auxiliary functions used for the provisioning scripts.
 
-Copyright 2021-2023 NXP
+Copyright 2021-2024 NXP
 """
 
+import ctypes
 import os
 import re
 import subprocess
@@ -18,6 +19,9 @@ class Utils():
     """ Class containing general utility methods. """
     # Time in seconds used to wait for wpa_supplicant initialization.
     WPA_WAIT_TIME = 3
+
+    # RPMB secure storage TA
+    SEC_STORAGE_TA_SO = "optee_certificate_secure_storage.so"
 
     @staticmethod
     def execute_command(command, timeout=None):
@@ -188,3 +192,57 @@ class Utils():
                 return tar_name
 
         raise Exception(f"Bucket {bucket_name} does not contain tarball {tar_name}.")
+
+    @staticmethod
+    def write_to_rpmb(key, data):
+        """
+        Call the optee_certificate_secure_storage Trusted Application
+        to store a key:data pair in RPMB secure storage.
+        :param key: The object key.
+        :param data: The data to be written.
+        """
+        print(f"Writing certificate {key} to RPMB secure storage.")
+
+        try:
+            # Loading shared object
+            c_lib = ctypes.CDLL(Utils.SEC_STORAGE_TA_SO)
+
+            # Calling rpmb_put
+            c_lib.rpmb_put.restype = ctypes.c_int
+            ret = c_lib.rpmb_put(key.encode(), data.encode())
+
+            if ret != 0:
+                raise Exception(f"Failed to write key {key} to RPMB.")
+        # pylint: disable=broad-exception-caught
+        except Exception as exp:
+            print(f"Failed to write to RPMB. Error: {exp}")
+
+    @staticmethod
+    def read_from_rpmb(key):
+        """
+        Call the optee_certificate_secure_storage Trusted Application
+        to retrieve the data corresponding to a key from RPMB secure storage.
+        :param key: The object key.
+        """
+        print(f"Retrieving certificate {key} from RPMB secure storage.")
+
+        try:
+            # Loading shared object
+            c_lib = ctypes.CDLL(Utils.SEC_STORAGE_TA_SO)
+
+            buffer_len = ctypes.c_int.in_dll(c_lib, "buffer_len").value
+
+            # Calling rpmb_get
+            c_lib.rpmb_get.restype = ctypes.c_int
+            data = ctypes.create_string_buffer(buffer_len)
+            ret = c_lib.rpmb_get(key.encode(), data)
+
+            if ret < 0:
+                print("Certificate not found in RPMB secure storage.")
+                return None
+
+            return data.value.decode('utf-8')
+        # pylint: disable=broad-exception-caught
+        except Exception as exp:
+            print(f"Failed to read from RPMB. Error: {exp}")
+            return None
