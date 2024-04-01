@@ -1,4 +1,4 @@
-# Copyright 2022 NXP
+# Copyright 2022,2024 NXP
 # Example manifest used to deploy a Nginx web server in a K3s cluster.
 
 apiVersion: apps/v1

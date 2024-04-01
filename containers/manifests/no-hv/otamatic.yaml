@@ -1,0 +1,49 @@
+# Copyright 2022-2024 NXP
+# OTAmatic Client pod - runs on a domU VM.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: otamatic-client-pod
+  labels:
+    app: otamatic-client-pod
+spec:
+  hostNetwork: true
+  # Start the container with a custom command to get the logs from the OTAmatic Client on the
+  # rootfs of the host system.
+  containers:
+  - name: otamatic-client-container
+    image: goldvip-ota-client:local
+    imagePullPolicy: Never
+    command: [
+      'sh',
+      '-c',
+      'otamatic_sample_app >> /var/log/otamatic 2>&1'
+    ]
+    volumeMounts:
+    - name: uptane-data-path
+      mountPath: /data
+    - name: varlog
+      mountPath: /var/log
+  # Prepare the workspace (ensure /data directory are present on the rootfs of the host system).
+  initContainers:
+  - name: init-otamatic-config-container
+    image: goldvip-ota-client:local
+    imagePullPolicy: Never
+    command: ['/bin/bash', '-c']
+    args:
+      - >
+        for dir in $(comm -23 <(ls /data) <(ls /mnt/host-data)); do
+          cp -r /data/${dir} /mnt/host-data/.;
+        done
+    volumeMounts:
+    - name: uptane-data-path
+      mountPath: /mnt/host-data
+  volumes:
+  - name: uptane-data-path
+    hostPath:
+      path: /data
+      type: DirectoryOrCreate
+  - name: varlog
+    hostPath:
+      path: /var/log
+      type: Directory
