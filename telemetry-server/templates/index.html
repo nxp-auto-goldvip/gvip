@@ -1,4 +1,4 @@
-<!-- Copyright NXP 2022 -->
+<!-- Copyright NXP 2022,2024 -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -177,11 +177,11 @@
             "dom0_mem_load")
         plot_timeseries(data,
             [
-                data.telemetry.hse_llce_average_temperature,
+                data.telemetry.ddr_sram_temperature,
                 data.telemetry.a53_cluster_temperature,
-                data.telemetry.a53_cluster_average_temperature
+                data.telemetry.hse_llce_temperature
             ],
-            ["hse_llce_average_temperature", "a53_cluster_temperature", "a53_cluster_average_temperature"],
+            ["ddr_sram_temperature", "a53_cluster_temperature", "hse_llce_temperature"],
             "Immediate Temperature",
             "temperature")
         plot_timeseries(data,

@@ -254,14 +254,14 @@ check_input() {
 
         tx_id=""
         for id in "${tx_id_list[@]}"; do
-                hex_id=$(printf 0%x "${id}")
+                hex_id=$(printf 0x%x "${id}")
                 tx_id="${tx_id}${hex_id} "
         done
         
         if [[ "${use_rx_interface}" == "true" ]]; then
                 rx_id=""
                 for id in "${rx_id_list[@]}"; do
-                        hex_id=$(printf %x "${id}")
+                        hex_id=$(printf 0x%x "${id}")
                         rx_id="${rx_id}${hex_id} "
                 done
 

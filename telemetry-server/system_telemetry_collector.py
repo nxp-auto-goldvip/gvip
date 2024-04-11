@@ -5,7 +5,7 @@
 """
 Collects the data required for the telemetry server charts.
 
-Copyright 2022-2023 NXP
+Copyright 2022-2024 NXP
 """
 
 import json
@@ -35,9 +35,9 @@ class SystemTelemetryCollector():
         "pfe2_rx_mbps": {"key": "pfe2_rx_bps", "transform": lambda x: x / 1000000},
         "pfe2_tx_mbps": {"key": "pfe2_tx_bps", "transform": lambda x: x / 1000000},
         "mem_load": {"key": "mem_load", "transform": lambda x: x / 1024},
-        "hse_llce_average_temperature": None,
+        "ddr_sram_temperature": None,
         "a53_cluster_temperature": None,
-        "a53_cluster_average_temperature": None,
+        "hse_llce_temperature": None,
         "m7_anomalies": None,
         "llce_anomalies": None,
         "hmon_1V1": None,
