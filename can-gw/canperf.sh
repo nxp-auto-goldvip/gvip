@@ -231,7 +231,7 @@ check_input() {
                 exit 1
         fi
 
-        tx_id=$(printf 0x%x "${tx_id}")/
+        tx_id=$(printf 0x%x "${tx_id}")
         if [[ "${use_rx_interface}" == "true" ]]; then
                 rx_id=$(printf 0x%x "${rx_id}")
                 echo "Transmit CAN id         : ${tx_id}"
