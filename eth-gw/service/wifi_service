@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+### BEGIN INIT INFO
+# Provides:          Wi-Fi-setup
+# Required-Start:    networking
+# Required-Stop:
+# Should-Start:
+# Should-Stop:
+# Default-Start:
+# Default-Stop:
+# Short-Description: setup Wi-Fi connection
+# Description:       Script automatically setup Wi-Fi network and bridge it to domU
+### END INIT INFO
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright 2024 NXP
+
+LOG_PATH="/var/log/wifi.log"
+
+# Main section
+if [ $# -eq 0 ]; then
+   echo -e "Please input parameters!\n"
+   usage
+   exit
+fi
+
+wifi_setup "$1" 2>&1 | tee ${LOG_PATH} | grep -E "connected|Exit" &

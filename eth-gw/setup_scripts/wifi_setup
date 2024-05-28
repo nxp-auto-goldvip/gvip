@@ -1,18 +1,7 @@
 #!/usr/bin/env bash
-### BEGIN INIT INFO
-# Provides:          Wi-Fi-setup
-# Required-Start:    networking
-# Required-Stop:
-# Should-Start:
-# Should-Stop:
-# Default-Start:
-# Default-Stop:
-# Short-Description: setup Wi-Fi connection
-# Description:       Script automatically setup Wi-Fi network and bridge it to domU
-### END INIT INFO
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2021-2022 NXP
+# Copyright 2021-2022,2024 NXP
 
 # Enable bash strict mode (i.e. fail on any non-zero exit code,
 # undefined variable reference and prevent masked pipeline errors).
@@ -31,6 +20,7 @@ domU_ip="10.0.50.31"
 dhcp_config_file="/etc/dnsmasq.conf"
 wpa_conf_file="/etc/wpa_supplicant.conf"
 wifi_config_file="/etc/wifi_nxp.conf"
+is_xen=$(which xl &> /dev/null && echo 1 || echo 0)
 
 set_trap() {
     # Set trap handler for INT signal given via the Ctrl-C combination.
@@ -89,7 +79,10 @@ del_bridge() {
 
 get_ip_wifi() {
     udhcpc -i"${wifi_interface}"
-    ifconfig "${bridge_interface}" "${dom0_ip}" netmask 255.255.255.0 up
+
+    if [ $is_xen -eq 1 ]; then
+        ifconfig "${bridge_interface}" "${dom0_ip}" netmask 255.255.255.0 up
+    fi
 }
 
 # Forward packet from domU bridge to Wi-Fi interface
@@ -124,17 +117,19 @@ setup_network_domU() {
     # Disable SC2029 to avoid double parsing variable from both ssh and eval
     # shellcheck disable=SC2029
     ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-	    root@${access_ip_domU} "${dhcp_cmd}"
+        root@${access_ip_domU} "${dhcp_cmd}"
 }
 
 clean_up() {
-    del_bridge
-    clean_forwarding_packet_rule
+    if [ $is_xen -eq 1 ]; then
+        del_bridge
+        clean_forwarding_packet_rule
+    fi
     pkill wpa_supplicant || true
     pkill wpa_cli || true
 }
 
-#Parsing config file to get network interface
+# Parsing config file to get network interface
 parse_config_file() {
     local config_parameter=(wifi_interface mac_domu bridge_interface virtual_interface)
 
@@ -150,11 +145,16 @@ parse_config_file() {
 do_start() {
     parse_config_file
     setup_wifi
-    setup_bridge
-    get_ip_wifi
-    set_forwarding_packet_rule
-    setup_dhcp_server
-    setup_network_domU
+
+    if [ $is_xen -eq 1 ]; then
+        setup_bridge
+        get_ip_wifi
+        set_forwarding_packet_rule
+        setup_dhcp_server
+        setup_network_domU
+    else
+        get_ip_wifi
+    fi
 }
 
 do_stop() {
@@ -164,7 +164,7 @@ do_stop() {
 
 do_restart() {
     do_stop
-    do_start 2>&1 | tee /var/log/wifi.log | grep -E "connected|Exit" &
+    do_start
 }
 
 # Main section
@@ -176,7 +176,7 @@ fi
 
 case "$1" in
     start)
-        do_start 2>&1 | tee /var/log/wifi.log | grep -E "connected|Exit" &
+        do_start
         ;;
     stop)
         do_stop
@@ -189,3 +189,4 @@ case "$1" in
         exit 1
         ;;
 esac
+
