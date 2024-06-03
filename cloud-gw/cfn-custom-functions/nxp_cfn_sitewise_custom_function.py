@@ -11,7 +11,7 @@ which routes the telemetry data from AWS IoT Core to SiteWise.
 When 'delete' is invoked it handles the deletion of all resources
 created by this function.
 
-Copyright 2021-2023 NXP
+Copyright 2021-2024 NXP
 """
 import json
 import time
@@ -28,6 +28,12 @@ class SitewiseHandler:
     """
     SITEWISE_CLIENT = boto3.client('iotsitewise')
     IOT_CLIENT = boto3.client('iot')
+    DATA_TYPE_DICT = {
+        'DOUBLE': 'doubleValue',
+        'STRING': 'stringValue',
+        'INTEGER': 'integerValue',
+        'BOOLEAN': 'booleanValue'
+    }
 
     def __init__(self, configs):
         """
@@ -399,7 +405,8 @@ class SitewiseHandler:
         property_entry_list = []
         topic_rule_idx = 0
 
-        for idx, alias_suffix in enumerate(kwargs["aliases"]):
+        for idx, alias_tuple in enumerate(kwargs["aliases"]):
+            alias_suffix, data_type = alias_tuple
             # Append to property list
             property_entry_list.append(
                 {
@@ -407,7 +414,7 @@ class SitewiseHandler:
                     'propertyValues': [
                         {
                             'value': {
-                                'doubleValue': '${' + alias_suffix + '}',
+                                f'{data_type}': '${' + alias_suffix + '}',
                             },
                             'timestamp': {
                                 'timeInSeconds':
@@ -471,7 +478,10 @@ class SitewiseHandler:
             alias_list = []
 
             for asset_property in rule['properties']:
-                alias_list.append(properties[asset_property]['alias'])
+                data_type = self.DATA_TYPE_DICT[
+                    properties[asset_property]['property'].get('data_type', 'DOUBLE')
+                ]
+                alias_list.append((properties[asset_property]['alias'], data_type))
 
             self.__create_topic_rule(
                 event=event, sql_rule=rule_sql,
