@@ -18,7 +18,7 @@ import traceback
 
 import boto3
 
-from utils import Utils
+from utils import Utils, GREENGRASS_ROOT_PATH
 from client_device_provision import ClientDeviceProvisioningClient
 
 
@@ -41,8 +41,8 @@ class Greengrassv2Deployment():
         :param region: The AWS region where the stack was deployed.
         :param stack_name: The name of the deployed CloudFormation stack.
         :param deployment_name: A Name for the Greengrass v2 deployment.
-        :param mqtt_port: Mqtt port used by greengrass.
-        :param https_port: Https port used by greengrass.
+        :param mqtt_port: Mqtt port used by Greengrass.
+        :param https_port: Https port used by Greengrass.
         :param setup_devices: Triggers the provisioning of the client devices.
         :param use_rpmb: Use the OP-TEE RPMB secure storage in the client device provisioning steps.
         :param no_deploy: Don't create a deployment.
@@ -124,8 +124,8 @@ class Greengrassv2Deployment():
     def __create_deployment(self):
         """
         Creates a Greengrass v2 continuous deployment for the stack's core thing.
-        It deploys on the board the Telemetry component, the greengrass cli,
-        the greengrass nucleus, and four components required to connect to SJA1110's thing.
+        It deploys on the board the Telemetry component, the Greengrass cli,
+        the Greengrass nucleus, and four components required to connect to SJA1110's thing.
         """
         ggv2_client = boto3.client("greengrassv2")
 
@@ -179,8 +179,8 @@ class Greengrassv2Deployment():
         keeping this Nucleus alive.
         :param timeout: Time in seconds to wait for the installer to report a succesfull launch.
         """
-        installer_command = f"java -Droot='/greengrass/v2' -Dlog.store=FILE "\
-                            f"-jar /greengrass/v2/alts/init/distro/lib/Greengrass.jar "\
+        installer_command = f"java -Droot={GREENGRASS_ROOT_PATH} -Dlog.store=FILE "\
+                            f"-jar {GREENGRASS_ROOT_PATH}/alts/init/distro/lib/Greengrass.jar "\
                             f"--aws-region {self.__region} "\
                             f"--component-default-user ggc_user:ggc_group "\
                             f"--provision true --thing-name {self.__thing_name} "\
@@ -288,7 +288,7 @@ class Greengrassv2Deployment():
         Greengrassv2Deployment.stop_greengrass_nucleus()
 
         print("Starting Greengrass V2 Nucleus...")
-        installer_command = "/greengrass/v2/alts/current/distro/bin/loader"
+        installer_command = f"{GREENGRASS_ROOT_PATH}/alts/current/distro/bin/loader"
         # pylint: disable=consider-using-with
         subprocess.Popen(installer_command,
                          stdout=subprocess.DEVNULL,
@@ -302,7 +302,7 @@ def main():
                                                  'CloudFormation stack to copy the Greengrass '
                                                  'certificate and trigger a group deployment.')
     parser.add_argument('--no-deploy', dest='no_deploy', default=False, action='store_true',
-                        help="Setup only the network; don't deploy the greengrass group.")
+                        help="Setup only the network; don't deploy the Greengrass group.")
     parser.add_argument('--stack-name', dest='cfn_stack_name', type=str,
                         default='serverlessrepo-nxp-goldvip-telemetry',
                         help='The name of the deployed CloudFormation stack.')

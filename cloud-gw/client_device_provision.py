@@ -4,7 +4,7 @@
 
 """
 Retrieves the data required to provision a client device for it to
-connect to the greengrass core on v2xdomu.
+connect to the Greengrass core on v2xdomu.
 
 The provisioning data is stored for subsequent connections.
 
@@ -28,7 +28,7 @@ from string import Template
 import requests
 import boto3
 
-from utils import Utils
+from utils import Utils, GREENGRASS_ROOT_PATH
 
 
 # pylint: disable=too-many-instance-attributes
@@ -165,7 +165,7 @@ class ClientDeviceProvisioningClient():
 
     def __attach_thing_to_ggcore(self):
         """
-        Associates the client device to the greengrass core thing.
+        Associates the client device to the Greengrass core thing.
         """
         ggv2_client = boto3.client('greengrassv2')
 
@@ -368,24 +368,14 @@ class ClientDeviceProvisioningClient():
         if self.__verbose:
             print("Retrieved certificates.")
 
-    def __get_greengrass_ca(self, nb_retries=60, wait_time=10):
+    def __get_greengrass_ca_discovery(self, nb_retries=20, wait_time=5):
         """
         Get the public Certificate Authority of the greengrass core device via
         greengrass discover api.
         :param nb_retries: Number of times to retry fetching the Certificate Authority.
         :param wait_time: Wait time in seconds between retries.
+        :return bool: Success or failure.
         """
-        # Check if the greengrass certificate authority was already downloaded.
-        if self.__use_rpmb:
-            cert = Utils.read_from_rpmb(self.gg_ca_key)
-            if cert:
-                self.client_certificates[self.gg_ca_key] = cert
-                return
-        elif (self.client_device_data.get(self.CERT, None) and
-                self.client_device_data[self.CERT].get(self.gg_ca_key, None)):
-            self.client_certificates[self.gg_ca_key] = self.client_device_data[self.CERT][self.gg_ca_key]
-            return
-
         with tempfile.NamedTemporaryFile(mode="w+") as certpath, \
              tempfile.NamedTemporaryFile(mode="w+") as keypath:
 
@@ -424,15 +414,65 @@ class ClientDeviceProvisioningClient():
                     if self.__use_rpmb:
                         Utils.write_to_rpmb(self.gg_ca_key, self.client_certificates[self.gg_ca_key])
 
-                    return
+                    return True
                 except KeyError:
                     time.sleep(wait_time)
 
                     if i < nb_retries - 1 and self.__verbose:
                         print("Certificate Authority not found, retrying...")
 
+        return False
+
+    def __get_greengrass_ca_local(self, nb_retries=60, wait_time=2):
+        """
+        Retrieve the Greengrass CA from local path.
+        The CA is available after a successful deployment of the Greengrass core.
+
+        :param nb_retries: Number of times to retry fetching the Certificate Authority.
+        :param wait_time: Wait time in seconds between retries.
+        :return bool: Success or failure.
+        """
+        gg_ca_local_path = f"{GREENGRASS_ROOT_PATH}/work/aws.greengrass.clientdevices.Auth/ca.pem"
+
+        for i in range(nb_retries):
+            try:
+                with open(gg_ca_local_path, mode="r", encoding="utf-8") as ca:
+                    self.client_certificates[self.gg_ca_key] = ca.read()
+
+                return True
+            except KeyError:
+                time.sleep(wait_time)
+
+                if i < nb_retries - 1 and self.__verbose:
+                    print("Certificate Authority not found, retrying...")
+
+        return False
+
+    def __get_greengrass_ca(self):
+        """
+        Retrieve the Greengrass CA.
+        First, it tries to retrieve it via the Greengrass Discovery APIs, from cloud.
+        If this does not work, try to use the CA from local filesystem.
+
+        The second option is used as a last resort as it is not oficially supported:
+        https://github.com/awsdocs/aws-iot-greengrass-v2-developer-guide/issues/20
+        """
+        # Check if the Greengrass certificate authority was already downloaded.
+        if self.__use_rpmb:
+            cert = Utils.read_from_rpmb(self.gg_ca_key)
+            if cert:
+                self.client_certificates[self.gg_ca_key] = cert
+                return
+        elif (self.client_device_data.get(self.CERT, None) and
+                self.client_device_data[self.CERT].get(self.gg_ca_key, None)):
+            self.client_certificates[self.gg_ca_key] = self.client_device_data[self.CERT][self.gg_ca_key]
+            return
+
+        if self.__get_greengrass_ca_discovery() or self.__get_greengrass_ca_local():
+            return
+
         # pylint: disable=broad-exception-raised
-        raise Exception(f"Greengrass CA not found in request response: {response}")
+        raise Exception("Greengrass CA not found.")
 
     def provision(self):
         """

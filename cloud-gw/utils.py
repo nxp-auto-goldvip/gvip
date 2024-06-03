@@ -14,6 +14,8 @@ import re
 import subprocess
 import time
 
+GREENGRASS_ROOT_PATH = "/greengrass/v2/"
+
 
 class Utils():
     """ Class containing general utility methods. """
