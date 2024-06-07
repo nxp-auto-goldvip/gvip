@@ -131,7 +131,7 @@ ssize_t ipcf_write(struct file *pfile, const char __user *buffer, size_t length,
                    loff_t *offset);
 static void init_state_vars(void);
 static void data_chan_rx_cb(void *cb_arg, const uint8_t instance,
-                            int chan_id, void *buf, size_t size);
+                            uint8_t chan_id, void *buf, uint32_t size);
 static uint8_t get_device_idx(uint8_t inst_id, uint8_t chan_id);
 static uint8_t *get_next_pending_buff(struct ipc_chan_descr_t *ch, uint32_t *size);
 static uint8_t *get_next_free_buff(struct ipc_chan_descr_t *ch, uint32_t size);
@@ -352,8 +352,8 @@ static void init_state_vars(void)
  *
  *  @return         N/A
  */
-static void data_chan_rx_cb(void *arg, const uint8_t inst_id, int chan_id,
-                            void *buf, size_t size)
+static void data_chan_rx_cb(void *arg, const uint8_t inst_id, uint8_t chan_id,
+                            void *buf, uint32_t size)
 {
     int err;
     uint8_t dev_id = IPC_INVALID;
@@ -543,6 +543,7 @@ static int __init ipcf_module_init(void)
     int inst_id = 0;
     int ch_id = 0;
     uint32_t M7_0_stat = 0;
+    uint32_t *pM7_0_stat = NULL;
     struct device *pdev = NULL;
     struct device_node *mem_node;
     struct reserved_mem *rmem;
@@ -573,7 +574,7 @@ static int __init ipcf_module_init(void)
         shm_instances_cfg.shm_cfg[inst_id].local_shm_addr = rmem->base + rmem->size / 2;
     }
 
-    uint32_t *pM7_0_stat = ioremap(M7_0_CORE_STAT_REG, M7_0_CORE_STAT_REG_SIZE);
+    pM7_0_stat = ioremap(M7_0_CORE_STAT_REG, M7_0_CORE_STAT_REG_SIZE);
     if (IS_ERR(pM7_0_stat)) {
         printk (KERN_ALERT "Failed to map M7_0 core status register \n");
         return -EFAULT;
