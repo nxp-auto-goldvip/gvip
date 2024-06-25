@@ -396,6 +396,7 @@ class ClientDeviceProvisioningClient():
                     ret = requests.get(url, cert=(certpath.name, keypath.name), timeout=10)
                     ret.raise_for_status()
                 except requests.exceptions.RequestException as err:
+                    time.sleep(wait_time)
                     if self.__verbose:
                         print(f"The request for thing discovery failed (reason: {err}). "
                               "Retrying...")
@@ -408,7 +409,7 @@ class ClientDeviceProvisioningClient():
                         = response["GGGroups"][0]["CAs"][0]
 
                     if self.__verbose:
-                        print("Greengrass certificate authority retrieved.")
+                        print("Greengrass certificate authority retrieved via discovery.")
 
                     # Saving the certificate to RPMB.
                     if self.__use_rpmb:
@@ -416,7 +417,6 @@ class ClientDeviceProvisioningClient():
 
                     return True
                 except KeyError:
-                    time.sleep(wait_time)
 
                     if i < nb_retries - 1 and self.__verbose:
                         print("Certificate Authority not found, retrying...")
@@ -438,6 +438,9 @@ class ClientDeviceProvisioningClient():
             try:
                 with open(gg_ca_local_path, mode="r", encoding="utf-8") as ca:
                     self.client_certificates[self.gg_ca_key] = ca.read()
+
+                if self.__verbose:
+                    print("Greengrass certificate authority retrieved from local files.")
 
                 return True
             except KeyError:
