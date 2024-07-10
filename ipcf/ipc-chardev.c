@@ -24,6 +24,7 @@
 #include <linux/kern_levels.h>
 #include <linux/ioport.h>
 #include <linux/mod_devicetable.h>
+#include <linux/version.h>
 #include <asm/io.h>
 #include <ipc-shm.h>
 #include <ipc-platform-cfg.h>
@@ -376,7 +377,7 @@ static void data_chan_rx_cb(void *arg, const uint8_t inst_id, uint8_t chan_id,
     } else {
         printk(KERN_ALERT "Received data does not fit \
                in the existing buffers with for instance id %d, channel id %d,\
-               of size %zu \n", inst_id, chan_id, size);
+               of size %u \n", inst_id, chan_id, size);
     }
 
 free_ipc_buffer:
@@ -522,7 +523,11 @@ int ipcf_close(struct inode *pinode, struct file *pfile)
 *
 * @return 0
 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+static int ipcfshm_uevent(const struct device *dev, struct kobj_uevent_env *env)
+#else
 static int ipcfshm_uevent(struct device *dev, struct kobj_uevent_env *env)
+#endif
 {
     add_uevent_var(env, "DEVMODE=%#o", 0666);
     return 0;
@@ -596,7 +601,11 @@ static int __init ipcf_module_init(void)
     /* get major number for device driver */
     dev_major = MAJOR(dev);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
+    ipcfshm_class = class_create(DEVICE_NAME);
+#else
     ipcfshm_class = class_create(THIS_MODULE, DEVICE_NAME);
+#endif
     if (NULL == ipcfshm_class) {
         printk(KERN_ALERT "Failed to create device class for %s \n", DEVICE_NAME);
         goto free_chdev_region;
