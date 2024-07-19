@@ -145,7 +145,7 @@ Resources:
             Action:
               - sts:AssumeRole
 
-  LambdaBasicExecutionRole:
+  GreengrassLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -170,13 +170,152 @@ Resources:
                 Resource: arn:aws:logs:*:*:*
               - Effect: Allow
                 Action:
-                  - iot:*
-                  - s3:*
-                  - iotsitewise:*
-                  - events:*
-                  - lambda:*
-                  - greengrass:*
-                  - iam:*
+                  - greengrass:CreateComponentVersion
+                  - greengrass:GetDeployment
+                  - greengrass:DeleteComponent
+                  - greengrass:GetPaginator
+                  - greengrass:CreateDeployment
+                  - greengrass:CancelDeployment
+                  - greengrass:DeleteDeployment
+                  - greengrass:DeleteCoreDevice
+                  - greengrass:ListDeployments
+                  - greengrass:AssociateServiceRoleToAccount
+                  - greengrass:GetServiceRoleForAccount
+                Resource: arn:aws:greengrass:*:*:*
+              - Effect: Allow
+                Action:
+                  - iam:DeleteRole
+                  - iam:DeleteRolePolicy
+                Resource: arn:aws:iam::*:*
+              - Effect: Allow
+                Action:
+                  - iam:DeleteRole
+                  - iam:DeleteRolePolicy
+                  - lambda:GetLayerVersion
+                  - lambda:ListVersionsByFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:GetFunction
+                  - lambda:GetAlias
+                Resource: arn:aws:lambda:*:*:*
+              - Effect: Allow
+                Action:
+                  - iot:DescribeThing
+                  - iot:CancelJob
+                  - iot:CreateJob
+                  - iot:DeleteThingShadow
+                  - iot:DescribeJob
+                  - iot:DescribeThing
+                  - iot:DescribeThingGroup
+                  - iot:GetThingShadow
+                  - iot:UpdateJob
+                  - iot:UpdateThingShadow
+                Resource:
+                  - arn:aws:iot:*:*:*
+
+  CertificateLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: CustomLambdaDescribePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:PutRetentionPolicy
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:DeleteBucket
+                  - s3:DeleteObjectVersion
+                Resource: arn:aws:s3::*:*
+              - Effect: Allow
+                Action:
+                  - iot:CreateKeysAndCertificate
+                  - iot:AttachThingPrincipal
+                  - iot:AttachPrincipalPolicy
+                  - iot:ListPrincipalThings
+                  - iot:ListThingPrincipals
+                  - iot:DetachThingPrincipal
+                  - iot:ListTargetsForPolicy
+                  - iot:DetachPrincipalPolicy
+                  - iot:UpdateCertificate
+                  - iot:DeleteCertificate
+                  - iot:DescribeThing
+                Resource: '*'
+
+  SitewiseLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: CustomLambdaDescribePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogGroups
+                  - logs:PutRetentionPolicy
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - iot:CreateTopicRule
+                  - iot:DeleteTopicRule
+                  - iot:GetPaginator
+                  - iot:ListTopicRules
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: arn:aws:iam::*:*
+              - Effect: Allow
+                Action:
+                  - iotsitewise:CreateAssetModel
+                  - iotsitewise:GetWaiter
+                  - iotsitewise:CreateAsset
+                  - iotsitewise:DescribeAsset
+                  - iotsitewise:DescribeAssetModel
+                  - iotsitewise:DescribePortal
+                  - iotsitewise:DescribeAssetProperty
+                  - iotsitewise:DescribeDashboard
+                  - iotsitewise:DescribePortal
+                  - iotsitewise:DescribeProject
+                  - iotsitewise:UpdateAssetProperty
+                  - iotsitewise:CreateDashboard
+                  - iotsitewise:CreatePortal
+                  - iotsitewise:CreateProject
+                  - iotsitewise:BatchAssociateProjectAssets
+                  - iotsitewise:BatchDisassociateProjectAssets
+                  - iotsitewise:DeleteDashboard
+                  - iotsitewise:DeleteProject
+                  - iotsitewise:ListAccessPolicies
+                  - iotsitewise:DeleteAccessPolicy
+                  - iotsitewise:DeletePortal
+                  - iotsitewise:DeleteAsset
+                  - iotsitewise:DeleteAssetModel
                   - sso:*
                 Resource: '*'
 
@@ -350,7 +489,7 @@ Resources:
       Handler: nxp_cfn_gg_custom_function.lambda_handler
       Description: "Creates: A Greengrass V2 Component."
       Timeout: 700
-      Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
+      Role: !GetAtt 'GreengrassLambdaExecutionRole.Arn'
       Runtime: python3.10
       CodeUri: ../cfn-custom-functions/
     DependsOn: SitewisePortalRole
@@ -361,7 +500,7 @@ Resources:
       Handler: nxp_cfn_sitewise_custom_function.lambda_handler
       Description: "Creates: an asset model, an asset, a portal, project and dashboards"
       Timeout: 700
-      Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
+      Role: !GetAtt 'SitewiseLambdaExecutionRole.Arn'
       Runtime: python3.10
       CodeUri: ../cfn-custom-functions/
     DependsOn: SitewisePortalRole
@@ -372,7 +511,7 @@ Resources:
       Handler: nxp_cfn_cert_custom_function.lambda_handler
       Description: "Creates a certificate for the SJA1110 Thing and stores it in a S3 bucket."
       Timeout: 30
-      Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
+      Role: !GetAtt 'CertificateLambdaExecutionRole.Arn'
       Runtime: python3.10
       CodeUri: ../cfn-custom-functions/
 

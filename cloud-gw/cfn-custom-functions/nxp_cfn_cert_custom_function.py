@@ -9,7 +9,7 @@ and packs them in separate tar archives that are stored in an S3 bucket.
 When delete is invoked, it empties the S3 bucket, it detaches the policies from every certificate
 used for Greengrass Core thing, then it deletes the certificate used for client devices.
 
-Copyright 2021-2023 NXP
+Copyright 2021-2024 NXP
 """
 
 import json
@@ -101,7 +101,6 @@ class CertificateHandler:
                     CertificateHandler.__write_to_archive(
                         value, archive, key)
 
-            CertificateHandler.S3_CLIENT = boto3.client('s3')
             CertificateHandler.S3_CLIENT.upload_file(
                 f'/tmp/{archive_name}',
                 event['ResourceProperties']['BucketName'],
