@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2023 NXP
+# Copyright 2023-2024 NXP
 #
 # This script can be used after the boot to configure the PFE so that the network
 # traffic is routed by default to the Linux network interfaces.
@@ -9,8 +9,8 @@
 # shellcheck source=eth-gw/eth-common-target.sh
 source "${BASH_SOURCE[0]%/*}/eth-common-target.sh"
 
-# The PFE Linux network interfaces.
-readonly PFE_NETIFS=("${PFE0_NETIF}" "${PFE2_NETIF}")
+# The PFE Linux network logical interfaces.
+readonly PFE_LOGIFS=("emac0" "emac2")
 # The MAC addresses assigned to the PFE instance running on the Cortex-M7 core.
 readonly M7_MAC_ADDRS=("77:55:44:33:22:11" "66:55:44:33:22:11")
 # File used to store the initial FCI configuration.
@@ -75,23 +75,20 @@ dump_fci_config() {
 # Configure the PFE physical and logical interfaces to allow RX/TX traffic
 # on the PFE Linux interfaces by default.
 # Globals:
-#   A53_ASSIGNED_HIF, M7_ASSIGNED_HIF, M7_MAC_ADDRS, PFE_NETIFS, PFE_PHYIFS
+#   A53_ASSIGNED_HIF, M7_ASSIGNED_HIF, M7_MAC_ADDRS, PFE_LOGIFS, PFE_PHYIFS
 # Arguments:
 #   N/A
 # Outputs:
 #   N/A
 #######################################
 configure_pfe() {
-    for i in "${!PFE_NETIFS[@]}"; do
-        local logif_name="${PFE_NETIFS[$i]%sl}M7"
+    for i in "${!PFE_LOGIFS[@]}"; do
+        local logif_name="${PFE_LOGIFS[$i]}M7"
 
         # Re-configure the egress HIF in order to send the ethernet packets to the Linux
         # instance by default.
-        libfci_cli logif-update --interface "${PFE_NETIFS[$i]%sl}" --enable \
+        libfci_cli logif-update --interface "${PFE_LOGIFS[$i]}" --enable \
             --promisc ON --egress "${A53_ASSIGNED_HIF}"
-
-        # Delete the logical interface added by the Linux slave driver, if it exists.
-        libfci_cli logif-del --interface "s9.${PFE_NETIFS[$i]}" || true
 
         # Add a new logical interface that shall forward the traffic to the PFE instance
         # running on the Cortex-M7.
