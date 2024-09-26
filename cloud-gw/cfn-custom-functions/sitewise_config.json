@@ -763,6 +763,53 @@
                 "unit": "state of charge"
               }
             }
+          },
+          {
+            "mqtt_topic_suffix": "/eiqa/sc",
+            "use_cloud_timestamp": false,
+            "measurements": {
+              "sc_real_label": {
+                "name": "SC real label",
+                "unit": "String",
+                "dataType": "STRING"
+              },
+              "sc_tf_lite_float_prediction": {
+                "name": "SC tflite float prediction",
+                "unit": "String",
+                "dataType": "STRING"
+              },
+              "sc_tf_lite_float_time": {
+                "name": "SC tflite float time",
+                "unit": "nanoseconds"
+              },
+              "sc_tf_lite_quantized_prediction": {
+                "name": "SC tflite quantized prediction",
+                "unit": "String",
+                "dataType": "STRING"
+              },
+              "sc_tf_lite_quantized_time": {
+                "name": "SC tflite quantized time",
+                "unit": "nanoseconds"
+              },
+              "sc_glow_singlecore_prediction": {
+                "name": "SC glow singlecore prediction",
+                "unit": "String",
+                "dataType": "STRING"
+              },
+              "sc_glow_singlecore_time": {
+                "name": "SC glow singlecore time",
+                "unit": "nanoseconds"
+              },
+              "sc_glow_multicore_prediction": {
+                "name": "SC glow multicore prediction",
+                "unit": "String",
+                "dataType": "STRING"
+              },
+              "sc_glow_multicore_time": {
+                "name": "SC glow multicore time",
+                "unit": "nanoseconds"
+              }
+            }
           }
         ],
         "widgets": [
@@ -911,6 +958,72 @@
               "Transformer ONNX for PyTorch execution time": {
                 "label": "Transformer PyTorch ONNX time",
                 "property_name": "bms transformer pytorch onnx time"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 18,
+            "height": 2,
+            "width": 6,
+            "title": "Speech Classification - Real sentiment",
+            "type": "monitor-kpi",
+            "metrics": {
+              "SC real sentiment": {
+                "label": "SC real label",
+                "property_name": "SC real label"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 20,
+            "height": 2,
+            "width": 6,
+            "title": "Speech Classification - Predicted sentiments",
+            "type": "monitor-kpi",
+            "metrics": {
+              "TFLite Float predicted sentiment": {
+                "label": "SC tflite float predicted sentiment",
+                "property_name": "SC tflite float prediction"
+              },
+              "TFLite Quantized predicted sentiment": {
+                "label": "SC tflite quantized predicted sentiment",
+                "property_name": "SC tflite quantized prediction"
+              },
+              "Glow singlecore predicted sentiment": {
+                "label": "SC glow singlecore predicted sentiment",
+                "property_name": "SC glow singlecore prediction"
+              },
+              "Glow multicore predicted sentiment": {
+                "label": "SC glow multicore predicted sentiment",
+                "property_name": "SC glow multicore prediction"
+              }
+            }
+          },
+          {
+            "x": 0,
+            "y": 22,
+            "height": 2,
+            "width": 6,
+            "title": "Speech Classification - Execution times",
+            "type": "monitor-line-chart",
+            "metrics": {
+              "SC tflite float time": {
+                "label": "SC tflite float time",
+                "property_name": "SC tflite float time"
+              },
+              "SC tflite quantized time": {
+                "label": "SC tflite quantized time",
+                "property_name": "SC tflite quantized time"
+              },
+              "SC glow singlecore time": {
+                "label": "SC glow singlecore time",
+                "property_name": "SC glow singlecore time"
+              },
+              "SC glow multicore time": {
+                "label": "SC glow multicore time",
+                "property_name": "SC glow multicore time"
               }
             }
           }

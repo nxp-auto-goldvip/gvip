@@ -67,7 +67,7 @@ class SitewiseHandler:
                 properties[p_name] = {
                     'property': {
                         'name': p_name,
-                        'dataType': template.get('datatype', 'DOUBLE'),
+                        'dataType': template.get('dataType', 'DOUBLE'),
                         'unit': template['unit'].replace(template['pattern'], str(value))
                     },
                     'alias': t_id.replace(template['pattern'], str(value))
@@ -120,7 +120,7 @@ class SitewiseHandler:
                     properties[measurement['name']] = {
                         'property': {
                             'name': measurement['name'],
-                            'dataType': measurement.get('datatype', 'DOUBLE'),
+                            'dataType': measurement.get('dataType', 'DOUBLE'),
                             'unit': measurement['unit'],
                             'type': {'measurement': {}}
                         },
@@ -142,7 +142,7 @@ class SitewiseHandler:
                 properties[transform['name']] = {
                     'property': {
                         'name': transform['name'],
-                        'dataType': transform.get('datatype', 'DOUBLE'),
+                        'dataType': transform.get('dataType', 'DOUBLE'),
                         'unit': transform['unit'],
                         'type': {
                             'transform': {
@@ -479,7 +479,7 @@ class SitewiseHandler:
 
             for asset_property in rule['properties']:
                 data_type = self.DATA_TYPE_DICT[
-                    properties[asset_property]['property'].get('data_type', 'DOUBLE')
+                    properties[asset_property]['property'].get('dataType', 'DOUBLE')
                 ]
                 alias_list.append((properties[asset_property]['alias'], data_type))
 
