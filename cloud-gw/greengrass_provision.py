@@ -28,7 +28,7 @@ class Greengrassv2Deployment():
 
     DEPLOYMENT_CONFIG_FILE = "/home/root/cloud-gw/ggv2_deployment_configurations.json"
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(self,
                  region, stack_name,
                  deployment_name,
@@ -180,7 +180,7 @@ class Greengrassv2Deployment():
         :param timeout: Time in seconds to wait for the installer to report a succesfull launch.
         """
         installer_command = f"java -Droot={GREENGRASS_ROOT_PATH} -Dlog.store=FILE "\
-                            f"-jar {GREENGRASS_ROOT_PATH}/alts/init/distro/lib/Greengrass.jar "\
+                            f"-jar {GREENGRASS_ROOT_PATH}/alts/current/distro/lib/Greengrass.jar "\
                             f"--aws-region {self.__region} "\
                             f"--component-default-user ggc_user:ggc_group "\
                             f"--provision true --thing-name {self.__thing_name} "\
