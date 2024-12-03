@@ -1,15 +1,17 @@
-# Copyright 2022 NXP
+# Copyright 2022, 2024 NXP
 # Configuration file sourced by the sdcard-partitioning script.
+# This file is updated during the Yocto build process based on
+# enabled features configurations, i.e. Xen and OTA.
+# NOTE: The variables are set by un-commenting them.
 
-# Un-comment this to resize the v2xdomu rootfs partition until the
+# Resize the v2xdomu rootfs partition until the
 # V2XDOMU_PARTITION_END offset. V2XDOMU_PARTITION_END must be set
 # if this flag is enabled.
 #RESIZE_V2XDOMU="true"
 
-# Offset (in bytes) where the v2xdomu partition should end. Un-comment
-# this to expand the v2xdomu rootfs partition until 8GiB.
+# Offset (in bytes) where the v2xdomu partition should end.
 #V2XDOMU_PARTITION_END=8589934592
 
-# Un-comment this to create an additional partition for the LinuxVM
-# OTA use-case, with the same size as the v2xdomu rootfs partition.
+# Create an additional partition for the LinuxVM OTA use-case
+# with the same size as the v2xdomu rootfs partition.
 #CREATE_OTA_PARTITION="true"

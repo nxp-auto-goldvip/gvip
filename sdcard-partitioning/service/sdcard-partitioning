@@ -7,11 +7,11 @@
 # Default-Stop:
 # Short-Description: Update the partition table in the GoldVIP image
 # Description:       Update the partition table during the runtime for the A53 GoldVIP image:
+#                      - increase the size of the extended partition
 #                      - increase the size of the v2xdomu rootfs partition
-#                      - create a extended partition
 #                      - create the OTA partition
 ### END INIT INFO
-# Copyright 2022 NXP
+# Copyright 2022, 2024 NXP
 
 # Configuration defaults (e.g., flag that enable the v2xdomu rootfs resizing).
 SDCARD_PARTITIONING_CONFIG="/etc/default/sdcard-partitioning"
@@ -106,6 +106,7 @@ extend_partition() {
   partno="$2"
   new_partition_end="$3"
   best_effort="${4:-false}"
+  is_extended_partition="${5:-false}"
 
   curr_partition_end="$(parted -ms "${block_dev}" unit B print | grep "^${partno}:" | \
                         cut -d: -f3 | tr -d 'Bb')"
@@ -117,14 +118,16 @@ extend_partition() {
   free_space_end="$(parted -ms "${block_dev}" unit B print free | grep "^${partno}:" -A 1 | \
                     grep ":free;$" | cut -d: -f3 | tr -d 'Bb')"
 
-  if [ "${new_partition_end}" -gt "${free_space_end}" ]; then
-    if [ "${best_effort}" != true ]; then
-      echo "[ERROR] Can't resize the partition to the requested size"
-      exit 1
-    fi
+  if [[ "${is_extended_partition}" != "true" ]]; then
+    if [ "${new_partition_end}" -gt "${free_space_end}" ]; then
+      if [ "${best_effort}" != true ]; then
+        echo "[ERROR] Can't resize the partition to the requested size"
+        exit 1
+      fi
 
-    echo "[INFO] Best effort resize is enabled - resizing until ${free_space_end}"
-    new_partition_end="${free_space_end}"
+      echo "[INFO] Best effort resize is enabled - resizing until ${free_space_end}"
+      new_partition_end="${free_space_end}"
+    fi
   fi
 
   # Per the implementation of disk_name() in the Linux kernel, the device for a specific partition
@@ -137,16 +140,19 @@ extend_partition() {
   fi
   partition_dev+="${partno}"
 
-  # Resize the partition and the filesystem.
+  # Resize the partition.
   parted -s "${block_dev}" resizepart "${partno}" "$(( new_partition_end - 1 ))B"
-  e2fsck -pf "${partition_dev}"
-  resize2fs "${partition_dev}"
+  # If the partition is logical, also resize the filesystem.
+  if [[ "${is_extended_partition}" != "true" ]]; then
+    e2fsck -pf "${partition_dev}"
+    resize2fs "${partition_dev}"
+  fi
 }
 
 #######################################
 # Update the partition table of the GoldVIP image based on the image configuration (Xen and/or
 # OTA update features are enabled). Automatically detect the device where the dom0 rootfs resides
-# and use it for the following steps. It assumes that the v2xdomu rootfs partition is the next after
+# and use it for the following steps, considering the remaining partitions follow contiguously after
 # the dom0 partition.
 # Globals:
 #   V2XDOMU_PARTITION_END
@@ -160,10 +166,12 @@ update_goldvip_sdcard_partition_table() {
   root_part="$(findmnt / -o source -n)"
   root_partno="$(grep -o "[[:digit:]]*$" <<< "${root_part}")"
   block_dev="/dev/$(lsblk -no pkname "${root_part}")"
-  v2xdomu_partno="$(( root_partno + 1 ))"
+  extended_partno="$(( root_partno + 1 ))"
+  extended_partition_end="$(parted -ms "${block_dev}" unit B print free | tail -n 1 | cut -f3 -d: | tr -d 'Bb')"
+  v2xdomu_partno="$(( extended_partno + 1 ))"
 
-  # Sanity check: check if there are less than 4 partitions.
-  if [ "$(partx -gl "${block_dev}" | wc -l)" -ge "4" ]; then
+  # Sanity check: there should be 5 partitions.
+  if [ "$(partx -gl "${block_dev}" | wc -l)" -gt "5" ]; then
     echo "[ERROR] Unexpected partition table"
     exit 1
   fi
@@ -173,16 +181,9 @@ update_goldvip_sdcard_partition_table() {
       echo "[ERROR] The new v2xdomu partition end is not set"
       exit 1
     fi
+    extend_partition "${block_dev}" "${extended_partno}" "${extended_partition_end}" "true" "true"
     extend_partition "${block_dev}" "${v2xdomu_partno}" "${V2XDOMU_PARTITION_END}" "true"
   fi
-
-  free_space_info="$(parted -ms "${block_dev}" unit s p free | tail -n 1)"
-  extended_partition_start="$(cut -f 2 -d: <<< "${free_space_info}")"
-  extended_partition_end="$(cut -f 3 -d: <<< "${free_space_info}")"
-  # Create an extended partition that includes the rest of the space. The alignment can be ignored
-  # for this type of partition. Explicitly set the partition end offset instead of using '100%',
-  # because the latter can leave some unpartitioned space on some sdcards.
-  parted -s "${block_dev}" mkpart extended "${extended_partition_start}" "${extended_partition_end}"
 
   if [ "${CREATE_OTA_PARTITION}" = "true" ]; then
     v2xdomu_part_size="$(parted -ms "${block_dev}" unit s print | grep "^${v2xdomu_partno}:" |
