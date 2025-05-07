@@ -6,7 +6,7 @@
 Script used for deploying the Greengrass certificate on the board and
 starting a new Greengrass group deployment.
 
-Copyright 2021-2024 NXP
+Copyright 2021-2025 NXP
 """
 
 import argparse
@@ -134,13 +134,13 @@ class Greengrassv2Deployment():
             deploymentName=self.__deployment_name,
             components={
                 'aws.greengrass.Nucleus': {
-                    'componentVersion': '2.12.6',
+                    'componentVersion': '2.14.1',
                     'configurationUpdate': {
                         'merge': json.dumps(self.__configs['nucleus'])
                     }
                 },
                 'aws.greengrass.Cli' : {
-                    'componentVersion': '2.12.6'
+                    'componentVersion': '2.14.1'
                 },
                 self.__stack_name + ".GoldVIP.Telemetry" : {
                     'componentVersion': '1.0.0',
@@ -158,16 +158,16 @@ class Greengrassv2Deployment():
                     'componentVersion': '2.3.7'
                 },
                 'aws.greengrass.clientdevices.Auth' : {
-                    'componentVersion': '2.5.1',
+                    'componentVersion': '2.5.3',
                     'configurationUpdate': {
                         'merge': json.dumps(self.__configs['auth'])
                     }
                 },
                 'aws.greengrass.clientdevices.IPDetector' : {
-                    'componentVersion': '2.2.0'
+                    'componentVersion': '2.2.1'
                 },
                 'aws.greengrass.LambdaManager' : {
-                    'componentVersion': '2.3.4'
+                    'componentVersion': '2.3.5'
                 }
             }
         )
