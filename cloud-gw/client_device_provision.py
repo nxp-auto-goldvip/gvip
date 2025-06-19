@@ -8,7 +8,7 @@ connect to the Greengrass core on v2xdomu.
 
 The provisioning data is stored for subsequent connections.
 
-Copyright 2022-2024 NXP
+Copyright 2022-2025 NXP
 """
 
 import ipaddress
@@ -52,7 +52,7 @@ class ClientDeviceProvisioningClient():
     DEVICE_MAC = "Device mac"
 
     # Name of the client device data file
-    DATA_FILE = "/home/root/cloud-gw/client_device_data.json"
+    DATA_FILE = "/root/cloud-gw/client_device_data.json"
 
     CERTS_ARCHIVE_TEMPLATE = Template("${thing}_certificates.tar.gz")
 

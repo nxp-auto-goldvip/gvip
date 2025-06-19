@@ -26,7 +26,7 @@ from client_device_provision import ClientDeviceProvisioningClient
 class Greengrassv2Deployment():
     """Class containing the Greengrass v2 deployment steps."""
 
-    DEPLOYMENT_CONFIG_FILE = "/home/root/cloud-gw/ggv2_deployment_configurations.json"
+    DEPLOYMENT_CONFIG_FILE = "/root/cloud-gw/ggv2_deployment_configurations.json"
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(self,

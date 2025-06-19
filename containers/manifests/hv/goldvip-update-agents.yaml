@@ -1,4 +1,4 @@
-# Copyright 2022-2023 NXP
+# Copyright 2022-2023, 2025 NXP
 # GoldVIP Update Agents pod - runs on the dom0 VM.
 apiVersion: v1
 kind: Pod
@@ -19,7 +19,7 @@ spec:
     command: [
       'sh',
       '-c',
-      '/home/root/ota/goldvip_uas >> /var/log/ota/goldvip_uas 2>&1'
+      '/root/ota/goldvip_uas >> /var/log/ota/goldvip_uas 2>&1'
     ]
     # The GoldVIP Update Agents requires access to some devices on the host (namely /dev/mtd and
     # /dev/mmcblk).
@@ -43,7 +43,7 @@ spec:
     command: [
       'sh',
       '-c',
-      '/home/root/ota/goldvip_remote_ua >> /var/log/ota/goldvip_remote_ua 2>&1'
+      '/root/ota/goldvip_remote_ua >> /var/log/ota/goldvip_remote_ua 2>&1'
     ]
     volumeMounts:
     - name: uas-config-path
@@ -53,7 +53,7 @@ spec:
     - name: varlog
       mountPath: /var/log/ota
     - name: remote-install-dir
-      mountPath: /home/root/ota/remote_ua
+      mountPath: /root/ota/remote_ua
   initContainers:
   - name: init-ota-agents-config-container
     image: goldvip-ota-agents:local
@@ -112,5 +112,5 @@ spec:
       type: DirectoryOrCreate
   - name: remote-install-dir
     hostPath:
-      path: /home/root/ota/remote_ua
+      path: /root/ota/remote_ua
       type: DirectoryOrCreate

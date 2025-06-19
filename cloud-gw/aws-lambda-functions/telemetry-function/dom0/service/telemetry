@@ -10,7 +10,7 @@
 #                    Runs when domain 0 boots / shuts down on systems using init.
 ### END INIT INFO
 
-SERVER_PATH=/home/root/cloud-gw/telemetry-collector/dds_telemetry_pub.py
+SERVER_PATH=/root/cloud-gw/telemetry-collector/dds_telemetry_pub.py
 LOG_PATH="/var/log/collector_server.log"
 
 case "$1" in

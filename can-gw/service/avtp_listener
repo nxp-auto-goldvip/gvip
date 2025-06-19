@@ -9,9 +9,9 @@
 # Description:       Wrapper for starting / stopping GoldVIP avtp_traffic_listener service
 #                    Runs when domain 0 boots / shuts down on systems using init.
 ### END INIT INFO
-# Copyright 2021,2023 NXP
+# Copyright 2021, 2023, 2025 NXP
 
-SERVER_PATH="/home/root/can-gw/avtp_listener.py"
+SERVER_PATH="/root/can-gw/avtp_listener.py"
 DEFAULT_LOG_FILE="/tmp/can2eth_fast_path.log"
 AUX0_NETIF="aux0sl"
 

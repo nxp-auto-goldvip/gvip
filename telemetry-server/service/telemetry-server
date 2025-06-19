@@ -10,9 +10,9 @@
 ### END INIT INFO
 # SPDX-License-Identifier: BSD-3-Clause
 #
-# Copyright 2022 NXP
+# Copyright 2022, 2025 NXP
 
-SERVER_PATH=/home/root/telemetry-server/telemetry_server.py
+SERVER_PATH=/root/telemetry-server/telemetry_server.py
 LOG_PATH=/var/log/telemetry-server-log.txt
 
 case "$1" in
