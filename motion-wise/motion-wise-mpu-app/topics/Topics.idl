@@ -1,0 +1,53 @@
+/****************************************************************
+
+  Topics definition for MotionWise DDS application
+
+  (c) Copyright 2026 NXP
+  All Rights Reserved.
+
+*****************************************************************/
+
+module Topics
+{
+  struct MotionWise_DDS_HeadLamp
+  {
+    @key long id;
+    uint8 side;
+    uint8 highBeam;
+    uint8 lowBeam;
+    uint8 dayLight;
+    uint8 fog;
+    uint8 parking;
+    boolean turn;
+  };
+
+  struct MotionWise_DDS_RearLight
+  {
+    @key long id;
+    uint8 side;
+    uint8 tail;
+    uint8 reverse;
+    uint8 brake;
+    uint8 fog;
+    uint8 parking;
+    boolean turn;
+  };
+
+  struct MotionWise_DDS_StopLamp
+  {
+    @key long id;
+    uint8 intensity;
+  };
+
+  struct MotionWise_DDS_HazardLights
+  {
+    @key long id;
+    boolean on;
+  };
+
+  struct MotionWise_DDS_LicensePlateLight
+  {
+    @key long id;
+    boolean on;
+  };
+};
