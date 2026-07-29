@@ -1,11 +1,13 @@
-# INVOKE:
-# cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain_aarch64-none-linux-gnu.cmake ..
-# make
+# INVOKE (no idlc - use pre-generated Topics.c):
+#   cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain_aarch64-none-linux-gnu.cmake ..
+#   make
+#
+# INVOKE (with idlc - generate Topics.c from IDL at build time):
+#   cmake -DUSE_IDLC=ON -DCMAKE_TOOLCHAIN_FILE=../toolchain_aarch64-none-linux-gnu.cmake ..
+#   make
 
-# set minimum cmake version
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 
-# project name - using C language
 project(motion-wise-mpu-app C)
 
 set(CMAKE_C_STANDARD 11)
@@ -21,27 +23,30 @@ if(NOT TARGET CycloneDDS::ddsc)
   find_package(CycloneDDS REQUIRED)
 endif()
 
-# CycloneDDS generated code for C
 set(Topics_DIR topics)
 
-# For other platforms, use idlc to generate C code from IDL
-idlc_generate(TARGET types_c FILES ${Topics_DIR}/Topics.idl WARNINGS no-implicit-extensibility)
+option(USE_IDLC "Generate Topics.c from IDL using idlc at build time" OFF)
 
-# Define sources
-set(AllSources motion-wise-mpu-app.c)
-
-# Define executable and its source file
-add_executable(motion-wise-mpu-app ${AllSources})
-
-# Include directories
-target_include_directories(motion-wise-mpu-app PRIVATE ${Topics_DIR})
-
-if ((CMAKE_SYSTEM_NAME STREQUAL "QNX") AND (${ETHTSP_IOSOCK}) )
-  list (PREPEND LD_LIBRARY_PATH "$ENV{QNX_TARGET}/${CMAKE_SYSTEM_PROCESSOR}/io-sock/lib")
+if(USE_IDLC)
+  # Generate C code from IDL at build time
+  idlc_generate(TARGET types_c FILES ${Topics_DIR}/Topics.idl WARNINGS no-implicit-extensibility)
+  set(AllSources motion-wise-mpu-app.c)
+else()
+  # Use pre-generated Topics.c (no idlc dependency)
+  set(AllSources motion-wise-mpu-app.c ${Topics_DIR}/Topics.c)
 endif()
 
-# DDS libraries - using C library (ddsc) not C++ (ddscxx)
+add_executable(motion-wise-mpu-app ${AllSources})
+
+target_include_directories(motion-wise-mpu-app PRIVATE ${Topics_DIR})
+
+if((CMAKE_SYSTEM_NAME STREQUAL "QNX") AND (${ETHTSP_IOSOCK}))
+  list(PREPEND LD_LIBRARY_PATH "$ENV{QNX_TARGET}/${CMAKE_SYSTEM_PROCESSOR}/io-sock/lib")
+endif()
+
 set(DDSLibs CycloneDDS::ddsc)
-list(APPEND DDSLibs types_c)
+if(USE_IDLC)
+  list(APPEND DDSLibs types_c)
+endif()
 
 target_link_libraries(motion-wise-mpu-app LINK_PUBLIC ${DDSLibs} rt pthread)
